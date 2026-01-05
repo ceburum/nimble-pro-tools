@@ -5,12 +5,11 @@ import {
   Users, 
   FileText, 
   Receipt, 
-  Menu, 
-  X,
-  Wrench 
+  Menu
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import cebLogo from '@/assets/ceb-logo.jpg';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -45,12 +44,10 @@ export function AppLayout({ children }: AppLayoutProps) {
         )}
       >
         <div className="flex h-16 items-center gap-3 px-6 border-b border-sidebar-border">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-sidebar-primary">
-            <Wrench className="h-5 w-5 text-sidebar-primary-foreground" />
-          </div>
+          <img src={cebLogo} alt="CEB Building Logo" className="h-10 w-10 rounded-lg object-cover" />
           <div>
-            <h1 className="text-lg font-bold text-sidebar-foreground">ContractorPro</h1>
-            <p className="text-xs text-sidebar-foreground/60">Business Manager</p>
+            <h1 className="text-lg font-bold text-sidebar-foreground">CEB Building</h1>
+            <p className="text-xs text-sidebar-foreground/60">cebbuilding@yahoo.com</p>
           </div>
         </div>
 
