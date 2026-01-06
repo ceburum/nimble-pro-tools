@@ -5,7 +5,8 @@ import {
   Users, 
   FileText, 
   Receipt, 
-  Menu
+  Menu,
+  Briefcase
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -18,6 +19,7 @@ interface AppLayoutProps {
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Clients', href: '/clients', icon: Users },
+  { name: 'Jobs', href: '/jobs', icon: Briefcase },
   { name: 'Quotes', href: '/quotes', icon: FileText },
   { name: 'Invoices', href: '/invoices', icon: Receipt },
 ];
