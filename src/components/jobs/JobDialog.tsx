@@ -1,0 +1,101 @@
+import { useState } from 'react';
+import { Client, Job } from '@/types';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+
+interface JobDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  job: Job | null;
+  clients: Client[];
+  onSave: (job: Partial<Job>) => void;
+}
+
+export function JobDialog({ open, onOpenChange, job, clients, onSave }: JobDialogProps) {
+  const [title, setTitle] = useState(job?.title || '');
+  const [description, setDescription] = useState(job?.description || '');
+  const [clientId, setClientId] = useState(job?.clientId || '');
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSave({
+      title,
+      description,
+      clientId,
+    });
+    setTitle('');
+    setDescription('');
+    setClientId('');
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>{job ? 'Edit Job' : 'New Job'}</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="title">Job Title</Label>
+            <Input
+              id="title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g., Kitchen Renovation"
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="client">Client</Label>
+            <Select value={clientId} onValueChange={setClientId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select a client" />
+              </SelectTrigger>
+              <SelectContent>
+                {clients.map((client) => (
+                  <SelectItem key={client.id} value={client.id}>
+                    {client.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="description">Description (optional)</Label>
+            <Textarea
+              id="description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Job details..."
+              rows={3}
+            />
+          </div>
+
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button type="submit">Create Job</Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}

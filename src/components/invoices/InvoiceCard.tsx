@@ -1,5 +1,6 @@
 import { Receipt, Calendar, MoreVertical, Mail, MessageSquare, CreditCard } from 'lucide-react';
 import { Invoice, Client } from '@/types';
+import { PaymentInfo } from './PaymentInfo';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -111,24 +112,27 @@ export function InvoiceCard({ invoice, client, onSendEmail, onSendText, onMarkPa
       </div>
 
       {invoice.status !== 'paid' && (
-        <div className="flex gap-2 mt-4">
-          <Button 
-            variant="outline" 
-            className="flex-1 gap-2"
-            onClick={() => onSendEmail(invoice)}
-          >
-            <Mail className="h-4 w-4" />
-            Email
-          </Button>
-          <Button 
-            variant="outline"
-            className="flex-1 gap-2"
-            onClick={() => onSendText(invoice)}
-          >
-            <MessageSquare className="h-4 w-4" />
-            Text
-          </Button>
-        </div>
+        <>
+          <PaymentInfo />
+          <div className="flex gap-2 mt-4">
+            <Button 
+              variant="outline" 
+              className="flex-1 gap-2"
+              onClick={() => onSendEmail(invoice)}
+            >
+              <Mail className="h-4 w-4" />
+              Email
+            </Button>
+            <Button 
+              variant="outline"
+              className="flex-1 gap-2"
+              onClick={() => onSendText(invoice)}
+            >
+              <MessageSquare className="h-4 w-4" />
+              Text
+            </Button>
+          </div>
+        </>
       )}
     </div>
   );
