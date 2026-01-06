@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Plus, Search } from 'lucide-react';
-import { Quote, Client } from '@/types';
+import { Quote, Client, Invoice } from '@/types';
 import { mockQuotes, mockClients } from '@/lib/mockData';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,6 +13,7 @@ import { useLocalStorage } from '@/hooks/useLocalStorage';
 export default function Quotes() {
   const [quotes, setQuotes] = useLocalStorage<Quote[]>('ceb-quotes', mockQuotes);
   const [clients] = useLocalStorage<Client[]>('ceb-clients', mockClients);
+  const [invoices, setInvoices] = useLocalStorage<Invoice[]>('ceb-invoices', []);
   const [searchQuery, setSearchQuery] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingQuote, setEditingQuote] = useState<Quote | undefined>();
@@ -57,9 +58,35 @@ export default function Quotes() {
   };
 
   const handleConvertToInvoice = (quote: Quote) => {
+    // Generate invoice number
+    const invoiceNumber = `INV-${Date.now().toString().slice(-6)}`;
+    
+    // Create the invoice from the quote
+    const newInvoice: Invoice = {
+      id: crypto.randomUUID(),
+      quoteId: quote.id,
+      clientId: quote.clientId,
+      invoiceNumber,
+      items: quote.items,
+      status: 'draft',
+      createdAt: new Date(),
+      dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+      notes: quote.notes,
+    };
+    
+    // Add to invoices
+    setInvoices((prev) => [...prev, newInvoice]);
+    
+    // Update quote status to accepted
+    setQuotes((prev) =>
+      prev.map((q) =>
+        q.id === quote.id ? { ...q, status: 'accepted' as const } : q
+      )
+    );
+    
     toast({
       title: 'Invoice created',
-      description: `Quote "${quote.title}" has been converted to an invoice.`,
+      description: `Invoice ${invoiceNumber} created from "${quote.title}".`,
     });
     navigate('/invoices');
   };

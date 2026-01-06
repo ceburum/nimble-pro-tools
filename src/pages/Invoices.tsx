@@ -7,10 +7,11 @@ import { Input } from '@/components/ui/input';
 import { InvoiceCard } from '@/components/invoices/InvoiceCard';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
 
 export default function Invoices() {
-  const [invoices, setInvoices] = useState<Invoice[]>(mockInvoices);
-  const [clients] = useState<Client[]>(mockClients);
+  const [invoices, setInvoices] = useLocalStorage<Invoice[]>('ceb-invoices', mockInvoices);
+  const [clients] = useLocalStorage<Client[]>('ceb-clients', mockClients);
   const [searchQuery, setSearchQuery] = useState('');
   const [sendingEmail, setSendingEmail] = useState<string | null>(null);
   const { toast } = useToast();
