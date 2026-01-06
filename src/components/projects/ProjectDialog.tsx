@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Client, Project } from '@/types';
 import {
   Dialog,
@@ -24,12 +24,20 @@ interface ProjectDialogProps {
   project: Project | null;
   clients: Client[];
   onSave: (project: Partial<Project>) => void;
+  defaultClientId?: string | null;
 }
 
-export function ProjectDialog({ open, onOpenChange, project, clients, onSave }: ProjectDialogProps) {
+export function ProjectDialog({ open, onOpenChange, project, clients, onSave, defaultClientId }: ProjectDialogProps) {
   const [title, setTitle] = useState(project?.title || '');
   const [description, setDescription] = useState(project?.description || '');
-  const [clientId, setClientId] = useState(project?.clientId || '');
+  const [clientId, setClientId] = useState(project?.clientId || defaultClientId || '');
+
+  // Sync clientId when defaultClientId changes (for pre-selection from clients page)
+  useEffect(() => {
+    if (defaultClientId && !project) {
+      setClientId(defaultClientId);
+    }
+  }, [defaultClientId, project]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

@@ -12,10 +12,10 @@ interface ClientCardProps {
   client: Client;
   onEdit: (client: Client) => void;
   onDelete: (id: string) => void;
-  onCreateQuote: (client: Client) => void;
+  onCreateProject: (client: Client) => void;
 }
 
-export function ClientCard({ client, onEdit, onDelete, onCreateQuote }: ClientCardProps) {
+export function ClientCard({ client, onEdit, onDelete, onCreateProject }: ClientCardProps) {
   const initials = client.name
     .split(' ')
     .map((n) => n[0])
@@ -44,8 +44,8 @@ export function ClientCard({ client, onEdit, onDelete, onCreateQuote }: ClientCa
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => onCreateQuote(client)}>
-              Create Quote
+            <DropdownMenuItem onClick={() => onCreateProject(client)}>
+              Create Project
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => onEdit(client)}>
               Edit

@@ -18,6 +18,10 @@ export function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T 
       window.localStorage.setItem(key, JSON.stringify(valueToStore));
     } catch (error) {
       console.error(`Error setting localStorage key "${key}":`, error);
+      // Check for quota exceeded error
+      if (error instanceof DOMException && error.name === 'QuotaExceededError') {
+        console.error('localStorage quota exceeded - data may not have been saved');
+      }
     }
   };
 
