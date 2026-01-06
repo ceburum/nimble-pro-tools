@@ -82,13 +82,16 @@ export function ProjectDetailDialog({
   const afterPhotos = project.photos.filter((p) => p.type === 'after');
 
   const handleStatusChange = (newStatus: Project['status']) => {
+    console.log('handleStatusChange called:', project.id, 'from', project.status, 'to', newStatus);
     const updates: Partial<Project> = { status: newStatus };
     if (newStatus === 'sent') updates.sentAt = new Date();
     if (newStatus === 'accepted') updates.acceptedAt = new Date();
     if (newStatus === 'in_progress') updates.startedAt = new Date();
     if (newStatus === 'completed') updates.completedAt = new Date();
     
-    onUpdate({ ...project, ...updates });
+    const updatedProject = { ...project, ...updates };
+    console.log('Calling onUpdate with updated project, new status:', updatedProject.status);
+    onUpdate(updatedProject);
     toast({ title: 'Status updated', description: `Project marked as ${newStatus.replace('_', ' ')}` });
   };
 
