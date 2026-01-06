@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { Project, Client, ProjectPhoto, ProjectReceipt, MileageEntry } from '@/types';
 import {
   Dialog,
@@ -70,6 +71,7 @@ export function ProjectDetailDialog({
 }: ProjectDetailDialogProps) {
   const [selectedPhoto, setSelectedPhoto] = useState<ProjectPhoto | null>(null);
   const [editingQuote, setEditingQuote] = useState(false);
+  const [isSendingQuote, setIsSendingQuote] = useState(false);
   const { toast } = useToast();
 
   const status = statusConfig[project.status];
@@ -93,6 +95,60 @@ export function ProjectDetailDialog({
     console.log('Calling onUpdate with updated project, new status:', updatedProject.status);
     onUpdate(updatedProject);
     toast({ title: 'Status updated', description: `Project marked as ${newStatus.replace('_', ' ')}` });
+  };
+
+  const handleSendQuoteEmail = async () => {
+    if (!client?.email) {
+      toast({ 
+        title: 'No client email', 
+        description: 'Please add an email address for this client first.',
+        variant: 'destructive' 
+      });
+      return;
+    }
+
+    if (project.items.length === 0) {
+      toast({ 
+        title: 'No line items', 
+        description: 'Please add at least one line item to the quote.',
+        variant: 'destructive' 
+      });
+      return;
+    }
+
+    setIsSendingQuote(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('send-quote-email', {
+        body: {
+          projectId: project.id,
+          projectTitle: project.title,
+          projectDescription: project.description,
+          clientName: client.name,
+          clientEmail: client.email,
+          items: project.items,
+          notes: project.quoteNotes,
+          notificationEmail: 'cebbuilding@yahoo.com',
+        },
+      });
+
+      if (error) throw error;
+
+      // Update status to sent
+      handleStatusChange('sent');
+      toast({ 
+        title: 'Quote sent!', 
+        description: `Quote emailed to ${client.email}` 
+      });
+    } catch (error: any) {
+      console.error('Failed to send quote:', error);
+      toast({ 
+        title: 'Failed to send quote', 
+        description: error.message || 'Please try again.',
+        variant: 'destructive' 
+      });
+    } finally {
+      setIsSendingQuote(false);
+    }
   };
 
   const handleDeletePhoto = (photoId: string) => {
@@ -139,11 +195,16 @@ export function ProjectDetailDialog({
   };
 
   const getNextActions = () => {
-    const actions: { label: string; icon: React.ReactNode; onClick: () => void; variant?: 'default' | 'outline' | 'destructive' }[] = [];
+    const actions: { label: string; icon: React.ReactNode; onClick: () => void; variant?: 'default' | 'outline' | 'destructive'; disabled?: boolean }[] = [];
     
     switch (project.status) {
       case 'draft':
-        actions.push({ label: 'Send Quote', icon: <Send className="h-4 w-4 mr-2" />, onClick: () => handleStatusChange('sent') });
+        actions.push({ 
+          label: isSendingQuote ? 'Sending...' : 'Send Quote', 
+          icon: <Send className="h-4 w-4 mr-2" />, 
+          onClick: handleSendQuoteEmail,
+          disabled: isSendingQuote,
+        });
         break;
       case 'sent':
         actions.push({ label: 'Mark Accepted', icon: <CheckCircle className="h-4 w-4 mr-2" />, onClick: () => handleStatusChange('accepted') });
@@ -307,7 +368,7 @@ export function ProjectDetailDialog({
                   <div className="sticky bottom-0 -mx-6 px-6 py-4 mt-6 border-t border-border bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
                     <div className="flex flex-wrap gap-2">
                       {getNextActions().map((action, i) => (
-                        <Button key={i} size="sm" variant={action.variant || 'default'} onClick={action.onClick}>
+                        <Button key={i} size="sm" variant={action.variant || 'default'} onClick={action.onClick} disabled={action.disabled}>
                           {action.icon}
                           {action.label}
                         </Button>
