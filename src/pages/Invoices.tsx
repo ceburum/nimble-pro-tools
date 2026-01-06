@@ -6,11 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { InvoiceCard } from '@/components/invoices/InvoiceCard';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function Invoices() {
   const [invoices, setInvoices] = useState<Invoice[]>(mockInvoices);
   const [clients] = useState<Client[]>(mockClients);
   const [searchQuery, setSearchQuery] = useState('');
+  const [sendingEmail, setSendingEmail] = useState<string | null>(null);
   const { toast } = useToast();
 
   const filteredInvoices = invoices.filter((invoice) => {
@@ -21,19 +23,62 @@ export default function Invoices() {
     );
   });
 
-  const handleSendEmail = (invoice: Invoice) => {
+  const handleSendEmail = async (invoice: Invoice) => {
     const client = clients.find((c) => c.id === invoice.clientId);
-    toast({
-      title: 'Email sending',
-      description: `Invoice will be emailed to ${client?.email}. Connect backend to enable.`,
-    });
+    if (!client) {
+      toast({
+        title: 'Error',
+        description: 'Client not found.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setSendingEmail(invoice.id);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('send-invoice-email', {
+        body: {
+          clientName: client.name,
+          clientEmail: client.email,
+          invoiceNumber: invoice.invoiceNumber,
+          items: invoice.items,
+          dueDate: invoice.dueDate.toLocaleDateString(),
+          notes: invoice.notes,
+          businessName: 'C.E.B.',
+        },
+      });
+
+      if (error) throw error;
+
+      // Update invoice status to sent
+      setInvoices((prev) =>
+        prev.map((inv) =>
+          inv.id === invoice.id ? { ...inv, status: 'sent' as const } : inv
+        )
+      );
+
+      toast({
+        title: 'Invoice sent!',
+        description: `Invoice emailed to ${client.email}`,
+      });
+    } catch (error: any) {
+      console.error('Failed to send invoice:', error);
+      toast({
+        title: 'Failed to send',
+        description: error.message || 'Could not send invoice email.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSendingEmail(null);
+    }
   };
 
   const handleSendText = (invoice: Invoice) => {
     const client = clients.find((c) => c.id === invoice.clientId);
     toast({
-      title: 'Text sending',
-      description: `Invoice will be texted to ${client?.phone}. Connect backend to enable.`,
+      title: 'Coming soon',
+      description: `Text messaging to ${client?.phone} will be available soon.`,
     });
   };
 
