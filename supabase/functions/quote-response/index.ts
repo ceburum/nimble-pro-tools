@@ -21,7 +21,7 @@ const handler = async (req: Request): Promise<Response> => {
     if (!action || !encodedData) {
       return new Response(generateHtmlPage("Invalid Request", "Missing required parameters.", "error"), {
         status: 400,
-        headers: { "Content-Type": "text/html" },
+        headers: { "Content-Type": "text/html; charset=utf-8", "X-Content-Type-Options": "nosniff" },
       });
     }
 
@@ -31,7 +31,7 @@ const handler = async (req: Request): Promise<Response> => {
     } catch {
       return new Response(generateHtmlPage("Invalid Request", "Could not decode quote data.", "error"), {
         status: 400,
-        headers: { "Content-Type": "text/html" },
+        headers: { "Content-Type": "text/html; charset=utf-8", "X-Content-Type-Options": "nosniff" },
       });
     }
 
@@ -92,7 +92,10 @@ const handler = async (req: Request): Promise<Response> => {
       generateHtmlPage(confirmationTitle, confirmationMessage, isAccepted ? "success" : "declined"),
       {
         status: 200,
-        headers: { "Content-Type": "text/html" },
+        headers: { 
+          "Content-Type": "text/html; charset=utf-8",
+          "X-Content-Type-Options": "nosniff",
+        },
       }
     );
   } catch (error: any) {
@@ -101,7 +104,7 @@ const handler = async (req: Request): Promise<Response> => {
       generateHtmlPage("Error", "Something went wrong. Please contact us directly.", "error"),
       {
         status: 500,
-        headers: { "Content-Type": "text/html" },
+        headers: { "Content-Type": "text/html; charset=utf-8", "X-Content-Type-Options": "nosniff" },
       }
     );
   }
