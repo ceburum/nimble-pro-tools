@@ -13,9 +13,10 @@ interface ClientCardProps {
   onEdit: (client: Client) => void;
   onDelete: (id: string) => void;
   onCreateProject: (client: Client) => void;
+  onClick: (client: Client) => void;
 }
 
-export function ClientCard({ client, onEdit, onDelete, onCreateProject }: ClientCardProps) {
+export function ClientCard({ client, onEdit, onDelete, onCreateProject, onClick }: ClientCardProps) {
   const initials = client.name
     .split(' ')
     .map((n) => n[0])
@@ -23,7 +24,10 @@ export function ClientCard({ client, onEdit, onDelete, onCreateProject }: Client
     .toUpperCase();
 
   return (
-    <div className="bg-card rounded-xl border border-border p-6 shadow-sm hover:shadow-md transition-all duration-200 group">
+    <div 
+      className="bg-card rounded-xl border border-border p-6 shadow-sm hover:shadow-md transition-all duration-200 group cursor-pointer"
+      onClick={() => onClick(client)}
+    >
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-4">
           <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
@@ -39,11 +43,16 @@ export function ClientCard({ client, onEdit, onDelete, onCreateProject }: Client
         
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 transition-opacity">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="opacity-0 group-hover:opacity-100 transition-opacity"
+              onClick={(e) => e.stopPropagation()}
+            >
               <MoreVertical className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
+          <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
             <DropdownMenuItem onClick={() => onCreateProject(client)}>
               Create Project
             </DropdownMenuItem>

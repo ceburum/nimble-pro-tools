@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ClientCard } from '@/components/clients/ClientCard';
 import { ClientDialog } from '@/components/clients/ClientDialog';
+import { ClientDetailDialog } from '@/components/clients/ClientDetailDialog';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
@@ -15,6 +16,8 @@ export default function Clients() {
   const [searchQuery, setSearchQuery] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -68,6 +71,15 @@ export default function Clients() {
     navigate('/projects', { state: { openNewProject: true, selectedClientId: client.id } });
   };
 
+  const handleClientClick = (client: Client) => {
+    setSelectedClient(client);
+    setDetailDialogOpen(true);
+  };
+
+  const handleSendInvoice = (client: Client) => {
+    navigate('/invoices', { state: { openNewInvoice: true, selectedClientId: client.id } });
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -111,6 +123,7 @@ export default function Clients() {
               onEdit={handleEdit}
               onDelete={handleDelete}
               onCreateProject={handleCreateProject}
+              onClick={handleClientClick}
             />
           ))}
         </div>
@@ -124,6 +137,15 @@ export default function Clients() {
         }}
         client={editingClient}
         onSave={handleSave}
+      />
+
+      <ClientDetailDialog
+        client={selectedClient}
+        open={detailDialogOpen}
+        onOpenChange={setDetailDialogOpen}
+        onEdit={handleEdit}
+        onCreateProject={handleCreateProject}
+        onSendInvoice={handleSendInvoice}
       />
     </div>
   );
