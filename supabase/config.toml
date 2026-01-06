@@ -8,3 +8,9 @@ verify_jwt = false
 
 [functions.check-overdue-invoices]
 verify_jwt = false
+
+[functions.send-quote-email]
+verify_jwt = false
+
+[functions.quote-response]
+verify_jwt = false
