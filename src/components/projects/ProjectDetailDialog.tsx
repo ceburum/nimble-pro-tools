@@ -200,7 +200,7 @@ export function ProjectDetailDialog({
 
             <ScrollArea className="flex-1 min-h-0">
               {/* Overview Tab */}
-              <TabsContent value="overview" className="p-6 m-0">
+              <TabsContent value="overview" className="p-6 m-0 pb-[calc(7rem+env(safe-area-inset-bottom))]">
                 <div className="space-y-6">
                   {project.description && (
                     <div>
@@ -304,17 +304,19 @@ export function ProjectDetailDialog({
                     </div>
                   </div>
 
-                  <div className="flex flex-wrap gap-2 pt-4 border-t border-border">
-                    {getNextActions().map((action, i) => (
-                      <Button key={i} size="sm" variant={action.variant || 'default'} onClick={action.onClick}>
-                        {action.icon}
-                        {action.label}
+                  <div className="sticky bottom-0 -mx-6 px-6 py-4 mt-6 border-t border-border bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+                    <div className="flex flex-wrap gap-2">
+                      {getNextActions().map((action, i) => (
+                        <Button key={i} size="sm" variant={action.variant || 'default'} onClick={action.onClick}>
+                          {action.icon}
+                          {action.label}
+                        </Button>
+                      ))}
+                      <Button size="sm" variant="destructive" onClick={handleDeleteProject}>
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete
                       </Button>
-                    ))}
-                    <Button size="sm" variant="destructive" onClick={handleDeleteProject}>
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Delete
-                    </Button>
+                    </div>
                   </div>
                 </div>
               </TabsContent>
