@@ -1,16 +1,69 @@
-import { Users, FileText, Receipt, DollarSign } from 'lucide-react';
+import { Users, FileText, Receipt, DollarSign, AlertTriangle } from 'lucide-react';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { RecentActivity } from '@/components/dashboard/RecentActivity';
+import { OverdueAlerts } from '@/components/dashboard/OverdueAlerts';
 import { mockClients, mockQuotes, mockInvoices } from '@/lib/mockData';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { Client, Quote, Invoice } from '@/types';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
 
 export default function Dashboard() {
-  const totalRevenue = mockInvoices
+  const [clients] = useLocalStorage<Client[]>('ceb-clients', mockClients);
+  const [quotes] = useLocalStorage<Quote[]>('ceb-quotes', mockQuotes);
+  const [invoices] = useLocalStorage<Invoice[]>('ceb-invoices', mockInvoices);
+
+  const totalRevenue = invoices
     .filter(inv => inv.status === 'paid')
     .reduce((sum, inv) => sum + inv.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0), 0);
 
-  const pendingAmount = mockInvoices
+  const pendingAmount = invoices
     .filter(inv => inv.status === 'sent' || inv.status === 'overdue')
     .reduce((sum, inv) => sum + inv.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0), 0);
+
+  const overdueCount = invoices.filter(inv => {
+    if (inv.status === 'paid') return false;
+    return new Date(inv.dueDate) < new Date();
+  }).length;
+
+  const handleSendReminder = async (invoice: Invoice, method: 'email' | 'text') => {
+    const client = clients.find(c => c.id === invoice.clientId);
+    if (!client) {
+      toast({ title: "Error", description: "Client not found", variant: "destructive" });
+      return;
+    }
+
+    const total = invoice.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
+
+    try {
+      const { error } = await supabase.functions.invoke('send-overdue-reminder', {
+        body: {
+          invoiceId: invoice.id,
+          invoiceNumber: invoice.invoiceNumber,
+          clientName: client.name,
+          clientEmail: client.email,
+          clientPhone: client.phone,
+          amount: total,
+          dueDate: invoice.dueDate,
+          method
+        }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Reminder Sent",
+        description: `${method === 'email' ? 'Email' : 'Text'} reminder sent to ${client.name}`,
+      });
+    } catch (error) {
+      console.error('Error sending reminder:', error);
+      toast({
+        title: "Error",
+        description: `Failed to send ${method} reminder`,
+        variant: "destructive"
+      });
+    }
+  };
 
   return (
     <div className="space-y-8">
@@ -22,21 +75,24 @@ export default function Dashboard() {
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           title="Total Clients"
-          value={mockClients.length}
+          value={clients.length}
           icon={Users}
           variant="default"
+          href="/clients"
         />
         <StatCard
           title="Active Quotes"
-          value={mockQuotes.filter(q => q.status === 'sent' || q.status === 'draft').length}
+          value={quotes.filter(q => q.status === 'sent' || q.status === 'draft').length}
           icon={FileText}
           variant="primary"
+          href="/quotes"
         />
         <StatCard
           title="Pending Invoices"
           value={`$${pendingAmount.toLocaleString()}`}
           icon={Receipt}
-          variant="warning"
+          variant={overdueCount > 0 ? "danger" : "warning"}
+          href="/invoices"
         />
         <StatCard
           title="Total Revenue"
@@ -44,8 +100,17 @@ export default function Dashboard() {
           icon={DollarSign}
           variant="success"
           trend={{ value: 12, isPositive: true }}
+          href="/invoices"
         />
       </div>
+
+      {overdueCount > 0 && (
+        <OverdueAlerts 
+          invoices={invoices} 
+          clients={clients} 
+          onSendReminder={handleSendReminder}
+        />
+      )}
 
       <div className="grid gap-6 lg:grid-cols-2">
         <RecentActivity />
