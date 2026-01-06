@@ -135,29 +135,143 @@ const handler = async (req: Request): Promise<Response> => {
       // Still return success to the user even if email fails
     }
 
-    // Return a simple JSON success response
-    // The client will receive a confirmation email instead of seeing an HTML page
-    return new Response(
-      JSON.stringify({ 
-        success: true, 
-        message: isAccepted 
-          ? "Thank you! Your acceptance has been recorded. Check your email for confirmation."
-          : "Your response has been recorded. Check your email for confirmation."
-      }),
-      {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      }
-    );
+    // Return a styled HTML confirmation page
+    const confirmationHtml = `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>${isAccepted ? 'Quote Accepted' : 'Quote Declined'} - CEB Services</title>
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background: linear-gradient(135deg, ${isAccepted ? '#f0fdf4 0%, #dcfce7 100%' : '#fef2f2 0%, #fee2e2 100%'});
+          }
+          .card {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+            max-width: 450px;
+            width: 100%;
+            padding: 48px 40px;
+            text-align: center;
+            animation: slideUp 0.5s ease-out;
+          }
+          @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+          .icon {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 24px;
+            font-size: 40px;
+            background: ${isAccepted ? '#dcfce7' : '#fee2e2'};
+          }
+          h1 {
+            color: ${isAccepted ? '#16a34a' : '#dc2626'};
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 12px;
+          }
+          .subtitle {
+            color: #6b7280;
+            font-size: 16px;
+            line-height: 1.6;
+            margin-bottom: 32px;
+          }
+          .project-info {
+            background: #f9fafb;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 32px;
+          }
+          .project-title {
+            font-weight: 600;
+            color: #374151;
+            font-size: 18px;
+            margin-bottom: 8px;
+          }
+          .project-total {
+            font-size: 24px;
+            font-weight: 700;
+            color: ${isAccepted ? '#16a34a' : '#374151'};
+          }
+          .footer {
+            color: #9ca3af;
+            font-size: 13px;
+          }
+          .footer strong {
+            color: #374151;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="card">
+          <div class="icon">${isAccepted ? '✓' : '✗'}</div>
+          <h1>${isAccepted ? 'Quote Accepted!' : 'Quote Declined'}</h1>
+          <p class="subtitle">
+            ${isAccepted 
+              ? 'Thank you for accepting our quote! We\'ve received your response and will be in touch shortly to discuss next steps.'
+              : 'We\'ve received your response. If you have any questions or would like to discuss alternatives, please don\'t hesitate to reach out.'}
+          </p>
+          <div class="project-info">
+            <div class="project-title">${projectTitle}</div>
+            <div class="project-total">$${total.toFixed(2)}</div>
+          </div>
+          <p class="footer">
+            Thank you, <strong>${clientName}</strong>!<br>
+            © ${new Date().getFullYear()} CEB Services
+          </p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    return new Response(confirmationHtml, {
+      status: 200,
+      headers: { "Content-Type": "text/html; charset=utf-8" },
+    });
   } catch (error: any) {
     console.error("Error handling quote response:", error);
-    return new Response(
-      JSON.stringify({ error: "Something went wrong. Please contact us directly." }),
-      {
-        status: 500,
-        headers: { "Content-Type": "application/json" },
-      }
-    );
+    const errorHtml = `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>Error - CEB Services</title>
+        <style>
+          body { font-family: -apple-system, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; background: #fef2f2; }
+          .card { background: white; padding: 40px; border-radius: 16px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+          h1 { color: #dc2626; margin-bottom: 12px; }
+          p { color: #6b7280; }
+        </style>
+      </head>
+      <body>
+        <div class="card">
+          <h1>Something went wrong</h1>
+          <p>Please contact us directly.</p>
+        </div>
+      </body>
+      </html>
+    `;
+    return new Response(errorHtml, {
+      status: 500,
+      headers: { "Content-Type": "text/html; charset=utf-8" },
+    });
   }
 };
 
