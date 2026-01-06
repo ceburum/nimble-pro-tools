@@ -5,13 +5,17 @@ import { mockQuotes, mockClients } from '@/lib/mockData';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { QuoteCard } from '@/components/quotes/QuoteCard';
+import { QuoteDialog } from '@/components/quotes/QuoteDialog';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
 
 export default function Quotes() {
-  const [quotes, setQuotes] = useState<Quote[]>(mockQuotes);
-  const [clients] = useState<Client[]>(mockClients);
+  const [quotes, setQuotes] = useLocalStorage<Quote[]>('ceb-quotes', mockQuotes);
+  const [clients] = useLocalStorage<Client[]>('ceb-clients', mockClients);
   const [searchQuery, setSearchQuery] = useState('');
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingQuote, setEditingQuote] = useState<Quote | undefined>();
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -23,6 +27,35 @@ export default function Quotes() {
     );
   });
 
+  const handleCreateQuote = (quoteData: Omit<Quote, 'id' | 'createdAt'>) => {
+    const newQuote: Quote = {
+      ...quoteData,
+      id: crypto.randomUUID(),
+      createdAt: new Date(),
+    };
+    setQuotes((prev) => [...prev, newQuote]);
+    toast({
+      title: 'Quote created',
+      description: `"${newQuote.title}" has been created.`,
+    });
+  };
+
+  const handleUpdateQuote = (quoteData: Omit<Quote, 'id' | 'createdAt'>) => {
+    if (!editingQuote) return;
+    setQuotes((prev) =>
+      prev.map((q) =>
+        q.id === editingQuote.id
+          ? { ...q, ...quoteData }
+          : q
+      )
+    );
+    toast({
+      title: 'Quote updated',
+      description: `"${quoteData.title}" has been updated.`,
+    });
+    setEditingQuote(undefined);
+  };
+
   const handleConvertToInvoice = (quote: Quote) => {
     toast({
       title: 'Invoice created',
@@ -32,10 +65,8 @@ export default function Quotes() {
   };
 
   const handleEdit = (quote: Quote) => {
-    toast({
-      title: 'Edit quote',
-      description: 'Quote editing will be available with database integration.',
-    });
+    setEditingQuote(quote);
+    setDialogOpen(true);
   };
 
   const handleDelete = (id: string) => {
@@ -47,6 +78,11 @@ export default function Quotes() {
     });
   };
 
+  const handleNewQuote = () => {
+    setEditingQuote(undefined);
+    setDialogOpen(true);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -54,7 +90,7 @@ export default function Quotes() {
           <h1 className="text-3xl font-bold text-foreground">Quotes</h1>
           <p className="text-muted-foreground mt-1">Create and manage project estimates</p>
         </div>
-        <Button className="gap-2">
+        <Button className="gap-2" onClick={handleNewQuote}>
           <Plus className="h-4 w-4" />
           New Quote
         </Button>
@@ -73,7 +109,7 @@ export default function Quotes() {
       {filteredQuotes.length === 0 ? (
         <div className="text-center py-12">
           <p className="text-muted-foreground">No quotes found.</p>
-          <Button variant="link" className="mt-2">
+          <Button variant="link" className="mt-2" onClick={handleNewQuote}>
             Create your first quote
           </Button>
         </div>
@@ -91,6 +127,14 @@ export default function Quotes() {
           ))}
         </div>
       )}
+
+      <QuoteDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        quote={editingQuote}
+        clients={clients}
+        onSave={editingQuote ? handleUpdateQuote : handleCreateQuote}
+      />
     </div>
   );
 }
