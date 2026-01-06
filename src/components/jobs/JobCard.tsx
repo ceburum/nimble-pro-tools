@@ -51,12 +51,23 @@ export function JobCard({ job, client, onUpdate, onDelete }: JobCardProps) {
   const totalMiles = job.mileageEntries.reduce((sum, e) => sum + e.distance, 0);
   const totalReceipts = job.receipts.reduce((sum, r) => sum + r.amount, 0);
 
-  const handleAddPhoto = (photo: JobPhoto) => {
+  const handleAddPhotos = (photos: JobPhoto[]) => {
     onUpdate({
       ...job,
-      photos: [...job.photos, photo],
+      photos: [...job.photos, ...photos],
     });
-    toast({ title: 'Photo added', description: `${photo.type} photo saved to job` });
+    toast({ 
+      title: photos.length === 1 ? 'Photo added' : 'Photos added', 
+      description: `${photos.length} photo${photos.length > 1 ? 's' : ''} saved to job` 
+    });
+  };
+
+  const handleDeletePhoto = (photoId: string) => {
+    onUpdate({
+      ...job,
+      photos: job.photos.filter((p) => p.id !== photoId),
+    });
+    toast({ title: 'Photo deleted' });
   };
 
   const handleAddReceipt = (receipt: ReceiptType) => {
@@ -199,7 +210,7 @@ export function JobCard({ job, client, onUpdate, onDelete }: JobCardProps) {
         open={photoDialogOpen}
         onOpenChange={setPhotoDialogOpen}
         jobId={job.id}
-        onSave={handleAddPhoto}
+        onSave={handleAddPhotos}
       />
 
       <ReceiptUploadDialog
@@ -222,6 +233,7 @@ export function JobCard({ job, client, onUpdate, onDelete }: JobCardProps) {
         onOpenChange={setGalleryOpen}
         photos={job.photos}
         jobTitle={job.title}
+        onDeletePhoto={handleDeletePhoto}
       />
     </>
   );
