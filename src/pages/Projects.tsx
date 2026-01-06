@@ -96,10 +96,12 @@ export default function Projects() {
   };
 
   const handleUpdateProject = (updatedProject: Project) => {
-    console.log('handleUpdateProject called, photos count:', updatedProject.photos.length);
+    console.log('handleUpdateProject called for project:', updatedProject.id, 'photos:', updatedProject.photos.length);
     setProjects((prev) => {
+      const existingProject = prev.find(p => p.id === updatedProject.id);
+      console.log('Found existing project:', !!existingProject, 'with', existingProject?.photos.length || 0, 'photos');
       const newProjects = prev.map((p) => (p.id === updatedProject.id ? updatedProject : p));
-      console.log('setProjects completed');
+      console.log('Updated projects array, new length:', newProjects.length);
       return newProjects;
     });
   };
