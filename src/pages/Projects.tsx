@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, Search, FolderKanban, Send, CheckCircle, Play, DollarSign } from 'lucide-react';
 import { Project, Client, Invoice, LineItem } from '@/types';
 import { mockClients } from '@/lib/mockData';
@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { ProjectCard } from '@/components/projects/ProjectCard';
 import { ProjectDialog } from '@/components/projects/ProjectDialog';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 
 const mockProjects: Project[] = [
@@ -53,8 +53,21 @@ export default function Projects() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
+  const [preSelectedClientId, setPreSelectedClientId] = useState<string | null>(null);
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
+
+  // Handle navigation state for creating project from client
+  useEffect(() => {
+    const state = location.state as { openNewProject?: boolean; selectedClientId?: string } | null;
+    if (state?.openNewProject) {
+      setPreSelectedClientId(state.selectedClientId || null);
+      setIsDialogOpen(true);
+      // Clear the state so it doesn't re-trigger
+      navigate(location.pathname, { replace: true });
+    }
+  }, [location.state, navigate, location.pathname]);
 
   const filteredProjects = projects.filter((project) => {
     const client = clients.find((c) => c.id === project.clientId);
@@ -225,10 +238,14 @@ export default function Projects() {
 
       <ProjectDialog
         open={isDialogOpen}
-        onOpenChange={setIsDialogOpen}
+        onOpenChange={(open) => {
+          setIsDialogOpen(open);
+          if (!open) setPreSelectedClientId(null);
+        }}
         project={editingProject}
         clients={clients}
         onSave={handleCreateProject}
+        defaultClientId={preSelectedClientId}
       />
     </div>
   );

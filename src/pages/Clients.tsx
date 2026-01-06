@@ -64,8 +64,8 @@ export default function Clients() {
     });
   };
 
-  const handleCreateQuote = (client: Client) => {
-    navigate('/quotes', { state: { selectedClient: client } });
+  const handleCreateProject = (client: Client) => {
+    navigate('/projects', { state: { openNewProject: true, selectedClientId: client.id } });
   };
 
   return (
@@ -110,7 +110,7 @@ export default function Clients() {
               client={client}
               onEdit={handleEdit}
               onDelete={handleDelete}
-              onCreateQuote={handleCreateQuote}
+              onCreateProject={handleCreateProject}
             />
           ))}
         </div>
