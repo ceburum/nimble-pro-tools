@@ -8,9 +8,10 @@ import { ClientCard } from '@/components/clients/ClientCard';
 import { ClientDialog } from '@/components/clients/ClientDialog';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
 
 export default function Clients() {
-  const [clients, setClients] = useState<Client[]>(mockClients);
+  const [clients, setClients] = useLocalStorage<Client[]>('ceb-clients', mockClients);
   const [searchQuery, setSearchQuery] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
