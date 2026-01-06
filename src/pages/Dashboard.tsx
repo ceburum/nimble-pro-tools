@@ -1,16 +1,17 @@
-import { Users, FileText, Receipt, DollarSign, AlertTriangle } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Users, FileText, Receipt, DollarSign, FolderKanban } from 'lucide-react';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { RecentActivity } from '@/components/dashboard/RecentActivity';
 import { OverdueAlerts } from '@/components/dashboard/OverdueAlerts';
-import { mockClients, mockQuotes, mockInvoices } from '@/lib/mockData';
+import { mockClients, mockInvoices } from '@/lib/mockData';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
-import { Client, Quote, Invoice } from '@/types';
+import { Client, Invoice, Project } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
 export default function Dashboard() {
   const [clients] = useLocalStorage<Client[]>('ceb-clients', mockClients);
-  const [quotes] = useLocalStorage<Quote[]>('ceb-quotes', mockQuotes);
+  const [projects] = useLocalStorage<Project[]>('ceb-projects', []);
   const [invoices] = useLocalStorage<Invoice[]>('ceb-invoices', mockInvoices);
 
   const totalRevenue = invoices
@@ -81,11 +82,11 @@ export default function Dashboard() {
           href="/clients"
         />
         <StatCard
-          title="Active Quotes"
-          value={quotes.filter(q => q.status === 'sent' || q.status === 'draft').length}
-          icon={FileText}
+          title="Active Projects"
+          value={projects.filter(p => p.status === 'draft' || p.status === 'sent' || p.status === 'accepted' || p.status === 'in_progress').length}
+          icon={FolderKanban}
           variant="primary"
-          href="/quotes"
+          href="/projects"
         />
         <StatCard
           title="Pending Invoices"
@@ -118,8 +119,8 @@ export default function Dashboard() {
         <div className="bg-card rounded-xl border border-border p-6 shadow-sm">
           <h3 className="text-lg font-semibold text-card-foreground mb-4">Quick Actions</h3>
           <div className="grid gap-3 sm:grid-cols-2">
-            <a 
-              href="/clients" 
+            <Link 
+              to="/clients" 
               className="flex items-center gap-3 p-4 rounded-lg border border-border hover:border-primary/50 hover:bg-primary/5 transition-all duration-200"
             >
               <Users className="h-5 w-5 text-primary" />
@@ -127,19 +128,19 @@ export default function Dashboard() {
                 <p className="font-medium text-card-foreground">Add Client</p>
                 <p className="text-sm text-muted-foreground">Create new contact</p>
               </div>
-            </a>
-            <a 
-              href="/quotes" 
+            </Link>
+            <Link 
+              to="/projects" 
               className="flex items-center gap-3 p-4 rounded-lg border border-border hover:border-primary/50 hover:bg-primary/5 transition-all duration-200"
             >
-              <FileText className="h-5 w-5 text-primary" />
+              <FolderKanban className="h-5 w-5 text-primary" />
               <div>
-                <p className="font-medium text-card-foreground">New Quote</p>
-                <p className="text-sm text-muted-foreground">Create estimate</p>
+                <p className="font-medium text-card-foreground">New Project</p>
+                <p className="text-sm text-muted-foreground">Create quote/job</p>
               </div>
-            </a>
-            <a 
-              href="/invoices" 
+            </Link>
+            <Link 
+              to="/invoices" 
               className="flex items-center gap-3 p-4 rounded-lg border border-border hover:border-primary/50 hover:bg-primary/5 transition-all duration-200"
             >
               <Receipt className="h-5 w-5 text-accent" />
@@ -147,9 +148,9 @@ export default function Dashboard() {
                 <p className="font-medium text-card-foreground">New Invoice</p>
                 <p className="text-sm text-muted-foreground">Bill a client</p>
               </div>
-            </a>
-            <a 
-              href="/invoices" 
+            </Link>
+            <Link 
+              to="/invoices" 
               className="flex items-center gap-3 p-4 rounded-lg border border-border hover:border-success/50 hover:bg-success/5 transition-all duration-200"
             >
               <DollarSign className="h-5 w-5 text-success" />
@@ -157,7 +158,7 @@ export default function Dashboard() {
                 <p className="font-medium text-card-foreground">Record Payment</p>
                 <p className="text-sm text-muted-foreground">Mark invoice paid</p>
               </div>
-            </a>
+            </Link>
           </div>
         </div>
       </div>
