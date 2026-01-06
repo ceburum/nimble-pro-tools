@@ -14,7 +14,112 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      clients: {
+        Row: {
+          address: string
+          created_at: string
+          email: string
+          id: string
+          name: string
+          phone: string
+        }
+        Insert: {
+          address: string
+          created_at?: string
+          email: string
+          id?: string
+          name: string
+          phone: string
+        }
+        Update: {
+          address?: string
+          created_at?: string
+          email?: string
+          id?: string
+          name?: string
+          phone?: string
+        }
+        Relationships: []
+      }
+      invoice_reminders: {
+        Row: {
+          id: string
+          invoice_id: string
+          method: string
+          reminder_type: string
+          sent_at: string
+        }
+        Insert: {
+          id?: string
+          invoice_id: string
+          method: string
+          reminder_type: string
+          sent_at?: string
+        }
+        Update: {
+          id?: string
+          invoice_id?: string
+          method?: string
+          reminder_type?: string
+          sent_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_reminders_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invoices: {
+        Row: {
+          client_id: string
+          created_at: string
+          due_date: string
+          id: string
+          invoice_number: string
+          items: Json
+          notes: string | null
+          paid_at: string | null
+          quote_id: string | null
+          status: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          due_date: string
+          id?: string
+          invoice_number: string
+          items?: Json
+          notes?: string | null
+          paid_at?: string | null
+          quote_id?: string | null
+          status?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          due_date?: string
+          id?: string
+          invoice_number?: string
+          items?: Json
+          notes?: string | null
+          paid_at?: string | null
+          quote_id?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoices_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
