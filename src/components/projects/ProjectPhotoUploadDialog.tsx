@@ -211,8 +211,17 @@ export function ProjectPhotoUploadDialog({ open, onOpenChange, projectId, onSave
           )}
 
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={handleClose}>Cancel</Button>
-            <Button onClick={handleSave} disabled={pendingPhotos.length === 0}>
+            <Button type="button" variant="outline" onClick={handleClose}>Cancel</Button>
+            <Button 
+              type="button" 
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Save button clicked!');
+                handleSave();
+              }} 
+              disabled={pendingPhotos.length === 0}
+            >
               Save {pendingPhotos.length > 0 && `(${pendingPhotos.length})`}
             </Button>
           </div>
