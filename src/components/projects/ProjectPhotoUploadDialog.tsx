@@ -62,7 +62,11 @@ export function ProjectPhotoUploadDialog({ open, onOpenChange, projectId, onSave
   };
 
   const handleSave = () => {
-    if (pendingPhotos.length === 0) return;
+    console.log('handleSave called, pendingPhotos:', pendingPhotos.length);
+    if (pendingPhotos.length === 0) {
+      console.log('No photos to save');
+      return;
+    }
 
     const photos: ProjectPhoto[] = pendingPhotos.map((p) => ({
       id: p.id,
@@ -73,6 +77,7 @@ export function ProjectPhotoUploadDialog({ open, onOpenChange, projectId, onSave
       createdAt: new Date(),
     }));
 
+    console.log('Calling onSave with photos:', photos.length);
     onSave(photos);
     handleClose();
   };

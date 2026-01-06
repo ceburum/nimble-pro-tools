@@ -83,7 +83,12 @@ export default function Projects() {
   };
 
   const handleUpdateProject = (updatedProject: Project) => {
-    setProjects((prev) => prev.map((p) => (p.id === updatedProject.id ? updatedProject : p)));
+    console.log('handleUpdateProject called, photos count:', updatedProject.photos.length);
+    setProjects((prev) => {
+      const newProjects = prev.map((p) => (p.id === updatedProject.id ? updatedProject : p));
+      console.log('setProjects completed');
+      return newProjects;
+    });
   };
 
   const handleDeleteProject = (id: string) => {
