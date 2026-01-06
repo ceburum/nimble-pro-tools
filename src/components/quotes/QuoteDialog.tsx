@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Quote, Client, LineItem } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Plus, Trash2 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 interface QuoteDialogProps {
   open: boolean;
@@ -34,17 +35,38 @@ export function QuoteDialog({
   clients,
   onSave,
 }: QuoteDialogProps) {
-  const [title, setTitle] = useState(quote?.title || '');
-  const [clientId, setClientId] = useState(quote?.clientId || '');
-  const [status, setStatus] = useState<Quote['status']>(quote?.status || 'draft');
-  const [notes, setNotes] = useState(quote?.notes || '');
+  const { toast } = useToast();
+  const [title, setTitle] = useState('');
+  const [clientId, setClientId] = useState('');
+  const [status, setStatus] = useState<Quote['status']>('draft');
+  const [notes, setNotes] = useState('');
   const [validUntil, setValidUntil] = useState(
-    quote?.validUntil ? new Date(quote.validUntil).toISOString().split('T')[0] : 
     new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
   );
-  const [items, setItems] = useState<LineItem[]>(
-    quote?.items || [{ id: crypto.randomUUID(), description: '', quantity: 1, unitPrice: 0 }]
-  );
+  const [items, setItems] = useState<LineItem[]>([
+    { id: crypto.randomUUID(), description: '', quantity: 1, unitPrice: 0 }
+  ]);
+
+  // Reset form when dialog opens/closes or quote changes
+  useEffect(() => {
+    if (open) {
+      if (quote) {
+        setTitle(quote.title);
+        setClientId(quote.clientId);
+        setStatus(quote.status);
+        setNotes(quote.notes || '');
+        setValidUntil(new Date(quote.validUntil).toISOString().split('T')[0]);
+        setItems(quote.items);
+      } else {
+        setTitle('');
+        setClientId('');
+        setStatus('draft');
+        setNotes('');
+        setValidUntil(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
+        setItems([{ id: crypto.randomUUID(), description: '', quantity: 1, unitPrice: 0 }]);
+      }
+    }
+  }, [open, quote]);
 
   const handleAddItem = () => {
     setItems([...items, { id: crypto.randomUUID(), description: '', quantity: 1, unitPrice: 0 }]);
@@ -70,7 +92,16 @@ export function QuoteDialog({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title || !clientId) return;
+    
+    if (!title.trim()) {
+      toast({ title: 'Please enter a quote title', variant: 'destructive' });
+      return;
+    }
+    
+    if (!clientId) {
+      toast({ title: 'Please select a client', variant: 'destructive' });
+      return;
+    }
 
     onSave({
       title,
@@ -81,12 +112,6 @@ export function QuoteDialog({
       items,
     });
 
-    // Reset form
-    setTitle('');
-    setClientId('');
-    setStatus('draft');
-    setNotes('');
-    setItems([{ id: crypto.randomUUID(), description: '', quantity: 1, unitPrice: 0 }]);
     onOpenChange(false);
   };
 
