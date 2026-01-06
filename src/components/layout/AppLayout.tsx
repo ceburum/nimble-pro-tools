@@ -3,10 +3,9 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   Users, 
-  FileText, 
+  FolderKanban, 
   Receipt, 
   Menu,
-  Briefcase
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -19,8 +18,7 @@ interface AppLayoutProps {
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Clients', href: '/clients', icon: Users },
-  { name: 'Jobs', href: '/jobs', icon: Briefcase },
-  { name: 'Quotes', href: '/quotes', icon: FileText },
+  { name: 'Projects', href: '/projects', icon: FolderKanban },
   { name: 'Invoices', href: '/invoices', icon: Receipt },
 ];
 
