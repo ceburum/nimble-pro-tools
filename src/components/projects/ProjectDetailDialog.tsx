@@ -162,7 +162,7 @@ export function ProjectDetailDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-[750px] max-h-[90vh] flex flex-col p-0 gap-0">
+        <DialogContent className="sm:max-w-[750px] h-[90vh] max-h-[90vh] flex flex-col p-0 gap-0 overflow-hidden">
           <DialogHeader className="p-6 pb-4 border-b border-border">
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-3">
@@ -195,7 +195,7 @@ export function ProjectDetailDialog({
               </TabsTrigger>
             </TabsList>
 
-            <ScrollArea className="flex-1">
+            <ScrollArea className="flex-1 min-h-0">
               {/* Overview Tab */}
               <TabsContent value="overview" className="p-6 m-0">
                 <div className="space-y-6">
