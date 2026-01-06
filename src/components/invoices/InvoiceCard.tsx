@@ -1,4 +1,4 @@
-import { Receipt, Calendar, MoreVertical, Mail, MessageSquare, CreditCard } from 'lucide-react';
+import { Receipt, Calendar, MoreVertical, Mail, MessageSquare, CreditCard, Download } from 'lucide-react';
 import { Invoice, Client } from '@/types';
 import { PaymentInfo } from './PaymentInfo';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
+import { downloadInvoice } from '@/lib/generateInvoicePdf';
 
 interface InvoiceCardProps {
   invoice: Invoice;
@@ -56,6 +57,11 @@ export function InvoiceCard({ invoice, client, onSendEmail, onSendText, onMarkPa
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => downloadInvoice(invoice, client)}>
+                <Download className="h-4 w-4 mr-2" />
+                Download / Print
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => onSendEmail(invoice)}>
                 <Mail className="h-4 w-4 mr-2" />
                 Send Email
@@ -115,6 +121,14 @@ export function InvoiceCard({ invoice, client, onSendEmail, onSendText, onMarkPa
         <>
           <PaymentInfo />
           <div className="flex gap-2 mt-4">
+            <Button 
+              variant="outline" 
+              className="flex-1 gap-2"
+              onClick={() => downloadInvoice(invoice, client)}
+            >
+              <Download className="h-4 w-4" />
+              Download
+            </Button>
             <Button 
               variant="outline" 
               className="flex-1 gap-2"
