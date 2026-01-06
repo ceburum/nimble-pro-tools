@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
 import Index from "./pages/Index";
 import Clients from "./pages/Clients";
@@ -24,6 +24,8 @@ const App = () => (
             <Route path="/clients" element={<Clients />} />
             <Route path="/projects" element={<Projects />} />
             <Route path="/invoices" element={<Invoices />} />
+            <Route path="/quotes" element={<Navigate to="/projects" replace />} />
+            <Route path="/jobs" element={<Navigate to="/projects" replace />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AppLayout>
