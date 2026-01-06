@@ -56,7 +56,10 @@ export function ProjectCard({ project, client, onUpdate, onDelete, onCreateInvoi
   const quoteTotal = project.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
 
   const handleAddPhotos = (photos: ProjectPhoto[]) => {
-    onUpdate({ ...project, photos: [...project.photos, ...photos] });
+    console.log('handleAddPhotos called with', photos.length, 'photos');
+    const updatedProject = { ...project, photos: [...project.photos, ...photos] };
+    console.log('Updated project photos count:', updatedProject.photos.length);
+    onUpdate(updatedProject);
     toast({ title: `${photos.length} photo${photos.length > 1 ? 's' : ''} added` });
   };
 
