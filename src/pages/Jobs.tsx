@@ -36,7 +36,7 @@ const mockJobs: Job[] = [
 
 export default function Jobs() {
   const [jobs, setJobs] = useLocalStorage<Job[]>('ceb-jobs', mockJobs);
-  const [clients] = useState<Client[]>(mockClients);
+  const [clients] = useLocalStorage<Client[]>('ceb-clients', mockClients);
   const [searchQuery, setSearchQuery] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingJob, setEditingJob] = useState<Job | null>(null);
