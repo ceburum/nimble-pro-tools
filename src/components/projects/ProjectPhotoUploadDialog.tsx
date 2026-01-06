@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Camera, Upload, X, Plus } from 'lucide-react';
 import { ProjectPhoto } from '@/types';
 import {
@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useToast } from '@/hooks/use-toast';
 
 interface ProjectPhotoUploadDialogProps {
   open: boolean;
@@ -27,28 +28,97 @@ interface PendingPhoto {
   caption: string;
 }
 
+async function compressImageToJpegDataUrl(
+  file: File,
+  opts: { maxDimension: number; quality: number },
+): Promise<string> {
+  const objectUrl = URL.createObjectURL(file);
+
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const i = new Image();
+      i.onload = () => resolve(i);
+      i.onerror = () => reject(new Error('Failed to load image'));
+      i.src = objectUrl;
+    });
+
+    const { maxDimension, quality } = opts;
+    const scale = Math.min(1, maxDimension / Math.max(img.width, img.height));
+    const width = Math.max(1, Math.round(img.width * scale));
+    const height = Math.max(1, Math.round(img.height * scale));
+
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('Canvas not supported');
+
+    ctx.drawImage(img, 0, 0, width, height);
+    return canvas.toDataURL('image/jpeg', quality);
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
 export function ProjectPhotoUploadDialog({ open, onOpenChange, projectId, onSave }: ProjectPhotoUploadDialogProps) {
   const [pendingPhotos, setPendingPhotos] = useState<PendingPhoto[]>([]);
   const [defaultType, setDefaultType] = useState<'before' | 'progress' | 'after'>('before');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const resetState = () => {
+    setPendingPhotos([]);
+    setDefaultType('before');
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const totalApproxChars = useMemo(() => {
+    // Rough proxy for storage usage; local storage limits are tight on mobile.
+    return pendingPhotos.reduce((sum, p) => sum + p.dataUrl.length, 0);
+  }, [pendingPhotos]);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
 
-    Array.from(files).forEach((file) => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const newPhoto: PendingPhoto = {
+    const typeAtSelection = defaultType;
+    const selected = Array.from(files);
+
+    const newPhotos: PendingPhoto[] = [];
+
+    for (const file of selected) {
+      try {
+        const dataUrl = await compressImageToJpegDataUrl(file, { maxDimension: 1600, quality: 0.82 });
+
+        // If a single photo is still huge, warn the user (saving may fail on some devices).
+        if (dataUrl.length > 2_500_000) {
+          toast({
+            title: 'Photo is very large',
+            description: 'This photo may not save on some devices. Try a smaller photo or fewer photos.',
+            variant: 'destructive',
+          });
+        }
+
+        newPhotos.push({
           id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-          dataUrl: reader.result as string,
-          type: defaultType,
+          dataUrl,
+          type: typeAtSelection,
           caption: '',
-        };
-        setPendingPhotos((prev) => [...prev, newPhoto]);
-      };
-      reader.readAsDataURL(file);
-    });
+        });
+      } catch (err) {
+        console.error('Failed to process image', err);
+        toast({
+          title: 'Could not add photo',
+          description: 'Please try another image.',
+          variant: 'destructive',
+        });
+      }
+    }
+
+    if (newPhotos.length > 0) {
+      setPendingPhotos((prev) => [...prev, ...newPhotos]);
+    }
 
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
@@ -61,10 +131,21 @@ export function ProjectPhotoUploadDialog({ open, onOpenChange, projectId, onSave
     setPendingPhotos((prev) => prev.map((p) => (p.id === id ? { ...p, ...updates } : p)));
   };
 
+  const closeDialog = () => {
+    resetState();
+    onOpenChange(false);
+  };
+
   const handleSave = () => {
-    console.log('handleSave called, pendingPhotos:', pendingPhotos.length);
-    if (pendingPhotos.length === 0) {
-      console.log('No photos to save');
+    if (pendingPhotos.length === 0) return;
+
+    // Guardrail: if the pending payload is huge, saving to local storage may silently fail.
+    if (totalApproxChars > 6_000_000) {
+      toast({
+        title: 'Too many / too large photos',
+        description: 'Try saving fewer photos at a time so they can be stored reliably.',
+        variant: 'destructive',
+      });
       return;
     }
 
@@ -77,19 +158,18 @@ export function ProjectPhotoUploadDialog({ open, onOpenChange, projectId, onSave
       createdAt: new Date(),
     }));
 
-    console.log('Calling onSave with photos:', photos.length);
     onSave(photos);
-    handleClose();
-  };
-
-  const handleClose = () => {
-    setPendingPhotos([]);
-    setDefaultType('before');
-    onOpenChange(false);
+    closeDialog();
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) resetState();
+        onOpenChange(nextOpen);
+      }}
+    >
       <DialogContent className="sm:max-w-[500px] max-h-[85vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -160,8 +240,9 @@ export function ProjectPhotoUploadDialog({ open, onOpenChange, projectId, onSave
                   {pendingPhotos.map((photo) => (
                     <div key={photo.id} className="flex gap-3 p-2 bg-muted/50 rounded-lg">
                       <div className="relative w-20 h-20 flex-shrink-0">
-                        <img src={photo.dataUrl} alt="Preview" className="w-full h-full object-cover rounded-md" />
+                        <img src={photo.dataUrl} alt="Project photo preview" className="w-full h-full object-cover rounded-md" loading="lazy" />
                         <Button
+                          type="button"
                           variant="destructive"
                           size="icon"
                           className="absolute -top-2 -right-2 h-6 w-6"
@@ -204,24 +285,15 @@ export function ProjectPhotoUploadDialog({ open, onOpenChange, projectId, onSave
           )}
 
           {pendingPhotos.length > 0 && (
-            <Button variant="outline" className="w-full gap-2" onClick={() => fileInputRef.current?.click()}>
+            <Button type="button" variant="outline" className="w-full gap-2" onClick={() => fileInputRef.current?.click()}>
               <Plus className="h-4 w-4" />
               Add More Photos
             </Button>
           )}
 
           <div className="flex justify-end gap-2 pt-2">
-            <Button type="button" variant="outline" onClick={handleClose}>Cancel</Button>
-            <Button 
-              type="button" 
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                console.log('Save button clicked!');
-                handleSave();
-              }} 
-              disabled={pendingPhotos.length === 0}
-            >
+            <Button type="button" variant="outline" onClick={closeDialog}>Cancel</Button>
+            <Button type="button" onClick={handleSave} disabled={pendingPhotos.length === 0}>
               Save {pendingPhotos.length > 0 && `(${pendingPhotos.length})`}
             </Button>
           </div>
