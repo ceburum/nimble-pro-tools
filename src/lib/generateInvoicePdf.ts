@@ -3,8 +3,8 @@ import { Invoice, Client } from '@/types';
 const PAYMENT_METHODS = {
   venmo: {
     name: 'Venmo',
-    id: '2841609905373184175',
-    getLink: (amount: number) => `https://venmo.com/u/2841609905373184175?txn=pay&amount=${amount}`,
+    username: 'Chad-Burum-1',
+    getLink: (amount: number) => `https://venmo.com/Chad-Burum-1?txn=pay&amount=${amount}`,
   },
   cashapp: {
     name: 'CashApp',
