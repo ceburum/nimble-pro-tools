@@ -56,9 +56,13 @@ export function ProjectCard({ project, client, onUpdate, onDelete, onCreateInvoi
   const quoteTotal = project.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
 
   const handleAddPhotos = (photos: ProjectPhoto[]) => {
-    console.log('handleAddPhotos called with', photos.length, 'photos');
-    const updatedProject = { ...project, photos: [...project.photos, ...photos] };
-    console.log('Updated project photos count:', updatedProject.photos.length);
+    console.log('handleAddPhotos called with', photos.length, 'photos for project', project.id);
+    // Use functional update pattern to ensure we get the latest project state
+    const updatedProject: Project = {
+      ...project,
+      photos: [...project.photos, ...photos]
+    };
+    console.log('Calling onUpdate with', updatedProject.photos.length, 'total photos');
     onUpdate(updatedProject);
     toast({ title: `${photos.length} photo${photos.length > 1 ? 's' : ''} added` });
   };
