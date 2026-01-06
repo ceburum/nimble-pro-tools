@@ -33,64 +33,87 @@ export function generateInvoiceHtml(invoice: Invoice, client: Client | undefined
       <title>Invoice ${invoice.invoiceNumber}</title>
       <style>
         @media print {
-          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          body { 
+            -webkit-print-color-adjust: exact; 
+            print-color-adjust: exact;
+          }
           .no-print { display: none !important; }
           a { text-decoration: none; }
+          @page { 
+            size: letter;
+            margin: 0.5in;
+          }
+          html, body {
+            height: 100%;
+            overflow: hidden;
+          }
+          .invoice-container {
+            transform-origin: top left;
+            page-break-inside: avoid;
+          }
+        }
+        * {
+          box-sizing: border-box;
         }
         body {
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
           color: #1f2937;
-          line-height: 1.5;
+          line-height: 1.4;
           max-width: 800px;
           margin: 0 auto;
-          padding: 40px 20px;
+          padding: 20px;
+          font-size: 13px;
+        }
+        .invoice-container {
+          max-height: 100vh;
         }
         .header {
           display: flex;
           justify-content: space-between;
-          margin-bottom: 40px;
-          padding-bottom: 20px;
+          margin-bottom: 20px;
+          padding-bottom: 12px;
           border-bottom: 2px solid #f59e0b;
         }
         .company-name {
-          font-size: 24px;
+          font-size: 20px;
           font-weight: bold;
           color: #f59e0b;
         }
         .invoice-title {
-          font-size: 32px;
+          font-size: 24px;
           font-weight: bold;
           color: #374151;
         }
         .invoice-number {
           color: #6b7280;
-          font-size: 14px;
+          font-size: 12px;
         }
         .info-section {
           display: flex;
           justify-content: space-between;
-          margin-bottom: 40px;
+          margin-bottom: 20px;
         }
         .info-block h3 {
-          font-size: 12px;
+          font-size: 11px;
           text-transform: uppercase;
           color: #6b7280;
-          margin-bottom: 8px;
+          margin-bottom: 4px;
         }
         .info-block p {
-          margin: 4px 0;
+          margin: 2px 0;
+          font-size: 12px;
         }
         table {
           width: 100%;
           border-collapse: collapse;
-          margin-bottom: 30px;
+          margin-bottom: 16px;
         }
         th {
           background: #f9fafb;
-          padding: 12px;
+          padding: 8px;
           text-align: left;
           font-weight: 600;
-          font-size: 12px;
+          font-size: 11px;
           text-transform: uppercase;
           color: #6b7280;
           border-bottom: 2px solid #e5e7eb;
@@ -99,34 +122,38 @@ export function generateInvoiceHtml(invoice: Invoice, client: Client | undefined
           text-align: right;
         }
         th:nth-child(2) { text-align: center; }
+        td {
+          padding: 8px;
+          font-size: 12px;
+        }
         .total-row {
-          font-size: 18px;
+          font-size: 15px;
           font-weight: bold;
         }
         .payment-section {
           background: #fffbeb;
           border: 1px solid #fcd34d;
-          border-radius: 12px;
-          padding: 24px;
-          margin-top: 30px;
+          border-radius: 8px;
+          padding: 16px;
+          margin-top: 16px;
         }
         .payment-section h3 {
-          margin: 0 0 16px 0;
+          margin: 0 0 10px 0;
           color: #92400e;
-          font-size: 16px;
+          font-size: 14px;
         }
         .payment-buttons {
           display: flex;
-          gap: 16px;
+          gap: 12px;
           flex-wrap: wrap;
         }
         .payment-btn {
           display: inline-block;
-          padding: 14px 28px;
-          border-radius: 8px;
+          padding: 10px 20px;
+          border-radius: 6px;
           text-decoration: none;
           font-weight: 600;
-          font-size: 16px;
+          font-size: 13px;
           transition: transform 0.2s;
         }
         .payment-btn:hover {
@@ -141,12 +168,12 @@ export function generateInvoiceHtml(invoice: Invoice, client: Client | undefined
           color: white;
         }
         .footer {
-          margin-top: 40px;
-          padding-top: 20px;
+          margin-top: 20px;
+          padding-top: 12px;
           border-top: 1px solid #e5e7eb;
           text-align: center;
           color: #6b7280;
-          font-size: 14px;
+          font-size: 12px;
         }
         .print-btn {
           position: fixed;
@@ -169,73 +196,75 @@ export function generateInvoiceHtml(invoice: Invoice, client: Client | undefined
     <body>
       <button class="print-btn no-print" onclick="window.print()">Save as PDF / Print</button>
       
-      <div class="header">
-        <div>
-          <div class="company-name">CEB Services</div>
+      <div class="invoice-container">
+        <div class="header">
+          <div>
+            <div class="company-name">CEB Services</div>
+          </div>
+          <div style="text-align: right;">
+            <div class="invoice-title">INVOICE</div>
+            <div class="invoice-number">${invoice.invoiceNumber}</div>
+          </div>
         </div>
-        <div style="text-align: right;">
-          <div class="invoice-title">INVOICE</div>
-          <div class="invoice-number">${invoice.invoiceNumber}</div>
-        </div>
-      </div>
 
-      <div class="info-section">
-        <div class="info-block">
-          <h3>Bill To</h3>
-          <p><strong>${client?.name || 'Client'}</strong></p>
-          <p>${client?.email || ''}</p>
-          <p>${client?.phone || ''}</p>
-          <p>${client?.address || ''}</p>
+        <div class="info-section">
+          <div class="info-block">
+            <h3>Bill To</h3>
+            <p><strong>${client?.name || 'Client'}</strong></p>
+            <p>${client?.email || ''}</p>
+            <p>${client?.phone || ''}</p>
+            <p>${client?.address || ''}</p>
+          </div>
+          <div class="info-block" style="text-align: right;">
+            <h3>Invoice Details</h3>
+            <p><strong>Date:</strong> ${new Date(invoice.createdAt).toLocaleDateString()}</p>
+            <p><strong>Due Date:</strong> ${new Date(invoice.dueDate).toLocaleDateString()}</p>
+            <p><strong>Status:</strong> ${invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}</p>
+          </div>
         </div>
-        <div class="info-block" style="text-align: right;">
-          <h3>Invoice Details</h3>
-          <p><strong>Date:</strong> ${new Date(invoice.createdAt).toLocaleDateString()}</p>
-          <p><strong>Due Date:</strong> ${new Date(invoice.dueDate).toLocaleDateString()}</p>
-          <p><strong>Status:</strong> ${invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}</p>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Description</th>
+              <th>Qty</th>
+              <th>Rate</th>
+              <th>Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${itemsHtml}
+            <tr class="total-row">
+              <td colspan="3" style="padding: 10px 8px; text-align: right;">Total Due:</td>
+              <td style="padding: 10px 8px; text-align: right; color: #f59e0b;">$${total.toFixed(2)}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        ${invoice.notes ? `
+          <div style="margin-bottom: 16px;">
+            <h3 style="font-size: 12px; color: #6b7280; margin-bottom: 4px;">Notes</h3>
+            <p style="color: #374151; font-size: 12px;">${invoice.notes}</p>
+          </div>
+        ` : ''}
+
+        <div class="payment-section">
+          <h3>💳 Easy Payment Options</h3>
+          <p style="margin-bottom: 10px; color: #78350f; font-size: 12px;">Click a button below to pay instantly:</p>
+          <div class="payment-buttons">
+            <a href="${PAYMENT_METHODS.venmo.getLink(total)}" class="payment-btn venmo-btn" target="_blank">
+              Pay $${total.toFixed(2)} with Venmo
+            </a>
+            <a href="${PAYMENT_METHODS.cashapp.getLink(total)}" class="payment-btn cashapp-btn" target="_blank">
+              Pay $${total.toFixed(2)} with CashApp
+            </a>
+          </div>
         </div>
-      </div>
 
-      <table>
-        <thead>
-          <tr>
-            <th>Description</th>
-            <th>Qty</th>
-            <th>Rate</th>
-            <th>Amount</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${itemsHtml}
-          <tr class="total-row">
-            <td colspan="3" style="padding: 16px 12px; text-align: right;">Total Due:</td>
-            <td style="padding: 16px 12px; text-align: right; color: #f59e0b;">$${total.toFixed(2)}</td>
-          </tr>
-        </tbody>
-      </table>
-
-      ${invoice.notes ? `
-        <div style="margin-bottom: 30px;">
-          <h3 style="font-size: 14px; color: #6b7280; margin-bottom: 8px;">Notes</h3>
-          <p style="color: #374151;">${invoice.notes}</p>
+        <div class="footer">
+          <p>Thank you for your business!</p>
+          <p>Questions? Contact us anytime.</p>
         </div>
-      ` : ''}
-
-      <div class="payment-section">
-        <h3>💳 Easy Payment Options</h3>
-        <p style="margin-bottom: 16px; color: #78350f;">Click a button below to pay instantly:</p>
-        <div class="payment-buttons">
-          <a href="${PAYMENT_METHODS.venmo.getLink(total)}" class="payment-btn venmo-btn" target="_blank">
-            Pay $${total.toFixed(2)} with Venmo
-          </a>
-          <a href="${PAYMENT_METHODS.cashapp.getLink(total)}" class="payment-btn cashapp-btn" target="_blank">
-            Pay $${total.toFixed(2)} with CashApp
-          </a>
-        </div>
-      </div>
-
-      <div class="footer">
-        <p>Thank you for your business!</p>
-        <p>Questions? Contact us anytime.</p>
       </div>
     </body>
     </html>
