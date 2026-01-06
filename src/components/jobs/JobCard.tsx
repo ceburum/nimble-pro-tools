@@ -24,7 +24,7 @@ import { cn } from '@/lib/utils';
 import { PhotoUploadDialog } from './PhotoUploadDialog';
 import { ReceiptUploadDialog } from './ReceiptUploadDialog';
 import { MileageTracker } from './MileageTracker';
-import { JobPhotosGallery } from './JobPhotosGallery';
+import { JobDetailDialog } from './JobDetailDialog';
 import { useToast } from '@/hooks/use-toast';
 
 interface JobCardProps {
@@ -44,7 +44,7 @@ export function JobCard({ job, client, onUpdate, onDelete }: JobCardProps) {
   const [photoDialogOpen, setPhotoDialogOpen] = useState(false);
   const [receiptDialogOpen, setReceiptDialogOpen] = useState(false);
   const [mileageOpen, setMileageOpen] = useState(false);
-  const [galleryOpen, setGalleryOpen] = useState(false);
+  const [detailOpen, setDetailOpen] = useState(false);
   const { toast } = useToast();
 
   const status = statusConfig[job.status];
@@ -60,14 +60,6 @@ export function JobCard({ job, client, onUpdate, onDelete }: JobCardProps) {
       title: photos.length === 1 ? 'Photo added' : 'Photos added', 
       description: `${photos.length} photo${photos.length > 1 ? 's' : ''} saved to job` 
     });
-  };
-
-  const handleDeletePhoto = (photoId: string) => {
-    onUpdate({
-      ...job,
-      photos: job.photos.filter((p) => p.id !== photoId),
-    });
-    toast({ title: 'Photo deleted' });
   };
 
   const handleAddReceipt = (receipt: ReceiptType) => {
@@ -102,7 +94,10 @@ export function JobCard({ job, client, onUpdate, onDelete }: JobCardProps) {
 
   return (
     <>
-      <div className="bg-card rounded-xl border border-border p-5 shadow-sm hover:shadow-md transition-all duration-200 group">
+      <div 
+        className="bg-card rounded-xl border border-border p-5 shadow-sm hover:shadow-md transition-all duration-200 group cursor-pointer"
+        onClick={() => setDetailOpen(true)}
+      >
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-primary/10">
@@ -114,7 +109,7 @@ export function JobCard({ job, client, onUpdate, onDelete }: JobCardProps) {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
             <Badge className={cn('font-medium', status.className)}>{status.label}</Badge>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -157,13 +152,10 @@ export function JobCard({ job, client, onUpdate, onDelete }: JobCardProps) {
 
         {/* Stats row */}
         <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
-          <button
-            onClick={() => setGalleryOpen(true)}
-            className="flex items-center gap-1 hover:text-foreground transition-colors"
-          >
+          <div className="flex items-center gap-1">
             <Camera className="h-4 w-4" />
             <span>{job.photos.length}</span>
-          </button>
+          </div>
           <div className="flex items-center gap-1">
             <Receipt className="h-4 w-4" />
             <span>${totalReceipts.toFixed(0)}</span>
@@ -175,7 +167,7 @@ export function JobCard({ job, client, onUpdate, onDelete }: JobCardProps) {
         </div>
 
         {/* Action buttons */}
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-3 gap-2" onClick={(e) => e.stopPropagation()}>
           <Button
             variant="outline"
             size="sm"
@@ -206,6 +198,15 @@ export function JobCard({ job, client, onUpdate, onDelete }: JobCardProps) {
         </div>
       </div>
 
+      <JobDetailDialog
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+        job={job}
+        client={client}
+        onUpdate={onUpdate}
+        onDelete={onDelete}
+      />
+
       <PhotoUploadDialog
         open={photoDialogOpen}
         onOpenChange={setPhotoDialogOpen}
@@ -226,14 +227,6 @@ export function JobCard({ job, client, onUpdate, onDelete }: JobCardProps) {
         jobId={job.id}
         entries={job.mileageEntries}
         onUpdate={handleMileageUpdate}
-      />
-
-      <JobPhotosGallery
-        open={galleryOpen}
-        onOpenChange={setGalleryOpen}
-        photos={job.photos}
-        jobTitle={job.title}
-        onDeletePhoto={handleDeletePhoto}
       />
     </>
   );
