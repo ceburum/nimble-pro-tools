@@ -117,26 +117,40 @@ export function PhotoUploadDialog({ open, onOpenChange, jobId, onSave }: PhotoUp
             </RadioGroup>
           </div>
 
-          {/* Upload area */}
-          <div
-            onClick={() => fileInputRef.current?.click()}
-            className="border-2 border-dashed border-border rounded-lg p-6 text-center cursor-pointer hover:border-primary transition-colors"
-          >
-            <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-            <p className="text-sm text-muted-foreground">
-              Tap to take photos or select from gallery
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              You can add multiple photos at once
-            </p>
+          {/* Upload area - Camera */}
+          <div className="grid grid-cols-2 gap-3">
+            <div
+              onClick={() => {
+                if (fileInputRef.current) {
+                  fileInputRef.current.removeAttribute('multiple');
+                  fileInputRef.current.setAttribute('capture', 'environment');
+                  fileInputRef.current.click();
+                }
+              }}
+              className="border-2 border-dashed border-border rounded-lg p-4 text-center cursor-pointer hover:border-primary transition-colors"
+            >
+              <Camera className="h-6 w-6 mx-auto text-muted-foreground mb-2" />
+              <p className="text-sm text-muted-foreground">Take Photo</p>
+            </div>
+            <div
+              onClick={() => {
+                if (fileInputRef.current) {
+                  fileInputRef.current.removeAttribute('capture');
+                  fileInputRef.current.setAttribute('multiple', 'true');
+                  fileInputRef.current.click();
+                }
+              }}
+              className="border-2 border-dashed border-border rounded-lg p-4 text-center cursor-pointer hover:border-primary transition-colors"
+            >
+              <Upload className="h-6 w-6 mx-auto text-muted-foreground mb-2" />
+              <p className="text-sm text-muted-foreground">Choose Files</p>
+            </div>
           </div>
 
           <input
             ref={fileInputRef}
             type="file"
             accept="image/*"
-            capture="environment"
-            multiple
             className="hidden"
             onChange={handleFileChange}
           />
