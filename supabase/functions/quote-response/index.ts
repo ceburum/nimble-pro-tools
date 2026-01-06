@@ -3,6 +3,14 @@ import { Resend } from "https://esm.sh/resend@2.0.0";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
+const htmlHeaders = {
+  "Content-Type": "text/html; charset=utf-8",
+  "X-Content-Type-Options": "nosniff",
+  // Force inline rendering (avoid download / source view behaviors)
+  "Content-Disposition": "inline",
+  "Cache-Control": "no-store",
+} as const;
+
 interface QuoteData {
   projectId: string;
   projectTitle: string;
@@ -21,7 +29,7 @@ const handler = async (req: Request): Promise<Response> => {
     if (!action || !encodedData) {
       return new Response(generateHtmlPage("Invalid Request", "Missing required parameters.", "error"), {
         status: 400,
-        headers: { "Content-Type": "text/html; charset=utf-8", "X-Content-Type-Options": "nosniff" },
+        headers: htmlHeaders,
       });
     }
 
@@ -31,7 +39,7 @@ const handler = async (req: Request): Promise<Response> => {
     } catch {
       return new Response(generateHtmlPage("Invalid Request", "Could not decode quote data.", "error"), {
         status: 400,
-        headers: { "Content-Type": "text/html; charset=utf-8", "X-Content-Type-Options": "nosniff" },
+        headers: htmlHeaders,
       });
     }
 
@@ -92,10 +100,7 @@ const handler = async (req: Request): Promise<Response> => {
       generateHtmlPage(confirmationTitle, confirmationMessage, isAccepted ? "success" : "declined"),
       {
         status: 200,
-        headers: { 
-          "Content-Type": "text/html; charset=utf-8",
-          "X-Content-Type-Options": "nosniff",
-        },
+        headers: htmlHeaders,
       }
     );
   } catch (error: any) {
@@ -104,7 +109,7 @@ const handler = async (req: Request): Promise<Response> => {
       generateHtmlPage("Error", "Something went wrong. Please contact us directly.", "error"),
       {
         status: 500,
-        headers: { "Content-Type": "text/html; charset=utf-8", "X-Content-Type-Options": "nosniff" },
+        headers: htmlHeaders,
       }
     );
   }
