@@ -52,59 +52,10 @@ interface SendQuoteRequest {
   notificationEmail: string;
 }
 
-// Logo hosted on your website - used as a source to embed inline (CID)
-const LOGO_URL = "https://static.wixstatic.com/media/fc62d0_d3f25abd45e341648b59e65fc94cc7fd~mv2.png";
-const STORAGE_LOGO_PUBLIC_URL = (() => {
-  const supabaseUrl = Deno.env.get("SUPABASE_URL");
-  return supabaseUrl ? `${supabaseUrl}/storage/v1/object/public/assets/ceb-logo.png` : null;
-})();
-const DEFAULT_LOGO_URL = STORAGE_LOGO_PUBLIC_URL ?? LOGO_URL;
+// No logo embedding in quote emails to prevent timeouts
+// Logo is only embedded in PDF receipts after payment
 
-function wrapBase64(b64: string): string {
-  return b64.match(/.{1,76}/g)?.join("\r\n") ?? b64;
-}
-
-function uint8ToBase64(bytes: Uint8Array): string {
-  let binary = "";
-  const chunkSize = 0x8000;
-  for (let i = 0; i < bytes.length; i += chunkSize) {
-    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
-  }
-  return btoa(binary);
-}
-
-function getLogoCandidateUrls(req?: Request): string[] {
-  const urls: string[] = [];
-  if (STORAGE_LOGO_PUBLIC_URL) urls.push(STORAGE_LOGO_PUBLIC_URL);
-
-  const origin = req?.headers.get("origin");
-  if (origin) urls.push(`${origin}/ceb-logo.png`);
-
-  urls.push(LOGO_URL);
-  return urls.filter((u, idx) => urls.indexOf(u) === idx);
-}
-
-async function fetchLogoBase64(req?: Request): Promise<string | null> {
-  for (const url of getLogoCandidateUrls(req)) {
-    try {
-      const res = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" } });
-      if (!res.ok) {
-        console.error("Logo fetch failed:", res.status, res.statusText, "url:", url);
-        continue;
-      }
-
-      const bytes = new Uint8Array(await res.arrayBuffer());
-      console.log("Logo fetched OK from:", url, "bytes:", bytes.byteLength);
-      return uint8ToBase64(bytes);
-    } catch (err) {
-      console.error("Logo fetch threw:", err, "url:", url);
-    }
-  }
-
-  return null;
-}
-
-function getEmailHeader(title: string, subtitle?: string, logoSrc: string = DEFAULT_LOGO_URL): string {
+function getEmailHeader(title: string, subtitle?: string): string {
   return `
     <!-- Header - matching cebbuilding.com style -->
     <tr>
@@ -125,9 +76,9 @@ function getEmailHeader(title: string, subtitle?: string, logoSrc: string = DEFA
                     <p style="color: #555555; margin: 2px 0 0 0; font-size: 13px; font-style: italic;">Hand-Crafted Wood Works</p>
                   </td>
                   <td style="vertical-align: middle;">
-                    <a href="https://cebbuilding.com" target="_blank" style="text-decoration: none;">
-                      <img src="${logoSrc}" alt="CEB Building" style="width: 65px; height: 65px; border-radius: 50%; object-fit: contain; display: block; background: #fff; border: 0;">
-                    </a>
+                    <div style="width: 65px; height: 65px; border-radius: 50%; background: #c8a45c; display: flex; align-items: center; justify-content: center;">
+                      <span style="color: #fff; font-size: 24px; font-weight: bold; font-family: Georgia, serif;">CEB</span>
+                    </div>
                   </td>
                 </tr>
               </table>
@@ -205,7 +156,6 @@ async function sendEmailViaZoho(
   to: string,
   subject: string,
   html: string,
-  inlineLogoBase64?: string | null,
 ): Promise<void> {
   const smtpUser = Deno.env.get("ZOHO_SMTP_USER");
   const smtpPassword = Deno.env.get("ZOHO_SMTP_PASSWORD");
@@ -249,7 +199,6 @@ async function sendEmailViaZoho(
     await write(`DATA`);
     await read();
 
-    const rootBoundary = `----=_Root_${Date.now()}`;
     const altBoundary = `----=_Alt_${Date.now()}`;
 
     const headers = [
@@ -259,54 +208,23 @@ async function sendEmailViaZoho(
       `MIME-Version: 1.0`,
     ];
 
-    const emailContent = inlineLogoBase64
-      ? [
-          ...headers,
-          `Content-Type: multipart/related; boundary="${rootBoundary}"`,
-          ``,
-          `--${rootBoundary}`,
-          `Content-Type: multipart/alternative; boundary="${altBoundary}"`,
-          ``,
-          `--${altBoundary}`,
-          `Content-Type: text/plain; charset=utf-8`,
-          ``,
-          `Please view this email in an HTML-compatible email client.`,
-          ``,
-          `--${altBoundary}`,
-          `Content-Type: text/html; charset=utf-8`,
-          ``,
-          html,
-          ``,
-          `--${altBoundary}--`,
-          ``,
-          `--${rootBoundary}`,
-          `Content-Type: image/png; name="ceb-logo.png"`,
-          `Content-Transfer-Encoding: base64`,
-          `Content-ID: <ceb-logo>`,
-          `Content-Disposition: inline; filename="ceb-logo.png"`,
-          ``,
-          wrapBase64(inlineLogoBase64),
-          ``,
-          `--${rootBoundary}--`,
-          `.`,
-        ].join("\r\n")
-      : [
-          ...headers,
-          `Content-Type: multipart/alternative; boundary="${altBoundary}"`,
-          ``,
-          `--${altBoundary}`,
-          `Content-Type: text/plain; charset=utf-8`,
-          ``,
-          `Please view this email in an HTML-compatible email client.`,
-          ``,
-          `--${altBoundary}`,
-          `Content-Type: text/html; charset=utf-8`,
-          ``,
-          html,
-          ``,
-          `--${altBoundary}--`,
-          `.`,
-        ].join("\r\n");
+    const emailContent = [
+      ...headers,
+      `Content-Type: multipart/alternative; boundary="${altBoundary}"`,
+      ``,
+      `--${altBoundary}`,
+      `Content-Type: text/plain; charset=utf-8`,
+      ``,
+      `Please view this email in an HTML-compatible email client.`,
+      ``,
+      `--${altBoundary}`,
+      `Content-Type: text/html; charset=utf-8`,
+      ``,
+      html,
+      ``,
+      `--${altBoundary}--`,
+      `.`,
+    ].join("\r\n");
 
     await conn.write(encoder.encode(emailContent + "\r\n"));
     await read();
@@ -351,10 +269,6 @@ const handler = async (req: Request): Promise<Response> => {
     const total = items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
     const formattedTotal = total.toLocaleString('en-US', { minimumFractionDigits: 2 });
 
-    // Embed logo inline (CID) so it displays even when external images are blocked
-    const logoBase64 = await fetchLogoBase64(req);
-    const logoSrc = logoBase64 ? "cid:ceb-logo" : DEFAULT_LOGO_URL;
-
     // Generate response URLs
     const baseUrl = Deno.env.get("SUPABASE_URL") || "";
     const encodedData = btoa(JSON.stringify({
@@ -370,7 +284,7 @@ const handler = async (req: Request): Promise<Response> => {
     const declineUrl = `${baseUrl}/functions/v1/quote-response?action=decline&data=${encodedData}`;
 
     const emailContent = `
-      ${getEmailHeader('PROJECT QUOTE', projectTitle, logoSrc)}
+      ${getEmailHeader('PROJECT QUOTE', projectTitle)}
       
       <!-- Content -->
       <tr>
@@ -460,7 +374,6 @@ const handler = async (req: Request): Promise<Response> => {
       clientEmail,
       `Quote for ${projectTitle} - CEB Building`,
       emailHtml,
-      logoBase64,
     );
 
     console.log("Quote email sent successfully via Zoho SMTP");
