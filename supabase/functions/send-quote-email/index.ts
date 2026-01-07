@@ -24,6 +24,104 @@ interface SendQuoteRequest {
   notificationEmail: string;
 }
 
+// Logo hosted on your website - most reliable method
+const LOGO_URL = "https://static.wixstatic.com/media/fc62d0_d3f25abd45e341648b59e65fc94cc7fd~mv2.png";
+
+function getEmailHeader(title: string, subtitle?: string): string {
+  return `
+    <!-- Header - matching cebbuilding.com style -->
+    <tr>
+      <td style="background-color: #c8c4bd; padding: 20px 24px; border-bottom: 3px solid #a09d95;">
+        <table role="presentation" class="header-table" width="100%" cellpadding="0" cellspacing="0">
+          <tr>
+            <td class="header-left" style="vertical-align: middle; width: 60%;">
+              <table role="presentation" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="vertical-align: middle;">
+                    <img src="${LOGO_URL}" alt="CEB Building" style="width: 65px; height: 65px; border-radius: 50%; object-fit: contain; display: block; background: #fff;">
+                  </td>
+                  <td style="vertical-align: middle; padding-left: 14px;">
+                    <h1 style="color: #333333; margin: 0; font-size: 22px; font-weight: 400; font-family: Georgia, serif;">CEB Building</h1>
+                    <p style="color: #555555; margin: 2px 0 0 0; font-size: 13px; font-style: italic;">Hand-Crafted Wood Works</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+            <td class="header-right" style="vertical-align: middle; text-align: right; width: 40%;">
+              <p style="color: #333333; margin: 0; font-size: 13px; font-weight: 600;">Chad Burum</p>
+              <p style="color: #555555; margin: 2px 0; font-size: 12px;">405-500-8224</p>
+              <p style="color: #555555; margin: 2px 0; font-size: 12px;">chad@cebbuilding.com</p>
+              <p style="color: #555555; margin: 2px 0; font-size: 12px;">cebbuilding.com</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+
+    <!-- Title Bar -->
+    <tr>
+      <td style="background-color: #4a4a4a; padding: 12px 24px;">
+        <p style="color: #ffffff; margin: 0; font-size: 16px; font-weight: 600; letter-spacing: 1px;">${title}</p>
+        ${subtitle ? `<p style="color: #b0b0b0; margin: 4px 0 0 0; font-size: 13px;">${subtitle}</p>` : ''}
+      </td>
+    </tr>
+  `;
+}
+
+function getEmailFooter(): string {
+  return `
+    <!-- Footer -->
+    <tr>
+      <td style="background-color: #4a4a4a; padding: 20px 24px; text-align: center;">
+        <p style="color: #ffffff; font-size: 14px; margin: 0 0 6px 0;">
+          Thank you for choosing CEB Building!
+        </p>
+        <p style="color: #b0b0b0; font-size: 12px; margin: 0;">
+          Hand-Crafted Wood Works · Oklahoma City
+        </p>
+        <p style="color: #888888; font-size: 11px; margin: 12px 0 0 0;">
+          © ${new Date().getFullYear()} CEB Building. All rights reserved.
+        </p>
+      </td>
+    </tr>
+  `;
+}
+
+function getEmailWrapper(content: string): string {
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <style>
+        * { box-sizing: border-box; }
+        body { margin: 0; padding: 0; }
+        table { border-collapse: collapse; }
+        @media only screen and (max-width: 600px) {
+          .container { width: 100% !important; }
+          .header-table { display: block !important; }
+          .header-left { display: block !important; width: 100% !important; text-align: center !important; padding-bottom: 16px !important; }
+          .header-right { display: block !important; width: 100% !important; text-align: center !important; }
+          .content { padding: 24px 16px !important; }
+        }
+      </style>
+    </head>
+    <body style="font-family: Georgia, 'Times New Roman', serif; line-height: 1.6; color: #333333; background-color: #f5f5f0; margin: 0; padding: 20px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f5f0;">
+        <tr>
+          <td align="center" style="padding: 20px;">
+            <table role="presentation" class="container" width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; overflow: hidden; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);">
+              ${content}
+            </table>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>
+  `;
+}
+
 async function sendEmailViaZoho(to: string, subject: string, html: string): Promise<void> {
   const smtpUser = Deno.env.get("ZOHO_SMTP_USER");
   const smtpPassword = Deno.env.get("ZOHO_SMTP_PASSWORD");
@@ -32,7 +130,6 @@ async function sendEmailViaZoho(to: string, subject: string, html: string): Prom
     throw new Error("Zoho SMTP credentials not configured");
   }
 
-  // Use raw SMTP via TCP socket - much lighter than denomailer
   const encoder = new TextEncoder();
   const decoder = new TextDecoder();
   
@@ -52,38 +149,22 @@ async function sendEmailViaZoho(to: string, subject: string, html: string): Prom
   };
 
   try {
-    // Read greeting
     await read();
-    
-    // EHLO
     await write(`EHLO smtp.zoho.com`);
     await read();
-    
-    // AUTH LOGIN
     await write(`AUTH LOGIN`);
     await read();
-    
-    // Username (base64)
     await write(btoa(smtpUser));
     await read();
-    
-    // Password (base64)
     await write(btoa(smtpPassword));
     await read();
-    
-    // MAIL FROM
     await write(`MAIL FROM:<${smtpUser}>`);
     await read();
-    
-    // RCPT TO
     await write(`RCPT TO:<${to}>`);
     await read();
-    
-    // DATA
     await write(`DATA`);
     await read();
     
-    // Email content
     const boundary = `----=_Part_${Date.now()}`;
     const emailContent = [
       `From: CEB Building <${smtpUser}>`,
@@ -108,8 +189,6 @@ async function sendEmailViaZoho(to: string, subject: string, html: string): Prom
     
     await conn.write(encoder.encode(emailContent + "\r\n"));
     await read();
-    
-    // QUIT
     await write(`QUIT`);
     
     console.log(`Email sent successfully to ${to}`);
@@ -140,16 +219,6 @@ const handler = async (req: Request): Promise<Response> => {
     const total = items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
     const formattedTotal = total.toLocaleString('en-US', { minimumFractionDigits: 2 });
 
-    // Build items table
-    const itemsHtml = items.map(item => `
-      <tr>
-        <td style="padding: 12px; border-bottom: 1px solid #eee;">${item.description}</td>
-        <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: center;">${item.quantity}</td>
-        <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: right;">$${item.unitPrice.toFixed(2)}</td>
-        <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: right;">$${(item.quantity * item.unitPrice).toFixed(2)}</td>
-      </tr>
-    `).join('');
-
     // Generate response URLs
     const baseUrl = Deno.env.get("SUPABASE_URL") || "";
     const encodedData = btoa(JSON.stringify({
@@ -164,79 +233,92 @@ const handler = async (req: Request): Promise<Response> => {
     const acceptUrl = `${baseUrl}/functions/v1/quote-response?action=accept&data=${encodedData}`;
     const declineUrl = `${baseUrl}/functions/v1/quote-response?action=decline&data=${encodedData}`;
 
-    const emailHtml = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      </head>
-      <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
-          <h1 style="color: white; margin: 0; font-size: 28px;">CEB Building</h1>
-          <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0;">Quote for ${projectTitle}</p>
-        </div>
-        
-        <div style="background: white; padding: 30px; border: 1px solid #eee; border-top: none;">
-          <p style="font-size: 16px;">Hello ${clientName},</p>
-          <p>Thank you for your interest! Please review the quote below for your project:</p>
+    const emailContent = `
+      ${getEmailHeader('PROJECT QUOTE', projectTitle)}
+      
+      <!-- Content -->
+      <tr>
+        <td class="content" style="padding: 32px 24px;">
+          <p style="font-size: 16px; margin: 0 0 20px 0; color: #333;">Hello <strong>${clientName}</strong>,</p>
+          <p style="font-size: 15px; color: #666666; margin: 0 0 24px 0;">Thank you for your interest! Please review the quote below for your project:</p>
           
           ${projectDescription ? `
-            <div style="background: #f8f9fa; padding: 15px; border-radius: 6px; margin: 20px 0;">
-              <p style="margin: 0; font-style: italic; color: #666;">${projectDescription}</p>
-            </div>
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background: #faf9f7; border-left: 4px solid #c8a45c; margin-bottom: 24px;">
+              <tr>
+                <td style="padding: 16px 20px;">
+                  <p style="margin: 0; font-size: 14px; font-style: italic; color: #666;">${projectDescription}</p>
+                </td>
+              </tr>
+            </table>
           ` : ''}
           
-          <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+          <!-- Quote Items Table -->
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 24px;">
             <thead>
-              <tr style="background: #f8f9fa;">
-                <th style="padding: 12px; text-align: left; border-bottom: 2px solid #dee2e6;">Description</th>
-                <th style="padding: 12px; text-align: center; border-bottom: 2px solid #dee2e6;">Qty</th>
-                <th style="padding: 12px; text-align: right; border-bottom: 2px solid #dee2e6;">Price</th>
-                <th style="padding: 12px; text-align: right; border-bottom: 2px solid #dee2e6;">Amount</th>
+              <tr style="background: #f8f7f5; border-bottom: 2px solid #d4d0c8;">
+                <th style="padding: 12px 16px; text-align: left; font-size: 12px; font-weight: 600; color: #4a4a4a; text-transform: uppercase; letter-spacing: 0.5px;">Description</th>
+                <th style="padding: 12px 10px; text-align: center; font-size: 12px; font-weight: 600; color: #4a4a4a; text-transform: uppercase; letter-spacing: 0.5px;">Qty</th>
+                <th style="padding: 12px 10px; text-align: right; font-size: 12px; font-weight: 600; color: #4a4a4a; text-transform: uppercase; letter-spacing: 0.5px;">Price</th>
+                <th style="padding: 12px 16px; text-align: right; font-size: 12px; font-weight: 600; color: #4a4a4a; text-transform: uppercase; letter-spacing: 0.5px;">Amount</th>
               </tr>
             </thead>
             <tbody>
-              ${itemsHtml}
+              ${items.map(item => `
+                <tr style="border-bottom: 1px solid #e8e6e1;">
+                  <td style="padding: 14px 16px; color: #333;">${item.description}</td>
+                  <td style="padding: 14px 10px; text-align: center; color: #333;">${item.quantity}</td>
+                  <td style="padding: 14px 10px; text-align: right; color: #333;">$${item.unitPrice.toFixed(2)}</td>
+                  <td style="padding: 14px 16px; text-align: right; color: #333;">$${(item.quantity * item.unitPrice).toFixed(2)}</td>
+                </tr>
+              `).join('')}
             </tbody>
             <tfoot>
-              <tr>
-                <td colspan="3" style="padding: 15px 12px; text-align: right; font-weight: bold; font-size: 18px;">Total:</td>
-                <td style="padding: 15px 12px; text-align: right; font-weight: bold; font-size: 18px; color: #f59e0b;">$${formattedTotal}</td>
+              <tr style="background: #f8f7f5;">
+                <td colspan="3" style="padding: 16px; text-align: right; font-weight: 700; font-size: 16px; color: #333; border-top: 2px solid #d4d0c8;">Quote Total:</td>
+                <td style="padding: 16px; text-align: right; font-weight: 700; font-size: 20px; color: #2d5016; border-top: 2px solid #d4d0c8;">$${formattedTotal}</td>
               </tr>
             </tfoot>
           </table>
           
           ${notes ? `
-            <div style="background: #f8f9fa; padding: 15px; border-radius: 6px; margin: 20px 0;">
-              <p style="margin: 0;"><strong>Notes:</strong> ${notes}</p>
-            </div>
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background: #faf9f7; border-left: 4px solid #c8a45c; margin-bottom: 28px;">
+              <tr>
+                <td style="padding: 16px 20px;">
+                  <p style="margin: 0; font-size: 14px; color: #666;"><strong>Notes:</strong> ${notes}</p>
+                </td>
+              </tr>
+            </table>
           ` : ''}
           
-          <div style="text-align: center; margin: 30px 0;">
-            <p style="font-size: 18px; font-weight: 600; margin-bottom: 20px;">Would you like to proceed?</p>
-            <a href="${acceptUrl}" target="_blank" style="display: inline-block; padding: 15px 40px; margin: 5px; background-color: #22c55e; color: white; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
-              ✓ Accept Quote
-            </a>
-            <a href="${declineUrl}" target="_blank" style="display: inline-block; padding: 15px 40px; margin: 5px; background-color: #ef4444; color: white; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
-              ✗ Decline
-            </a>
+          <!-- Response Buttons -->
+          <div style="text-align: center; padding: 24px 0; border-top: 1px solid #e8e6e1;">
+            <p style="font-size: 16px; font-weight: 600; margin: 0 0 20px 0; color: #333;">Would you like to proceed?</p>
+            <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 0 auto;">
+              <tr>
+                <td style="padding: 6px;">
+                  <a href="${acceptUrl}" target="_blank" style="display: inline-block; padding: 14px 32px; background-color: #2d5016; color: white; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 14px; font-family: -apple-system, sans-serif;">
+                    ✓ Accept Quote
+                  </a>
+                </td>
+                <td style="padding: 6px;">
+                  <a href="${declineUrl}" target="_blank" style="display: inline-block; padding: 14px 32px; background-color: #8b4513; color: white; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 14px; font-family: -apple-system, sans-serif;">
+                    ✗ Decline
+                  </a>
+                </td>
+              </tr>
+            </table>
           </div>
           
-          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-          
-          <p style="color: #666; font-size: 14px; text-align: center;">
-            If you have any questions about this quote, please don't hesitate to reach out.<br>
-            We look forward to working with you!
+          <p style="color: #666; font-size: 14px; text-align: center; margin: 20px 0 0 0;">
+            If you have any questions about this quote, please don't hesitate to reach out.
           </p>
-        </div>
-        
-        <div style="text-align: center; padding: 20px; color: #999; font-size: 12px;">
-          <p>© ${new Date().getFullYear()} CEB Building. All rights reserved.</p>
-        </div>
-      </body>
-      </html>
+        </td>
+      </tr>
+      
+      ${getEmailFooter()}
     `;
+
+    const emailHtml = getEmailWrapper(emailContent);
 
     await sendEmailViaZoho(
       clientEmail,
