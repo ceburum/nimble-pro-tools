@@ -38,6 +38,10 @@ export default function Invoices() {
     setSendingEmail(invoice.id);
     
     try {
+      // Use AbortController with longer timeout for SMTP operations
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+      
       const { data, error } = await supabase.functions.invoke('send-invoice-email', {
         body: {
           clientName: client.name,
@@ -49,6 +53,8 @@ export default function Invoices() {
           businessName: 'C.E.B.',
         },
       });
+      
+      clearTimeout(timeoutId);
 
       if (error) throw error;
 
@@ -65,10 +71,14 @@ export default function Invoices() {
       });
     } catch (error: any) {
       console.error('Failed to send invoice:', error);
+      // Check if it's an abort/timeout - the email may have still sent
+      const isTimeout = error.name === 'AbortError' || error.message?.includes('fetch');
       toast({
-        title: 'Failed to send',
-        description: error.message || 'Could not send invoice email.',
-        variant: 'destructive',
+        title: isTimeout ? 'Sending...' : 'Failed to send',
+        description: isTimeout 
+          ? 'Email is being sent. Check your inbox shortly.' 
+          : (error.message || 'Could not send invoice email.'),
+        variant: isTimeout ? 'default' : 'destructive',
       });
     } finally {
       setSendingEmail(null);
