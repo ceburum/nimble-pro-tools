@@ -1,4 +1,5 @@
-import { Link } from 'react-router-dom';
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { Users, FileText, Receipt, DollarSign, FolderKanban } from 'lucide-react';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { RecentActivity } from '@/components/dashboard/RecentActivity';
@@ -10,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
 export default function Dashboard() {
+  const navigate = useNavigate();
   const [clients] = useLocalStorage<Client[]>('ceb-clients', mockClients);
   const [projects] = useLocalStorage<Project[]>('ceb-projects', []);
   const [invoices] = useLocalStorage<Invoice[]>('ceb-invoices', mockInvoices);
@@ -148,16 +150,16 @@ export default function Dashboard() {
                 <p className="text-sm text-muted-foreground">Create quote/job</p>
               </div>
             </Link>
-            <Link 
-              to="/invoices" 
-              className="flex items-center gap-3 p-4 rounded-lg border border-border hover:border-primary/50 hover:bg-primary/5 transition-all duration-200"
+            <button 
+              onClick={() => navigate('/invoices', { state: { openNewInvoice: true } })}
+              className="flex items-center gap-3 p-4 rounded-lg border border-border hover:border-primary/50 hover:bg-primary/5 transition-all duration-200 w-full text-left"
             >
               <Receipt className="h-5 w-5 text-accent" />
               <div>
                 <p className="font-medium text-card-foreground">New Invoice</p>
                 <p className="text-sm text-muted-foreground">Bill a client</p>
               </div>
-            </Link>
+            </button>
             <Link 
               to="/invoices" 
               className="flex items-center gap-3 p-4 rounded-lg border border-border hover:border-success/50 hover:bg-success/5 transition-all duration-200"
