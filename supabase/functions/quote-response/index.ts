@@ -1,7 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { Resend } from "https://esm.sh/resend@2.0.0";
-
-const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
+import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
 
 interface QuoteData {
   projectId: string;
@@ -10,6 +8,40 @@ interface QuoteData {
   clientEmail: string;
   total: number;
   notificationEmail: string;
+}
+
+async function sendEmailViaZoho(to: string, subject: string, html: string): Promise<void> {
+  const smtpUser = Deno.env.get("ZOHO_SMTP_USER");
+  const smtpPassword = Deno.env.get("ZOHO_SMTP_PASSWORD");
+
+  if (!smtpUser || !smtpPassword) {
+    throw new Error("Zoho SMTP credentials not configured");
+  }
+
+  const client = new SMTPClient({
+    connection: {
+      hostname: "smtp.zoho.com",
+      port: 465,
+      tls: true,
+      auth: {
+        username: smtpUser,
+        password: smtpPassword,
+      },
+    },
+  });
+
+  try {
+    await client.send({
+      from: `CEB Building <${smtpUser}>`,
+      to: to,
+      subject: subject,
+      content: "Please view this email in an HTML-compatible email client.",
+      html: html,
+    });
+    console.log(`Email sent successfully to ${to}`);
+  } finally {
+    await client.close();
+  }
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -102,7 +134,7 @@ const handler = async (req: Request): Promise<Response> => {
           </div>
           
           <p style="color: #999; font-size: 12px; margin: 0;">
-            © ${new Date().getFullYear()} CEB Services
+            © ${new Date().getFullYear()} CEB Building
           </p>
         </div>
       </body>
@@ -111,24 +143,22 @@ const handler = async (req: Request): Promise<Response> => {
 
     try {
       // Send notification to business owner
-      const ownerResult = await resend.emails.send({
-        from: "CEB Services <onboarding@resend.dev>",
-        to: [notificationEmail],
-        subject: `${isAccepted ? '✓ Quote Accepted' : '✗ Quote Declined'}: ${projectTitle} - ${clientName}`,
-        html: notificationHtml,
-      });
-      console.log("Owner notification sent:", ownerResult);
+      await sendEmailViaZoho(
+        notificationEmail,
+        `${isAccepted ? '✓ Quote Accepted' : '✗ Quote Declined'}: ${projectTitle} - ${clientName}`,
+        notificationHtml
+      );
+      console.log("Owner notification sent");
 
       // Send confirmation to client
-      const clientResult = await resend.emails.send({
-        from: "CEB Services <onboarding@resend.dev>",
-        to: [clientEmail],
-        subject: isAccepted 
+      await sendEmailViaZoho(
+        clientEmail,
+        isAccepted 
           ? `Thank you for accepting your quote - ${projectTitle}` 
           : `Quote Response Received - ${projectTitle}`,
-        html: clientConfirmationHtml,
-      });
-      console.log("Client confirmation sent:", clientResult);
+        clientConfirmationHtml
+      );
+      console.log("Client confirmation sent");
 
     } catch (emailError: any) {
       console.error("Failed to send email:", emailError);
@@ -142,7 +172,7 @@ const handler = async (req: Request): Promise<Response> => {
       <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>${isAccepted ? 'Quote Accepted' : 'Quote Declined'} - CEB Services</title>
+        <title>${isAccepted ? 'Quote Accepted' : 'Quote Declined'} - CEB Building</title>
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
         <style>
           * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -233,7 +263,7 @@ const handler = async (req: Request): Promise<Response> => {
           </div>
           <p class="footer">
             Thank you, <strong>${clientName}</strong>!<br>
-            © ${new Date().getFullYear()} CEB Services
+            © ${new Date().getFullYear()} CEB Building
           </p>
         </div>
       </body>
@@ -252,7 +282,7 @@ const handler = async (req: Request): Promise<Response> => {
       <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>Error - CEB Services</title>
+        <title>Error - CEB Building</title>
         <style>
           body { font-family: -apple-system, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; background: #fef2f2; }
           .card { background: white; padding: 40px; border-radius: 16px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }

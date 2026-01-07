@@ -1,7 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { Resend } from "https://esm.sh/resend@2.0.0";
-
-const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
+import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -25,6 +23,40 @@ interface SendQuoteRequest {
   items: LineItem[];
   notes?: string;
   notificationEmail: string;
+}
+
+async function sendEmailViaZoho(to: string, subject: string, html: string): Promise<void> {
+  const smtpUser = Deno.env.get("ZOHO_SMTP_USER");
+  const smtpPassword = Deno.env.get("ZOHO_SMTP_PASSWORD");
+
+  if (!smtpUser || !smtpPassword) {
+    throw new Error("Zoho SMTP credentials not configured");
+  }
+
+  const client = new SMTPClient({
+    connection: {
+      hostname: "smtp.zoho.com",
+      port: 465,
+      tls: true,
+      auth: {
+        username: smtpUser,
+        password: smtpPassword,
+      },
+    },
+  });
+
+  try {
+    await client.send({
+      from: `CEB Building <${smtpUser}>`,
+      to: to,
+      subject: subject,
+      content: "Please view this email in an HTML-compatible email client.",
+      html: html,
+    });
+    console.log(`Email sent successfully to ${to}`);
+  } finally {
+    await client.close();
+  }
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -82,7 +114,7 @@ const handler = async (req: Request): Promise<Response> => {
       </head>
       <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
-          <h1 style="color: white; margin: 0; font-size: 28px;">CEB Services</h1>
+          <h1 style="color: white; margin: 0; font-size: 28px;">CEB Building</h1>
           <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0;">Quote for ${projectTitle}</p>
         </div>
         
@@ -141,22 +173,21 @@ const handler = async (req: Request): Promise<Response> => {
         </div>
         
         <div style="text-align: center; padding: 20px; color: #999; font-size: 12px;">
-          <p>© ${new Date().getFullYear()} CEB Services. All rights reserved.</p>
+          <p>© ${new Date().getFullYear()} CEB Building. All rights reserved.</p>
         </div>
       </body>
       </html>
     `;
 
-    const emailResponse = await resend.emails.send({
-      from: "CEB Services <onboarding@resend.dev>",
-      to: [clientEmail],
-      subject: `Quote for ${projectTitle} - CEB Services`,
-      html: emailHtml,
-    });
+    await sendEmailViaZoho(
+      clientEmail,
+      `Quote for ${projectTitle} - CEB Building`,
+      emailHtml
+    );
 
-    console.log("Quote email sent successfully:", emailResponse);
+    console.log("Quote email sent successfully via Zoho SMTP");
 
-    return new Response(JSON.stringify({ success: true, data: emailResponse }), {
+    return new Response(JSON.stringify({ success: true }), {
       status: 200,
       headers: {
         "Content-Type": "application/json",
