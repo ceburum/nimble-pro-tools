@@ -41,12 +41,14 @@ const PAYMENT_METHODS = [
 ];
 
 // Logo hosted on your website - used as a source to embed inline (CID)
-const LOGO_URL = "https://static.wixstatic.com/media/fc62d0_d3f25abd45e341648b59e65fc94cc7fd~mv2.png";
+// Prioritize smaller JPG version for faster email delivery
+const LOGO_URL_PNG = "https://static.wixstatic.com/media/fc62d0_d3f25abd45e341648b59e65fc94cc7fd~mv2.png";
+const LOGO_URL_JPG = "https://static.wixstatic.com/media/fc62d0_d3f25abd45e341648b59e65fc94cc7fd~mv2.jpg";
 const STORAGE_LOGO_PUBLIC_URL = (() => {
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   return supabaseUrl ? `${supabaseUrl}/storage/v1/object/public/assets/ceb-logo.png` : null;
 })();
-const DEFAULT_LOGO_URL = STORAGE_LOGO_PUBLIC_URL ?? LOGO_URL;
+const DEFAULT_LOGO_URL = STORAGE_LOGO_PUBLIC_URL ?? LOGO_URL_PNG;
 
 function wrapBase64(b64: string): string {
   return b64.match(/.{1,76}/g)?.join("\r\n") ?? b64;
@@ -63,12 +65,15 @@ function uint8ToBase64(bytes: Uint8Array): string {
 
 function getLogoCandidateUrls(req?: Request): string[] {
   const urls: string[] = [];
-  if (STORAGE_LOGO_PUBLIC_URL) urls.push(STORAGE_LOGO_PUBLIC_URL);
-
+  
+  // Try JPG version first (smaller file size for faster email delivery)
   const origin = req?.headers.get("origin");
+  if (origin) urls.push(`${origin}/ceb-logo-email.jpg`);
+  
+  // Fallback to PNG versions
+  if (STORAGE_LOGO_PUBLIC_URL) urls.push(STORAGE_LOGO_PUBLIC_URL);
   if (origin) urls.push(`${origin}/ceb-logo.png`);
-
-  urls.push(LOGO_URL);
+  urls.push(LOGO_URL_PNG);
 
   // De-dupe while preserving order
   return urls.filter((u, idx) => urls.indexOf(u) === idx);
