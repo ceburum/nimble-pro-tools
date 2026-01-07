@@ -38,24 +38,102 @@ const PAYMENT_METHODS = [
   },
 ];
 
-// Fetch the logo from the web and convert to base64
-async function getLogoDataUri(): Promise<string> {
-  try {
-    const response = await fetch("https://ceb-contractor.lovable.app/ceb-logo.png");
-    if (!response.ok) throw new Error("Failed to fetch logo");
-    const arrayBuffer = await response.arrayBuffer();
-    const bytes = new Uint8Array(arrayBuffer);
-    let binary = '';
-    for (let i = 0; i < bytes.length; i++) {
-      binary += String.fromCharCode(bytes[i]);
-    }
-    const base64 = btoa(binary);
-    console.log("Logo fetched and converted to base64 successfully");
-    return `data:image/png;base64,${base64}`;
-  } catch (err) {
-    console.warn("Failed to fetch logo:", err);
-    return "";
-  }
+// Logo hosted on your website - most reliable method
+const LOGO_URL = "https://static.wixstatic.com/media/fc62d0_d3f25abd45e341648b59e65fc94cc7fd~mv2.png";
+
+function getEmailHeader(title: string, subtitle?: string): string {
+  return `
+    <!-- Header - matching cebbuilding.com style -->
+    <tr>
+      <td style="background-color: #c8c4bd; padding: 20px 24px; border-bottom: 3px solid #a09d95;">
+        <table role="presentation" class="header-table" width="100%" cellpadding="0" cellspacing="0">
+          <tr>
+            <td class="header-left" style="vertical-align: middle; width: 60%;">
+              <table role="presentation" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="vertical-align: middle;">
+                    <img src="${LOGO_URL}" alt="CEB Building" style="width: 65px; height: 65px; border-radius: 50%; object-fit: contain; display: block; background: #fff;">
+                  </td>
+                  <td style="vertical-align: middle; padding-left: 14px;">
+                    <h1 style="color: #333333; margin: 0; font-size: 22px; font-weight: 400; font-family: Georgia, serif;">CEB Building</h1>
+                    <p style="color: #555555; margin: 2px 0 0 0; font-size: 13px; font-style: italic;">Hand-Crafted Wood Works</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+            <td class="header-right" style="vertical-align: middle; text-align: right; width: 40%;">
+              <p style="color: #333333; margin: 0; font-size: 13px; font-weight: 600;">Chad Burum</p>
+              <p style="color: #555555; margin: 2px 0; font-size: 12px;">405-500-8224</p>
+              <p style="color: #555555; margin: 2px 0; font-size: 12px;">chad@cebbuilding.com</p>
+              <p style="color: #555555; margin: 2px 0; font-size: 12px;">cebbuilding.com</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+
+    <!-- Title Bar -->
+    <tr>
+      <td style="background-color: #4a4a4a; padding: 12px 24px;">
+        <p style="color: #ffffff; margin: 0; font-size: 16px; font-weight: 600; letter-spacing: 1px;">${title}</p>
+        ${subtitle ? `<p style="color: #b0b0b0; margin: 4px 0 0 0; font-size: 13px;">${subtitle}</p>` : ''}
+      </td>
+    </tr>
+  `;
+}
+
+function getEmailFooter(): string {
+  return `
+    <!-- Footer -->
+    <tr>
+      <td style="background-color: #4a4a4a; padding: 20px 24px; text-align: center;">
+        <p style="color: #ffffff; font-size: 14px; margin: 0 0 6px 0;">
+          Thank you for choosing CEB Building!
+        </p>
+        <p style="color: #b0b0b0; font-size: 12px; margin: 0;">
+          Hand-Crafted Wood Works · Oklahoma City
+        </p>
+        <p style="color: #888888; font-size: 11px; margin: 12px 0 0 0;">
+          © ${new Date().getFullYear()} CEB Building. All rights reserved.
+        </p>
+      </td>
+    </tr>
+  `;
+}
+
+function getEmailWrapper(content: string): string {
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <style>
+        * { box-sizing: border-box; }
+        body { margin: 0; padding: 0; }
+        table { border-collapse: collapse; }
+        @media only screen and (max-width: 600px) {
+          .container { width: 100% !important; }
+          .header-table { display: block !important; }
+          .header-left { display: block !important; width: 100% !important; text-align: center !important; padding-bottom: 16px !important; }
+          .header-right { display: block !important; width: 100% !important; text-align: center !important; }
+          .content { padding: 24px 16px !important; }
+        }
+      </style>
+    </head>
+    <body style="font-family: Georgia, 'Times New Roman', serif; line-height: 1.6; color: #333333; background-color: #f5f5f0; margin: 0; padding: 20px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f5f0;">
+        <tr>
+          <td align="center" style="padding: 20px;">
+            <table role="presentation" class="container" width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; overflow: hidden; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);">
+              ${content}
+            </table>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>
+  `;
 }
 
 async function sendEmailViaZoho(to: string, subject: string, html: string): Promise<void> {
@@ -154,170 +232,75 @@ const handler = async (req: Request): Promise<Response> => {
     const total = items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
     const formattedTotal = total.toLocaleString('en-US', { minimumFractionDigits: 2 });
 
-    const itemsHtml = items.map(item => `
+    const emailContent = `
+      ${getEmailHeader(`INVOICE ${invoiceNumber}`)}
+      
+      <!-- Content -->
       <tr>
-        <td style="padding: 12px; border-bottom: 1px solid #eee;">${item.description}</td>
-        <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: center;">${item.quantity}</td>
-        <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: right;">$${item.unitPrice.toFixed(2)}</td>
-        <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: right;">$${(item.quantity * item.unitPrice).toFixed(2)}</td>
+        <td class="content" style="padding: 32px 24px;">
+          <p style="font-size: 16px; margin: 0 0 20px 0; color: #333;">Hello <strong>${clientName}</strong>,</p>
+          <p style="font-size: 15px; color: #666666; margin: 0 0 24px 0;">Thank you for your business. Please find your invoice details below:</p>
+          
+          <!-- Invoice Items Table -->
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 24px;">
+            <thead>
+              <tr style="background: #f8f7f5; border-bottom: 2px solid #d4d0c8;">
+                <th style="padding: 12px 16px; text-align: left; font-size: 12px; font-weight: 600; color: #4a4a4a; text-transform: uppercase; letter-spacing: 0.5px;">Description</th>
+                <th style="padding: 12px 10px; text-align: center; font-size: 12px; font-weight: 600; color: #4a4a4a; text-transform: uppercase; letter-spacing: 0.5px;">Qty</th>
+                <th style="padding: 12px 10px; text-align: right; font-size: 12px; font-weight: 600; color: #4a4a4a; text-transform: uppercase; letter-spacing: 0.5px;">Price</th>
+                <th style="padding: 12px 16px; text-align: right; font-size: 12px; font-weight: 600; color: #4a4a4a; text-transform: uppercase; letter-spacing: 0.5px;">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${items.map(item => `
+                <tr style="border-bottom: 1px solid #e8e6e1;">
+                  <td style="padding: 14px 16px; color: #333;">${item.description}</td>
+                  <td style="padding: 14px 10px; text-align: center; color: #333;">${item.quantity}</td>
+                  <td style="padding: 14px 10px; text-align: right; color: #333;">$${item.unitPrice.toFixed(2)}</td>
+                  <td style="padding: 14px 16px; text-align: right; color: #333;">$${(item.quantity * item.unitPrice).toFixed(2)}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+            <tfoot>
+              <tr style="background: #f8f7f5;">
+                <td colspan="3" style="padding: 16px; text-align: right; font-weight: 700; font-size: 16px; color: #333; border-top: 2px solid #d4d0c8;">Total Due:</td>
+                <td style="padding: 16px; text-align: right; font-weight: 700; font-size: 20px; color: #2d5016; border-top: 2px solid #d4d0c8;">$${formattedTotal}</td>
+              </tr>
+            </tfoot>
+          </table>
+          
+          <!-- Due Date -->
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background: #faf9f7; border-left: 4px solid #c8a45c; margin-bottom: 28px;">
+            <tr>
+              <td style="padding: 16px 20px;">
+                <p style="margin: 0; font-size: 15px; color: #333;"><strong>Due Date:</strong> ${dueDate}</p>
+                ${notes ? `<p style="margin: 10px 0 0 0; font-size: 14px; color: #666;"><strong>Notes:</strong> ${notes}</p>` : ''}
+              </td>
+            </tr>
+          </table>
+          
+          <!-- Payment Options -->
+          <div style="text-align: center; padding: 24px 0; border-top: 1px solid #e8e6e1;">
+            <p style="font-size: 16px; font-weight: 600; margin: 0 0 16px 0; color: #333;">Payment Options</p>
+            <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 0 auto;">
+              <tr>
+                ${PAYMENT_METHODS.map(method => `
+                  <td style="padding: 6px;">
+                    <a href="${method.link}" target="_blank" style="display: inline-block; padding: 14px 28px; background-color: ${method.color}; color: white; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 14px; font-family: -apple-system, sans-serif;">
+                      Pay with ${method.name}
+                    </a>
+                  </td>
+                `).join('')}
+              </tr>
+            </table>
+          </div>
+        </td>
       </tr>
-    `).join('');
-
-    const paymentButtonsHtml = PAYMENT_METHODS.map(method => `
-      <a href="${method.link}" target="_blank" style="display: inline-block; padding: 12px 24px; margin: 5px; background-color: ${method.color}; color: white; text-decoration: none; border-radius: 6px; font-weight: 600;">
-        Pay with ${method.name}
-      </a>
-    `).join('');
-
-    const logoDataUri = await getLogoDataUri();
-
-    const emailHtml = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <style>
-          * { box-sizing: border-box; }
-          body { margin: 0; padding: 0; }
-          table { border-collapse: collapse; }
-          @media only screen and (max-width: 600px) {
-            .container { width: 100% !important; }
-            .header-table { display: block !important; }
-            .header-left { display: block !important; width: 100% !important; text-align: center !important; padding-bottom: 16px !important; }
-            .header-right { display: block !important; width: 100% !important; text-align: center !important; }
-            .content { padding: 24px 16px !important; }
-          }
-        </style>
-      </head>
-      <body style="font-family: Georgia, 'Times New Roman', serif; line-height: 1.6; color: #333333; background-color: #f5f5f0; margin: 0; padding: 20px;">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f5f0;">
-          <tr>
-            <td align="center" style="padding: 20px;">
-              <table role="presentation" class="container" width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; overflow: hidden; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);">
-                
-                <!-- Header - matching cebbuilding.com style -->
-                <tr>
-                  <td style="background-color: #c8c4bd; padding: 20px 24px; border-bottom: 3px solid #a09d95;">
-                    <table role="presentation" class="header-table" width="100%" cellpadding="0" cellspacing="0">
-                      <tr>
-                        <td class="header-left" style="vertical-align: middle; width: 60%;">
-                          <table role="presentation" cellpadding="0" cellspacing="0">
-                            <tr>
-                              <td style="vertical-align: middle;">
-                                ${logoDataUri
-                                  ? `<img src="${logoDataUri}" alt="CEB Building" style="width: 65px; height: 65px; border-radius: 50%; object-fit: contain; display: block;">`
-                                  : `<div style="width: 65px; height: 65px; border-radius: 50%; background: #333; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">CEB</div>`
-                                }
-                              </td>
-                              <td style="vertical-align: middle; padding-left: 14px;">
-                                <h1 style="color: #333333; margin: 0; font-size: 22px; font-weight: 400; font-family: Georgia, serif;">${businessName}</h1>
-                                <p style="color: #555555; margin: 2px 0 0 0; font-size: 13px; font-style: italic;">Hand-Crafted Wood Works</p>
-                              </td>
-                            </tr>
-                          </table>
-                        </td>
-                        <td class="header-right" style="vertical-align: middle; text-align: right; width: 40%;">
-                          <p style="color: #333333; margin: 0; font-size: 13px; font-weight: 600;">Chad Burum</p>
-                          <p style="color: #555555; margin: 2px 0; font-size: 12px;">405-500-8224</p>
-                          <p style="color: #555555; margin: 2px 0; font-size: 12px;">chad@cebbuilding.com</p>
-                          <p style="color: #555555; margin: 2px 0; font-size: 12px;">cebbuilding.com</p>
-                        </td>
-                      </tr>
-                    </table>
-                  </td>
-                </tr>
-
-                <!-- Invoice Title Bar -->
-                <tr>
-                  <td style="background-color: #4a4a4a; padding: 12px 24px;">
-                    <p style="color: #ffffff; margin: 0; font-size: 16px; font-weight: 600; letter-spacing: 1px;">INVOICE ${invoiceNumber}</p>
-                  </td>
-                </tr>
-                
-                <!-- Content -->
-                <tr>
-                  <td class="content" style="padding: 32px 24px;">
-                    <p style="font-size: 16px; margin: 0 0 20px 0; color: #333;">Hello <strong>${clientName}</strong>,</p>
-                    <p style="font-size: 15px; color: #666666; margin: 0 0 24px 0;">Thank you for your business. Please find your invoice details below:</p>
-                    
-                    <!-- Invoice Items Table -->
-                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 24px;">
-                      <thead>
-                        <tr style="background: #f8f7f5; border-bottom: 2px solid #d4d0c8;">
-                          <th style="padding: 12px 16px; text-align: left; font-size: 12px; font-weight: 600; color: #4a4a4a; text-transform: uppercase; letter-spacing: 0.5px;">Description</th>
-                          <th style="padding: 12px 10px; text-align: center; font-size: 12px; font-weight: 600; color: #4a4a4a; text-transform: uppercase; letter-spacing: 0.5px;">Qty</th>
-                          <th style="padding: 12px 10px; text-align: right; font-size: 12px; font-weight: 600; color: #4a4a4a; text-transform: uppercase; letter-spacing: 0.5px;">Price</th>
-                          <th style="padding: 12px 16px; text-align: right; font-size: 12px; font-weight: 600; color: #4a4a4a; text-transform: uppercase; letter-spacing: 0.5px;">Amount</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        ${items.map(item => `
-                          <tr style="border-bottom: 1px solid #e8e6e1;">
-                            <td style="padding: 14px 16px; color: #333;">${item.description}</td>
-                            <td style="padding: 14px 10px; text-align: center; color: #333;">${item.quantity}</td>
-                            <td style="padding: 14px 10px; text-align: right; color: #333;">$${item.unitPrice.toFixed(2)}</td>
-                            <td style="padding: 14px 16px; text-align: right; color: #333;">$${(item.quantity * item.unitPrice).toFixed(2)}</td>
-                          </tr>
-                        `).join('')}
-                      </tbody>
-                      <tfoot>
-                        <tr style="background: #f8f7f5;">
-                          <td colspan="3" style="padding: 16px; text-align: right; font-weight: 700; font-size: 16px; color: #333; border-top: 2px solid #d4d0c8;">Total Due:</td>
-                          <td style="padding: 16px; text-align: right; font-weight: 700; font-size: 20px; color: #2d5016; border-top: 2px solid #d4d0c8;">$${formattedTotal}</td>
-                        </tr>
-                      </tfoot>
-                    </table>
-                    
-                    <!-- Due Date -->
-                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background: #faf9f7; border-left: 4px solid #c8a45c; margin-bottom: 28px;">
-                      <tr>
-                        <td style="padding: 16px 20px;">
-                          <p style="margin: 0; font-size: 15px; color: #333;"><strong>Due Date:</strong> ${dueDate}</p>
-                          ${notes ? `<p style="margin: 10px 0 0 0; font-size: 14px; color: #666;"><strong>Notes:</strong> ${notes}</p>` : ''}
-                        </td>
-                      </tr>
-                    </table>
-                    
-                    <!-- Payment Options -->
-                    <div style="text-align: center; padding: 24px 0; border-top: 1px solid #e8e6e1;">
-                      <p style="font-size: 16px; font-weight: 600; margin: 0 0 16px 0; color: #333;">Payment Options</p>
-                      <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 0 auto;">
-                        <tr>
-                          ${PAYMENT_METHODS.map(method => `
-                            <td style="padding: 6px;">
-                              <a href="${method.link}" target="_blank" style="display: inline-block; padding: 14px 28px; background-color: ${method.color}; color: white; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 14px; font-family: -apple-system, sans-serif;">
-                                Pay with ${method.name}
-                              </a>
-                            </td>
-                          `).join('')}
-                        </tr>
-                      </table>
-                    </div>
-                  </td>
-                </tr>
-                
-                <!-- Footer -->
-                <tr>
-                  <td style="background-color: #4a4a4a; padding: 20px 24px; text-align: center;">
-                    <p style="color: #ffffff; font-size: 14px; margin: 0 0 6px 0;">
-                      Thank you for choosing CEB Building!
-                    </p>
-                    <p style="color: #b0b0b0; font-size: 12px; margin: 0;">
-                      Hand-Crafted Wood Works · Oklahoma City
-                    </p>
-                    <p style="color: #888888; font-size: 11px; margin: 12px 0 0 0;">
-                      © ${new Date().getFullYear()} ${businessName}. All rights reserved.
-                    </p>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-        </table>
-      </body>
-      </html>
+      
+      ${getEmailFooter()}
     `;
+
+    const emailHtml = getEmailWrapper(emailContent);
 
     await sendEmailViaZoho(
       clientEmail,

@@ -9,6 +9,104 @@ interface QuoteData {
   notificationEmail: string;
 }
 
+// Logo hosted on your website - most reliable method
+const LOGO_URL = "https://static.wixstatic.com/media/fc62d0_d3f25abd45e341648b59e65fc94cc7fd~mv2.png";
+
+function getEmailHeader(title: string, isAccepted: boolean): string {
+  const barColor = isAccepted ? '#2d5016' : '#8b4513';
+  return `
+    <!-- Header - matching cebbuilding.com style -->
+    <tr>
+      <td style="background-color: #c8c4bd; padding: 20px 24px; border-bottom: 3px solid #a09d95;">
+        <table role="presentation" class="header-table" width="100%" cellpadding="0" cellspacing="0">
+          <tr>
+            <td class="header-left" style="vertical-align: middle; width: 60%;">
+              <table role="presentation" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="vertical-align: middle;">
+                    <img src="${LOGO_URL}" alt="CEB Building" style="width: 65px; height: 65px; border-radius: 50%; object-fit: contain; display: block; background: #fff;">
+                  </td>
+                  <td style="vertical-align: middle; padding-left: 14px;">
+                    <h1 style="color: #333333; margin: 0; font-size: 22px; font-weight: 400; font-family: Georgia, serif;">CEB Building</h1>
+                    <p style="color: #555555; margin: 2px 0 0 0; font-size: 13px; font-style: italic;">Hand-Crafted Wood Works</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+            <td class="header-right" style="vertical-align: middle; text-align: right; width: 40%;">
+              <p style="color: #333333; margin: 0; font-size: 13px; font-weight: 600;">Chad Burum</p>
+              <p style="color: #555555; margin: 2px 0; font-size: 12px;">405-500-8224</p>
+              <p style="color: #555555; margin: 2px 0; font-size: 12px;">chad@cebbuilding.com</p>
+              <p style="color: #555555; margin: 2px 0; font-size: 12px;">cebbuilding.com</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+
+    <!-- Title Bar -->
+    <tr>
+      <td style="background-color: ${barColor}; padding: 12px 24px;">
+        <p style="color: #ffffff; margin: 0; font-size: 16px; font-weight: 600; letter-spacing: 1px;">${title}</p>
+      </td>
+    </tr>
+  `;
+}
+
+function getEmailFooter(): string {
+  return `
+    <!-- Footer -->
+    <tr>
+      <td style="background-color: #4a4a4a; padding: 20px 24px; text-align: center;">
+        <p style="color: #ffffff; font-size: 14px; margin: 0 0 6px 0;">
+          Thank you for choosing CEB Building!
+        </p>
+        <p style="color: #b0b0b0; font-size: 12px; margin: 0;">
+          Hand-Crafted Wood Works · Oklahoma City
+        </p>
+        <p style="color: #888888; font-size: 11px; margin: 12px 0 0 0;">
+          © ${new Date().getFullYear()} CEB Building. All rights reserved.
+        </p>
+      </td>
+    </tr>
+  `;
+}
+
+function getEmailWrapper(content: string): string {
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <style>
+        * { box-sizing: border-box; }
+        body { margin: 0; padding: 0; }
+        table { border-collapse: collapse; }
+        @media only screen and (max-width: 600px) {
+          .container { width: 100% !important; }
+          .header-table { display: block !important; }
+          .header-left { display: block !important; width: 100% !important; text-align: center !important; padding-bottom: 16px !important; }
+          .header-right { display: block !important; width: 100% !important; text-align: center !important; }
+          .content { padding: 24px 16px !important; }
+        }
+      </style>
+    </head>
+    <body style="font-family: Georgia, 'Times New Roman', serif; line-height: 1.6; color: #333333; background-color: #f5f5f0; margin: 0; padding: 20px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f5f0;">
+        <tr>
+          <td align="center" style="padding: 20px;">
+            <table role="presentation" class="container" width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; overflow: hidden; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);">
+              ${content}
+            </table>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>
+  `;
+}
+
 async function sendEmailViaZoho(to: string, subject: string, html: string): Promise<void> {
   const smtpUser = Deno.env.get("ZOHO_SMTP_USER");
   const smtpPassword = Deno.env.get("ZOHO_SMTP_PASSWORD");
@@ -117,73 +215,96 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`Quote ${isAccepted ? "ACCEPTED" : "DECLINED"} for project ${projectId} by ${clientName}`);
 
-    const notificationHtml = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-      </head>
-      <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 20px; color: #333;">
-        <div style="max-width: 500px; margin: 0 auto; background: ${isAccepted ? '#f0fdf4' : '#fef2f2'}; border: 2px solid ${isAccepted ? '#22c55e' : '#ef4444'}; border-radius: 10px; padding: 30px;">
-          <h1 style="color: ${isAccepted ? '#22c55e' : '#ef4444'}; margin: 0 0 20px 0; font-size: 24px;">
-            ${isAccepted ? '✓ Quote Accepted!' : '✗ Quote Declined'}
-          </h1>
+    // Owner notification email
+    const ownerEmailContent = `
+      ${getEmailHeader(isAccepted ? '✓ QUOTE ACCEPTED' : '✗ QUOTE DECLINED', isAccepted)}
+      
+      <!-- Content -->
+      <tr>
+        <td class="content" style="padding: 32px 24px;">
+          <div style="text-align: center; margin-bottom: 24px;">
+            <div style="font-size: 48px; margin-bottom: 12px;">${isAccepted ? '🎉' : '📋'}</div>
+            <h2 style="font-size: 20px; color: ${isAccepted ? '#2d5016' : '#8b4513'}; margin: 0;">
+              ${isAccepted ? 'Great news! A quote has been accepted.' : 'A quote has been declined.'}
+            </h2>
+          </div>
           
-          <div style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
-            <p style="margin: 0 0 10px 0;"><strong>Project:</strong> ${projectTitle}</p>
-            <p style="margin: 0 0 10px 0;"><strong>Client:</strong> ${clientName}</p>
-            <p style="margin: 0 0 10px 0;"><strong>Email:</strong> ${clientEmail}</p>
-            <p style="margin: 0;"><strong>Quote Total:</strong> $${total.toFixed(2)}</p>
+          <!-- Project Details -->
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background: #f8f7f5; border-radius: 8px; margin-bottom: 24px;">
+            <tr>
+              <td style="padding: 16px 20px; border-bottom: 1px solid #e8e6e1;">
+                <p style="margin: 0; font-size: 14px; color: #666;"><strong>Project:</strong></p>
+                <p style="margin: 4px 0 0 0; font-size: 16px; color: #333;">${projectTitle}</p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 16px 20px; border-bottom: 1px solid #e8e6e1;">
+                <p style="margin: 0; font-size: 14px; color: #666;"><strong>Client:</strong></p>
+                <p style="margin: 4px 0 0 0; font-size: 16px; color: #333;">${clientName}</p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 16px 20px; border-bottom: 1px solid #e8e6e1;">
+                <p style="margin: 0; font-size: 14px; color: #666;"><strong>Email:</strong></p>
+                <p style="margin: 4px 0 0 0; font-size: 16px; color: #333;">${clientEmail}</p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 16px 20px;">
+                <p style="margin: 0; font-size: 14px; color: #666;"><strong>Quote Total:</strong></p>
+                <p style="margin: 4px 0 0 0; font-size: 20px; color: #2d5016; font-weight: 700;">$${total.toFixed(2)}</p>
+              </td>
+            </tr>
+          </table>
+          
+          <p style="color: #666; font-size: 14px; text-align: center; margin: 0;">
+            ${isAccepted 
+              ? 'You can now proceed with the project!' 
+              : 'You may want to follow up with the client.'}
+          </p>
+        </td>
+      </tr>
+      
+      ${getEmailFooter()}
+    `;
+
+    // Client confirmation email
+    const clientEmailContent = `
+      ${getEmailHeader(isAccepted ? 'THANK YOU!' : 'RESPONSE RECEIVED', isAccepted)}
+      
+      <!-- Content -->
+      <tr>
+        <td class="content" style="padding: 32px 24px; text-align: center;">
+          <div style="font-size: 48px; margin-bottom: 16px;">${isAccepted ? '✅' : '📋'}</div>
+          <h2 style="font-size: 22px; color: ${isAccepted ? '#2d5016' : '#333'}; margin: 0 0 16px 0;">
+            ${isAccepted ? 'Your Quote Has Been Accepted!' : 'Quote Response Received'}
+          </h2>
+          
+          <p style="font-size: 15px; color: #666666; margin: 0 0 24px 0; line-height: 1.6;">
+            ${isAccepted 
+              ? `Thank you for accepting the quote for "${projectTitle}"! We will be in touch shortly to discuss next steps.`
+              : `We've received your response regarding "${projectTitle}". If you have any questions or would like to discuss alternatives, please don't hesitate to reach out.`}
+          </p>
+          
+          <div style="background: #f8f7f5; padding: 20px; border-radius: 8px; margin-bottom: 24px; display: inline-block;">
+            <p style="margin: 0; font-size: 14px; color: #666;">Quote Total</p>
+            <p style="margin: 8px 0 0 0; font-size: 28px; font-weight: 700; color: ${isAccepted ? '#2d5016' : '#333'};">$${total.toFixed(2)}</p>
           </div>
           
           <p style="color: #666; font-size: 14px; margin: 0;">
-            ${isAccepted 
-              ? 'The client has accepted your quote. You can now proceed with the project!' 
-              : 'The client has declined your quote. You may want to follow up with them.'}
+            We look forward to working with you!
           </p>
-        </div>
-      </body>
-      </html>
-    `;
-
-    const clientConfirmationHtml = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-      </head>
-      <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 20px; color: #333;">
-        <div style="max-width: 500px; margin: 0 auto; background: ${isAccepted ? '#f0fdf4' : '#fef2f2'}; border: 2px solid ${isAccepted ? '#22c55e' : '#ef4444'}; border-radius: 10px; padding: 30px; text-align: center;">
-          <div style="font-size: 48px; margin-bottom: 20px;">
-            ${isAccepted ? '✅' : '📋'}
-          </div>
-          <h1 style="color: ${isAccepted ? '#22c55e' : '#ef4444'}; margin: 0 0 20px 0; font-size: 24px;">
-            ${isAccepted ? 'Thank You!' : 'Quote Declined'}
-          </h1>
-          
-          <p style="color: #666; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">
-            ${isAccepted 
-              ? `Thank you for accepting the quote for "${projectTitle}"! We will be in touch shortly to discuss next steps.`
-              : `We're sorry to hear you've decided not to proceed with "${projectTitle}". If you have any questions or would like to discuss alternatives, please don't hesitate to reach out.`}
-          </p>
-          
-          <div style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-            <p style="margin: 0;"><strong>Quote Total:</strong> $${total.toFixed(2)}</p>
-          </div>
-          
-          <p style="color: #999; font-size: 12px; margin: 0;">
-            © ${new Date().getFullYear()} CEB Building
-          </p>
-        </div>
-      </body>
-      </html>
+        </td>
+      </tr>
+      
+      ${getEmailFooter()}
     `;
 
     try {
       await sendEmailViaZoho(
         notificationEmail,
         `${isAccepted ? '✓ Quote Accepted' : '✗ Quote Declined'}: ${projectTitle} - ${clientName}`,
-        notificationHtml
+        getEmailWrapper(ownerEmailContent)
       );
       console.log("Owner notification sent");
 
@@ -192,7 +313,7 @@ const handler = async (req: Request): Promise<Response> => {
         isAccepted 
           ? `Thank you for accepting your quote - ${projectTitle}` 
           : `Quote Response Received - ${projectTitle}`,
-        clientConfirmationHtml
+        getEmailWrapper(clientEmailContent)
       );
       console.log("Client confirmation sent");
 
@@ -200,6 +321,7 @@ const handler = async (req: Request): Promise<Response> => {
       console.error("Failed to send email:", emailError);
     }
 
+    // Return HTML confirmation page
     const confirmationHtml = `
       <!DOCTYPE html>
       <html lang="en">
@@ -207,7 +329,7 @@ const handler = async (req: Request): Promise<Response> => {
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>${isAccepted ? 'Quote Accepted' : 'Quote Declined'} - CEB Building</title>
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
         <style>
           * { margin: 0; padding: 0; box-sizing: border-box; }
           body {
@@ -217,88 +339,130 @@ const handler = async (req: Request): Promise<Response> => {
             align-items: center;
             justify-content: center;
             padding: 20px;
-            background: linear-gradient(135deg, ${isAccepted ? '#f0fdf4 0%, #dcfce7 100%' : '#fef2f2 0%, #fee2e2 100%'});
+            background: #f5f5f0;
           }
           .card {
             background: white;
-            border-radius: 20px;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
             max-width: 450px;
             width: 100%;
-            padding: 48px 40px;
-            text-align: center;
-            animation: slideUp 0.5s ease-out;
+            overflow: hidden;
           }
-          @keyframes slideUp {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
+          .header {
+            background: #c8c4bd;
+            padding: 24px;
+            text-align: center;
+            border-bottom: 3px solid #a09d95;
+          }
+          .logo {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            margin: 0 auto 12px;
+            background: white;
+          }
+          .brand {
+            font-family: 'Playfair Display', Georgia, serif;
+            font-size: 24px;
+            color: #333;
+            margin-bottom: 4px;
+          }
+          .tagline {
+            font-size: 13px;
+            color: #555;
+            font-style: italic;
+          }
+          .status-bar {
+            background: ${isAccepted ? '#2d5016' : '#8b4513'};
+            color: white;
+            padding: 12px 24px;
+            font-size: 14px;
+            font-weight: 600;
+            letter-spacing: 1px;
+          }
+          .content {
+            padding: 40px 32px;
+            text-align: center;
           }
           .icon {
-            width: 80px;
-            height: 80px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto 24px;
-            font-size: 40px;
-            background: ${isAccepted ? '#dcfce7' : '#fee2e2'};
+            font-size: 56px;
+            margin-bottom: 20px;
           }
           h1 {
-            color: ${isAccepted ? '#16a34a' : '#dc2626'};
-            font-size: 28px;
-            font-weight: 700;
-            margin-bottom: 12px;
+            font-family: 'Playfair Display', Georgia, serif;
+            color: ${isAccepted ? '#2d5016' : '#8b4513'};
+            font-size: 26px;
+            font-weight: 600;
+            margin-bottom: 16px;
           }
-          .subtitle {
-            color: #6b7280;
-            font-size: 16px;
-            line-height: 1.6;
-            margin-bottom: 32px;
+          .message {
+            color: #666;
+            font-size: 15px;
+            line-height: 1.7;
+            margin-bottom: 28px;
           }
           .project-info {
-            background: #f9fafb;
-            border-radius: 12px;
+            background: #f8f7f5;
+            border-radius: 8px;
             padding: 20px;
-            margin-bottom: 32px;
+            margin-bottom: 28px;
           }
           .project-title {
             font-weight: 600;
-            color: #374151;
-            font-size: 18px;
+            color: #333;
+            font-size: 16px;
             margin-bottom: 8px;
           }
           .project-total {
-            font-size: 24px;
+            font-size: 28px;
             font-weight: 700;
-            color: ${isAccepted ? '#16a34a' : '#374151'};
+            color: ${isAccepted ? '#2d5016' : '#333'};
           }
           .footer {
-            color: #9ca3af;
-            font-size: 13px;
+            background: #4a4a4a;
+            padding: 20px;
+            text-align: center;
           }
-          .footer strong {
-            color: #374151;
+          .footer p {
+            color: #b0b0b0;
+            font-size: 12px;
+            margin-bottom: 4px;
+          }
+          .footer .thanks {
+            color: white;
+            font-size: 14px;
+            margin-bottom: 8px;
           }
         </style>
       </head>
       <body>
         <div class="card">
-          <div class="icon">${isAccepted ? '✓' : '✗'}</div>
-          <h1>${isAccepted ? 'Quote Accepted!' : 'Quote Declined'}</h1>
-          <p class="subtitle">
-            ${isAccepted 
-              ? 'Thank you for accepting our quote! We\'ve received your response and will be in touch shortly to discuss next steps.'
-              : 'We\'ve received your response. If you have any questions or would like to discuss alternatives, please don\'t hesitate to reach out.'}
-          </p>
-          <div class="project-info">
-            <div class="project-title">${projectTitle}</div>
-            <div class="project-total">$${total.toFixed(2)}</div>
+          <div class="header">
+            <img src="${LOGO_URL}" alt="CEB Building" class="logo">
+            <div class="brand">CEB Building</div>
+            <div class="tagline">Hand-Crafted Wood Works</div>
           </div>
-          <p class="footer">
-            Thank you, <strong>${clientName}</strong>!<br>
-            © ${new Date().getFullYear()} CEB Building
-          </p>
+          <div class="status-bar">${isAccepted ? '✓ QUOTE ACCEPTED' : '✗ QUOTE DECLINED'}</div>
+          <div class="content">
+            <div class="icon">${isAccepted ? '🎉' : '📋'}</div>
+            <h1>${isAccepted ? 'Thank You!' : 'Response Received'}</h1>
+            <p class="message">
+              ${isAccepted 
+                ? 'We\'ve received your acceptance and will be in touch shortly to discuss next steps for your project.'
+                : 'We\'ve received your response. If you have any questions or would like to discuss alternatives, please don\'t hesitate to reach out.'}
+            </p>
+            <div class="project-info">
+              <div class="project-title">${projectTitle}</div>
+              <div class="project-total">$${total.toFixed(2)}</div>
+            </div>
+            <p style="color: #999; font-size: 13px;">Thank you, ${clientName}!</p>
+          </div>
+          <div class="footer">
+            <p class="thanks">Thank you for choosing CEB Building!</p>
+            <p>Hand-Crafted Wood Works · Oklahoma City</p>
+            <p style="margin-top: 8px;">© ${new Date().getFullYear()} CEB Building</p>
+          </div>
         </div>
       </body>
       </html>
@@ -318,16 +482,16 @@ const handler = async (req: Request): Promise<Response> => {
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>Error - CEB Building</title>
         <style>
-          body { font-family: -apple-system, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; background: #fef2f2; }
-          .card { background: white; padding: 40px; border-radius: 16px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
-          h1 { color: #dc2626; margin-bottom: 12px; }
-          p { color: #6b7280; }
+          body { font-family: -apple-system, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; background: #f5f5f0; }
+          .card { background: white; padding: 40px; border-radius: 12px; text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.1); max-width: 400px; }
+          h1 { color: #8b4513; margin-bottom: 12px; font-size: 24px; }
+          p { color: #666; line-height: 1.6; }
         </style>
       </head>
       <body>
         <div class="card">
           <h1>Something went wrong</h1>
-          <p>Please contact us directly.</p>
+          <p>We couldn't process your response. Please contact us directly at chad@cebbuilding.com or call 405-500-8224.</p>
         </div>
       </body>
       </html>
