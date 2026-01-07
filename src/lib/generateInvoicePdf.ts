@@ -198,8 +198,9 @@ export function generateInvoiceHtml(invoice: Invoice, client: Client | undefined
       
       <div class="invoice-container">
         <div class="header">
-          <div>
-            <div class="company-name">CEB Services</div>
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <img src="https://pvgxkznweoedkvebjjpc.supabase.co/storage/v1/object/public/assets/ceb-logo.png" alt="CEB Building" style="height: 50px; width: 50px; border-radius: 50%; object-fit: cover;" onerror="this.style.display='none'">
+            <div class="company-name">CEB Building</div>
           </div>
           <div style="text-align: right;">
             <div class="invoice-title">INVOICE</div>
