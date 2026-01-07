@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Search } from 'lucide-react';
+import { Plus, Search, Bug, FileText } from 'lucide-react';
 import { Invoice, Client } from '@/types';
 import { mockInvoices, mockClients } from '@/lib/mockData';
 import { Button } from '@/components/ui/button';
@@ -10,6 +10,22 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+
+interface SmtpDiagnostics {
+  smtpResponses: string[];
+  messageSize: number;
+  timestamp: string;
+  recipient: string;
+  subject: string;
+}
 
 export default function Invoices() {
   const [invoices, setInvoices] = useLocalStorage<Invoice[]>('ceb-invoices', mockInvoices);
@@ -18,6 +34,10 @@ export default function Invoices() {
   const [sendingEmail, setSendingEmail] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [preSelectedClientId, setPreSelectedClientId] = useState<string | null>(null);
+  const [diagnosticMode, setDiagnosticMode] = useState(false);
+  const [plainTextMode, setPlainTextMode] = useState(false);
+  const [diagnosticsResult, setDiagnosticsResult] = useState<SmtpDiagnostics | null>(null);
+  const [showDiagnostics, setShowDiagnostics] = useState(false);
   const { toast } = useToast();
   const location = useLocation();
   const navigate = useNavigate();
@@ -68,7 +88,7 @@ export default function Invoices() {
     setSendingEmail(invoice.id);
     
     try {
-      const { error } = await supabase.functions.invoke('send-invoice-email', {
+      const { data, error } = await supabase.functions.invoke('send-invoice-email', {
         body: {
           clientName: client.name,
           clientEmail: client.email,
@@ -77,10 +97,18 @@ export default function Invoices() {
           dueDate: invoice.dueDate.toLocaleDateString(),
           notes: invoice.notes,
           businessName: 'CEB Building',
+          diagnosticMode,
+          plainTextOnly: plainTextMode,
         },
       });
 
       if (error) throw error;
+
+      // If diagnostic mode, show the diagnostics dialog
+      if (diagnosticMode && data?.diagnostics) {
+        setDiagnosticsResult(data.diagnostics);
+        setShowDiagnostics(true);
+      }
 
       // Update invoice status to sent
       setInvoices((prev) =>
@@ -91,7 +119,7 @@ export default function Invoices() {
 
       toast({
         title: 'Invoice sent!',
-        description: `Invoice emailed to ${client.email}`,
+        description: `Invoice emailed to ${client.email}${plainTextMode ? ' (plain text)' : ''}${diagnosticMode ? ' - check diagnostics' : ''}`,
       });
     } catch (error: any) {
       console.error('Failed to send invoice:', error);
@@ -166,6 +194,38 @@ export default function Invoices() {
         />
       </div>
 
+      {/* Diagnostic Controls */}
+      <div className="flex flex-wrap items-center gap-6 p-4 bg-muted/50 rounded-lg border">
+        <div className="flex items-center space-x-2">
+          <Switch
+            id="diagnostic-mode"
+            checked={diagnosticMode}
+            onCheckedChange={setDiagnosticMode}
+          />
+          <Label htmlFor="diagnostic-mode" className="flex items-center gap-2 cursor-pointer">
+            <Bug className="h-4 w-4" />
+            Diagnostic Mode
+          </Label>
+        </div>
+        <div className="flex items-center space-x-2">
+          <Switch
+            id="plaintext-mode"
+            checked={plainTextMode}
+            onCheckedChange={setPlainTextMode}
+          />
+          <Label htmlFor="plaintext-mode" className="flex items-center gap-2 cursor-pointer">
+            <FileText className="h-4 w-4" />
+            Plain Text (no HTML/logo)
+          </Label>
+        </div>
+        {(diagnosticMode || plainTextMode) && (
+          <p className="text-xs text-muted-foreground">
+            {diagnosticMode && "Full SMTP trace will be shown after sending. "}
+            {plainTextMode && "Sends simple text email to test deliverability."}
+          </p>
+        )}
+      </div>
+
       {filteredInvoices.length === 0 ? (
         <div className="text-center py-12">
           <p className="text-muted-foreground">No invoices found.</p>
@@ -199,6 +259,55 @@ export default function Invoices() {
         onSave={handleCreateInvoice}
         defaultClientId={preSelectedClientId}
       />
+
+      {/* Diagnostics Result Dialog */}
+      <Dialog open={showDiagnostics} onOpenChange={setShowDiagnostics}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Bug className="h-5 w-5" />
+              SMTP Diagnostics
+            </DialogTitle>
+          </DialogHeader>
+          {diagnosticsResult && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="font-medium text-muted-foreground">Recipient</p>
+                  <p>{diagnosticsResult.recipient}</p>
+                </div>
+                <div>
+                  <p className="font-medium text-muted-foreground">Subject</p>
+                  <p>{diagnosticsResult.subject}</p>
+                </div>
+                <div>
+                  <p className="font-medium text-muted-foreground">Message Size</p>
+                  <p>{(diagnosticsResult.messageSize / 1024).toFixed(2)} KB</p>
+                </div>
+                <div>
+                  <p className="font-medium text-muted-foreground">Timestamp</p>
+                  <p>{new Date(diagnosticsResult.timestamp).toLocaleString()}</p>
+                </div>
+              </div>
+              <div>
+                <p className="font-medium text-muted-foreground mb-2">SMTP Conversation</p>
+                <pre className="bg-muted p-3 rounded-lg text-xs overflow-auto max-h-64 font-mono">
+                  {diagnosticsResult.smtpResponses.join('\n')}
+                </pre>
+              </div>
+              <div className="text-xs text-muted-foreground">
+                <p><strong>Key responses to look for:</strong></p>
+                <ul className="list-disc list-inside mt-1 space-y-1">
+                  <li><code>235</code> = Auth success</li>
+                  <li><code>250</code> = Command accepted / Message queued</li>
+                  <li><code>354</code> = Ready for message data</li>
+                  <li>Any <code>4xx</code> or <code>5xx</code> = Error/rejection</li>
+                </ul>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
