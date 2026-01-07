@@ -148,18 +148,62 @@ export default function Invoices() {
     });
   };
 
-  const handleMarkPaid = (invoice: Invoice) => {
+  const [sendingReceipt, setSendingReceipt] = useState<string | null>(null);
+
+  const handleMarkPaid = async (invoice: Invoice) => {
+    const client = clients.find((c) => c.id === invoice.clientId);
+    const paidAt = new Date();
+    
+    // Update local state first
     setInvoices((prev) =>
       prev.map((inv) =>
         inv.id === invoice.id
-          ? { ...inv, status: 'paid' as const, paidAt: new Date() }
+          ? { ...inv, status: 'paid' as const, paidAt }
           : inv
       )
     );
+
     toast({
       title: 'Payment recorded',
       description: `${invoice.invoiceNumber} has been marked as paid.`,
     });
+
+    // Send receipt email in background
+    if (client?.email) {
+      setSendingReceipt(invoice.id);
+      try {
+        const { error } = await supabase.functions.invoke('send-receipt-email', {
+          body: {
+            client: {
+              name: client.name,
+              email: client.email,
+              phone: client.phone,
+              address: client.address,
+            },
+            invoiceNumber: invoice.invoiceNumber,
+            items: invoice.items,
+            paidAt: paidAt.toISOString(),
+            notes: invoice.notes,
+          },
+        });
+
+        if (error) throw error;
+
+        toast({
+          title: 'Receipt sent!',
+          description: `Payment receipt emailed to ${client.email}`,
+        });
+      } catch (error: any) {
+        console.error('Failed to send receipt:', error);
+        toast({
+          title: 'Receipt not sent',
+          description: 'Payment recorded, but receipt email failed. You can resend later.',
+          variant: 'destructive',
+        });
+      } finally {
+        setSendingReceipt(null);
+      }
+    }
   };
 
   const handleDelete = (id: string) => {
