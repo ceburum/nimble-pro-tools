@@ -320,14 +320,11 @@ async function sendReceiptEmail(
       }
     }
     
-    const response = fullResponse.trim();
-    console.log(`SMTP RESPONSE: ${response}`);
-    return response;
+    return fullResponse.trim();
   };
 
-  const write = async (data: string, logAs?: string): Promise<void> => {
+  const write = async (data: string): Promise<void> => {
     await conn.write(encoder.encode(data + "\r\n"));
-    console.log(`SMTP SENT: ${logAs || data}`);
   };
 
   try {
@@ -338,10 +335,10 @@ async function sendReceiptEmail(
     await write(`AUTH LOGIN`);
     await read();
     
-    await write(btoa(smtpUser), "[BASE64_USER]");
+    await write(btoa(smtpUser));
     await read();
     
-    await write(btoa(smtpPassword), "[BASE64_PASS]");
+    await write(btoa(smtpPassword));
     const authResponse = await read();
     
     if (authResponse.startsWith("4") || authResponse.startsWith("5")) {
@@ -443,14 +440,11 @@ const handler = async (req: Request): Promise<Response> => {
   try {
     const { client, invoiceNumber, items, paidAt, notes }: SendReceiptRequest = await req.json();
 
-    console.log(`Sending receipt for ${invoiceNumber} to ${client.email}`);
-
     const total = items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
     const formattedTotal = total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
     // Fetch logo for PDF
     const logoDataUrl = await fetchLogoBase64();
-    console.log(`Logo fetched: ${logoDataUrl ? 'yes' : 'no'}`);
 
     // Generate receipt HTML (for PDF attachment)
     const receiptHtml = generateReceiptHtml(client, invoiceNumber, items, paidAt, notes, logoDataUrl);

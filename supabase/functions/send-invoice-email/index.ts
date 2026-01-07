@@ -52,7 +52,6 @@ interface SendInvoiceRequest {
   notes?: string;
   businessName?: string;
   businessEmail?: string;
-  diagnosticMode?: boolean;
   plainTextOnly?: boolean;
 }
 
@@ -162,21 +161,12 @@ function getEmailWrapper(content: string): string {
   `;
 }
 
-interface SmtpDiagnostics {
-  smtpResponses: string[];
-  messageSize: number;
-  timestamp: string;
-  recipient: string;
-  subject: string;
-}
-
-// Simplified email sender - no logo attachment
+// Simplified email sender - no logo attachment, minimal logging
 async function sendEmailViaZoho(
   to: string,
   subject: string,
   html: string,
-  diagnosticMode: boolean = false,
-): Promise<SmtpDiagnostics> {
+): Promise<void> {
   const smtpUser = Deno.env.get("ZOHO_SMTP_USER");
   const smtpPassword = Deno.env.get("ZOHO_SMTP_PASSWORD");
 
@@ -186,160 +176,6 @@ async function sendEmailViaZoho(
 
   const encoder = new TextEncoder();
   const decoder = new TextDecoder();
-  const smtpResponses: string[] = [];
-
-  const conn = await Deno.connectTls({
-    hostname: "smtp.zoho.com",
-    port: 465,
-  });
-
-  // Read SMTP response, handling multi-line responses (lines ending with 250- continue, 250 space ends)
-  const read = async (): Promise<string> => {
-    let fullResponse = "";
-    const buf = new Uint8Array(4096);
-    
-    while (true) {
-      const n = await conn.read(buf);
-      if (!n) break;
-      fullResponse += decoder.decode(buf.subarray(0, n));
-      
-      // Check if we've received the final line (code followed by space, not hyphen)
-      const lines = fullResponse.trim().split("\r\n");
-      const lastLine = lines[lines.length - 1];
-      // Final line pattern: 3 digits followed by space (e.g., "250 OK" not "250-...")
-      if (/^\d{3} /.test(lastLine) || /^\d{3}$/.test(lastLine)) {
-        break;
-      }
-    }
-    
-    const response = fullResponse.trim();
-    if (diagnosticMode) {
-      smtpResponses.push(`S: ${response}`);
-    }
-    console.log(`SMTP RESPONSE: ${response}`);
-    return response;
-  };
-
-  const write = async (data: string, logAs?: string): Promise<void> => {
-    await conn.write(encoder.encode(data + "\r\n"));
-    if (diagnosticMode) {
-      smtpResponses.push(`C: ${logAs || data}`);
-    }
-    console.log(`SMTP SENT: ${logAs || data}`);
-  };
-
-  let messageSize = 0;
-
-  try {
-    await read(); // greeting
-    await write(`EHLO smtp.zoho.com`);
-    await read(); // EHLO response (may be multi-line, but we just need to consume it)
-    
-    await write(`AUTH LOGIN`);
-    await read(); // 334 VXNlcm5hbWU6 (Username:)
-    
-    await write(btoa(smtpUser), "[BASE64_USER]");
-    await read(); // 334 UGFzc3dvcmQ6 (Password:)
-    
-    await write(btoa(smtpPassword), "[BASE64_PASS]");
-    const authResponse = await read(); // Should be 235 on success
-    
-    // Only fail on explicit error codes (4xx, 5xx)
-    if (authResponse.startsWith("4") || authResponse.startsWith("5")) {
-      throw new Error(`SMTP Auth failed: ${authResponse}`);
-    }
-
-    await write(`MAIL FROM:<${smtpUser}>`);
-    const mailFromResponse = await read();
-    if (!mailFromResponse.startsWith("250")) {
-      throw new Error(`MAIL FROM rejected: ${mailFromResponse}`);
-    }
-
-    await write(`RCPT TO:<${to}>`);
-    const rcptResponse = await read();
-    if (!rcptResponse.startsWith("250")) {
-      throw new Error(`RCPT TO rejected: ${rcptResponse}`);
-    }
-
-    await write(`DATA`);
-    const dataResponse = await read();
-    if (!dataResponse.startsWith("354")) {
-      throw new Error(`DATA command rejected: ${dataResponse}`);
-    }
-
-    const altBoundary = `----=_Alt_${Date.now()}`;
-
-    const headers = [
-      `From: CEB Building <${smtpUser}>`,
-      `To: ${to}`,
-      `Subject: ${subject}`,
-      `MIME-Version: 1.0`,
-      `Date: ${new Date().toUTCString()}`,
-      `Message-ID: <${Date.now()}.${Math.random().toString(36).substring(2)}@cebbuilding.com>`,
-    ];
-
-    // Simple HTML email without logo attachment
-    const emailContent = [
-      ...headers,
-      `Content-Type: multipart/alternative; boundary="${altBoundary}"`,
-      ``,
-      `--${altBoundary}`,
-      `Content-Type: text/plain; charset=utf-8`,
-      ``,
-      `Please view this email in an HTML-compatible email client.`,
-      ``,
-      `--${altBoundary}`,
-      `Content-Type: text/html; charset=utf-8`,
-      ``,
-      html,
-      ``,
-      `--${altBoundary}--`,
-      `.`,
-    ].join("\r\n");
-
-    messageSize = encoder.encode(emailContent).length;
-    
-    await conn.write(encoder.encode(emailContent + "\r\n"));
-    const sendResponse = await read();
-    
-    // Check if message was accepted (should start with 250)
-    if (!sendResponse.startsWith("250")) {
-      throw new Error(`Message rejected after DATA: ${sendResponse}`);
-    }
-
-    await write(`QUIT`);
-    try { await read(); } catch { /* ignore quit response */ }
-
-    console.log(`Email sent successfully to ${to}`);
-    
-    return {
-      smtpResponses,
-      messageSize,
-      timestamp: new Date().toISOString(),
-      recipient: to,
-      subject,
-    };
-  } finally {
-    conn.close();
-  }
-}
-
-// Plain text email for deliverability testing
-async function sendPlainTextEmail(
-  to: string,
-  subject: string,
-  body: string,
-): Promise<SmtpDiagnostics> {
-  const smtpUser = Deno.env.get("ZOHO_SMTP_USER");
-  const smtpPassword = Deno.env.get("ZOHO_SMTP_PASSWORD");
-
-  if (!smtpUser || !smtpPassword) {
-    throw new Error("Zoho SMTP credentials not configured");
-  }
-
-  const encoder = new TextEncoder();
-  const decoder = new TextDecoder();
-  const smtpResponses: string[] = [];
 
   const conn = await Deno.connectTls({
     hostname: "smtp.zoho.com",
@@ -363,53 +199,170 @@ async function sendPlainTextEmail(
       }
     }
     
-    const response = fullResponse.trim();
-    smtpResponses.push(`S: ${response}`);
-    console.log(`SMTP RESPONSE: ${response}`);
-    return response;
+    return fullResponse.trim();
   };
 
-  const write = async (data: string, logAs?: string): Promise<void> => {
+  const write = async (data: string): Promise<void> => {
     await conn.write(encoder.encode(data + "\r\n"));
-    smtpResponses.push(`C: ${logAs || data}`);
-    console.log(`SMTP SENT: ${logAs || data}`);
   };
 
   try {
     await read(); // greeting
     await write(`EHLO smtp.zoho.com`);
-    await read(); // EHLO response
+    await read();
     
     await write(`AUTH LOGIN`);
-    await read(); // 334 Username:
+    await read();
     
-    await write(btoa(smtpUser), "[BASE64_USER]");
-    await read(); // 334 Password:
+    await write(btoa(smtpUser));
+    await read();
     
-    await write(btoa(smtpPassword), "[BASE64_PASS]");
+    await write(btoa(smtpPassword));
     const authResponse = await read();
     
-    // Only fail on explicit error codes
     if (authResponse.startsWith("4") || authResponse.startsWith("5")) {
-      throw new Error(`SMTP Auth failed: ${authResponse}`);
+      throw new Error(`SMTP Auth failed`);
     }
 
     await write(`MAIL FROM:<${smtpUser}>`);
     const mailFromResponse = await read();
     if (!mailFromResponse.startsWith("250")) {
-      throw new Error(`MAIL FROM rejected: ${mailFromResponse}`);
+      throw new Error(`MAIL FROM rejected`);
     }
 
     await write(`RCPT TO:<${to}>`);
     const rcptResponse = await read();
     if (!rcptResponse.startsWith("250")) {
-      throw new Error(`RCPT TO rejected: ${rcptResponse}`);
+      throw new Error(`RCPT TO rejected`);
     }
 
     await write(`DATA`);
     const dataResponse = await read();
     if (!dataResponse.startsWith("354")) {
-      throw new Error(`DATA command rejected: ${dataResponse}`);
+      throw new Error(`DATA command rejected`);
+    }
+
+    const altBoundary = `----=_Alt_${Date.now()}`;
+
+    const headers = [
+      `From: CEB Building <${smtpUser}>`,
+      `To: ${to}`,
+      `Subject: ${subject}`,
+      `MIME-Version: 1.0`,
+      `Date: ${new Date().toUTCString()}`,
+      `Message-ID: <${Date.now()}.${Math.random().toString(36).substring(2)}@cebbuilding.com>`,
+    ];
+
+    const emailContent = [
+      ...headers,
+      `Content-Type: multipart/alternative; boundary="${altBoundary}"`,
+      ``,
+      `--${altBoundary}`,
+      `Content-Type: text/plain; charset=utf-8`,
+      ``,
+      `Please view this email in an HTML-compatible email client.`,
+      ``,
+      `--${altBoundary}`,
+      `Content-Type: text/html; charset=utf-8`,
+      ``,
+      html,
+      ``,
+      `--${altBoundary}--`,
+      `.`,
+    ].join("\r\n");
+    
+    await conn.write(encoder.encode(emailContent + "\r\n"));
+    const sendResponse = await read();
+    
+    if (!sendResponse.startsWith("250")) {
+      throw new Error(`Message rejected after DATA`);
+    }
+
+    await write(`QUIT`);
+    try { await read(); } catch { /* ignore quit response */ }
+  } finally {
+    conn.close();
+  }
+}
+
+// Plain text email for deliverability testing
+async function sendPlainTextEmail(
+  to: string,
+  subject: string,
+  body: string,
+): Promise<void> {
+  const smtpUser = Deno.env.get("ZOHO_SMTP_USER");
+  const smtpPassword = Deno.env.get("ZOHO_SMTP_PASSWORD");
+
+  if (!smtpUser || !smtpPassword) {
+    throw new Error("Zoho SMTP credentials not configured");
+  }
+
+  const encoder = new TextEncoder();
+  const decoder = new TextDecoder();
+
+  const conn = await Deno.connectTls({
+    hostname: "smtp.zoho.com",
+    port: 465,
+  });
+
+  const read = async (): Promise<string> => {
+    let fullResponse = "";
+    const buf = new Uint8Array(4096);
+    
+    while (true) {
+      const n = await conn.read(buf);
+      if (!n) break;
+      fullResponse += decoder.decode(buf.subarray(0, n));
+      
+      const lines = fullResponse.trim().split("\r\n");
+      const lastLine = lines[lines.length - 1];
+      if (/^\d{3} /.test(lastLine) || /^\d{3}$/.test(lastLine)) {
+        break;
+      }
+    }
+    
+    return fullResponse.trim();
+  };
+
+  const write = async (data: string): Promise<void> => {
+    await conn.write(encoder.encode(data + "\r\n"));
+  };
+
+  try {
+    await read(); // greeting
+    await write(`EHLO smtp.zoho.com`);
+    await read();
+    
+    await write(`AUTH LOGIN`);
+    await read();
+    
+    await write(btoa(smtpUser));
+    await read();
+    
+    await write(btoa(smtpPassword));
+    const authResponse = await read();
+    
+    if (authResponse.startsWith("4") || authResponse.startsWith("5")) {
+      throw new Error(`SMTP Auth failed`);
+    }
+
+    await write(`MAIL FROM:<${smtpUser}>`);
+    const mailFromResponse = await read();
+    if (!mailFromResponse.startsWith("250")) {
+      throw new Error(`MAIL FROM rejected`);
+    }
+
+    await write(`RCPT TO:<${to}>`);
+    const rcptResponse = await read();
+    if (!rcptResponse.startsWith("250")) {
+      throw new Error(`RCPT TO rejected`);
+    }
+
+    await write(`DATA`);
+    const dataResponse = await read();
+    if (!dataResponse.startsWith("354")) {
+      throw new Error(`DATA command rejected`);
     }
 
     const emailContent = [
@@ -423,28 +376,16 @@ async function sendPlainTextEmail(
       body,
       `.`,
     ].join("\r\n");
-
-    const messageSize = encoder.encode(emailContent).length;
     
     await conn.write(encoder.encode(emailContent + "\r\n"));
     const sendResponse = await read();
     
     if (!sendResponse.startsWith("250")) {
-      throw new Error(`Message rejected after DATA: ${sendResponse}`);
+      throw new Error(`Message rejected after DATA`);
     }
 
     await write(`QUIT`);
     try { await read(); } catch { /* ignore */ }
-
-    console.log(`Plain text email sent successfully to ${to}`);
-    
-    return {
-      smtpResponses,
-      messageSize,
-      timestamp: new Date().toISOString(),
-      recipient: to,
-      subject,
-    };
   } finally {
     conn.close();
   }
@@ -476,11 +417,8 @@ const handler = async (req: Request): Promise<Response> => {
       dueDate,
       notes,
       businessName = "CEB Building",
-      diagnosticMode = false,
       plainTextOnly = false,
     }: SendInvoiceRequest = await req.json();
-
-    console.log(`Sending invoice ${invoiceNumber} to ${clientEmail} (diagnostic: ${diagnosticMode}, plainText: ${plainTextOnly})`);
 
     const total = items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
     const formattedTotal = total.toLocaleString('en-US', { minimumFractionDigits: 2 });
@@ -517,18 +455,15 @@ chad@cebbuilding.com
 cebbuilding.com
       `.trim();
 
-      const diagnostics = await sendPlainTextEmail(
+      await sendPlainTextEmail(
         clientEmail,
         `Invoice ${invoiceNumber} from ${businessName}`,
         plainBody,
       );
 
-      console.log("Plain text invoice email sent successfully");
-
       return new Response(JSON.stringify({ 
         success: true, 
         mode: "plainText",
-        diagnostics: diagnosticMode ? diagnostics : undefined,
       }), {
         status: 200,
         headers: {
@@ -617,19 +552,15 @@ cebbuilding.com
 
     const emailHtml = getEmailWrapper(emailContent);
 
-    const diagnostics = await sendEmailViaZoho(
+    await sendEmailViaZoho(
       clientEmail,
       `Invoice ${invoiceNumber} from ${businessName}`,
       emailHtml,
-      diagnosticMode,
     );
-
-    console.log("Invoice email sent successfully via Zoho SMTP");
 
     return new Response(JSON.stringify({ 
       success: true,
       mode: "html",
-      diagnostics: diagnosticMode ? diagnostics : undefined,
     }), {
       status: 200,
       headers: {
@@ -638,7 +569,7 @@ cebbuilding.com
       },
     });
   } catch (error: any) {
-    console.error("Error sending invoice email:", error);
+    console.error("Error sending invoice email:", error.message);
     return new Response(
       JSON.stringify({ success: false, error: error.message }),
       {
