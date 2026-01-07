@@ -11,6 +11,11 @@ interface QuoteData {
 
 // Logo hosted on your website - used as a source to embed inline (CID)
 const LOGO_URL = "https://static.wixstatic.com/media/fc62d0_d3f25abd45e341648b59e65fc94cc7fd~mv2.png";
+const STORAGE_LOGO_PUBLIC_URL = (() => {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  return supabaseUrl ? `${supabaseUrl}/storage/v1/object/public/assets/ceb-logo.png` : null;
+})();
+const DEFAULT_LOGO_URL = STORAGE_LOGO_PUBLIC_URL ?? LOGO_URL;
 
 function wrapBase64(b64: string): string {
   return b64.match(/.{1,76}/g)?.join("\r\n") ?? b64;
@@ -25,26 +30,38 @@ function uint8ToBase64(bytes: Uint8Array): string {
   return btoa(binary);
 }
 
-async function fetchLogoBase64(): Promise<string | null> {
-  try {
-    const res = await fetch(LOGO_URL, {
-      headers: { "User-Agent": "Mozilla/5.0" },
-    });
+function getLogoCandidateUrls(req?: Request): string[] {
+  const urls: string[] = [];
+  if (STORAGE_LOGO_PUBLIC_URL) urls.push(STORAGE_LOGO_PUBLIC_URL);
 
-    if (!res.ok) {
-      console.error("Logo fetch failed:", res.status, res.statusText);
-      return null;
-    }
+  const origin = req?.headers.get("origin");
+  if (origin) urls.push(`${origin}/ceb-logo.png`);
 
-    const bytes = new Uint8Array(await res.arrayBuffer());
-    return uint8ToBase64(bytes);
-  } catch (err) {
-    console.error("Logo fetch threw:", err);
-    return null;
-  }
+  urls.push(LOGO_URL);
+  return urls.filter((u, idx) => urls.indexOf(u) === idx);
 }
 
-function getEmailHeader(title: string, isAccepted: boolean, logoSrc: string = LOGO_URL): string {
+async function fetchLogoBase64(req?: Request): Promise<string | null> {
+  for (const url of getLogoCandidateUrls(req)) {
+    try {
+      const res = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" } });
+      if (!res.ok) {
+        console.error("Logo fetch failed:", res.status, res.statusText, "url:", url);
+        continue;
+      }
+
+      const bytes = new Uint8Array(await res.arrayBuffer());
+      console.log("Logo fetched OK from:", url, "bytes:", bytes.byteLength);
+      return uint8ToBase64(bytes);
+    } catch (err) {
+      console.error("Logo fetch threw:", err, "url:", url);
+    }
+  }
+
+  return null;
+}
+
+function getEmailHeader(title: string, isAccepted: boolean, logoSrc: string = DEFAULT_LOGO_URL): string {
   const barColor = isAccepted ? '#2d5016' : '#8b4513';
   return `
     <!-- Header - matching cebbuilding.com style -->
@@ -288,8 +305,8 @@ const handler = async (req: Request): Promise<Response> => {
     const isAccepted = action === "accept";
 
     // Embed logo inline (CID) so it displays even when external images are blocked
-    const logoBase64 = await fetchLogoBase64();
-    const logoSrc = logoBase64 ? "cid:ceb-logo" : LOGO_URL;
+    const logoBase64 = await fetchLogoBase64(req);
+    const logoSrc = logoBase64 ? "cid:ceb-logo" : DEFAULT_LOGO_URL;
 
     console.log(`Quote ${isAccepted ? "ACCEPTED" : "DECLINED"} for project ${projectId} by ${clientName}`);
 
