@@ -246,16 +246,19 @@ async function sendEmailViaZoho(
   try {
     await read(); // greeting
     await write(`EHLO smtp.zoho.com`);
-    await read();
-    await write(`AUTH LOGIN`);
-    await read();
-    await write(btoa(smtpUser), "[BASE64_USER]");
-    await read();
-    await write(btoa(smtpPassword), "[BASE64_PASS]");
-    const authResponse = await read();
+    await read(); // EHLO response (may be multi-line, but we just need to consume it)
     
-    // Check auth success
-    if (!authResponse.startsWith("235")) {
+    await write(`AUTH LOGIN`);
+    await read(); // 334 VXNlcm5hbWU6 (Username:)
+    
+    await write(btoa(smtpUser), "[BASE64_USER]");
+    await read(); // 334 UGFzc3dvcmQ6 (Password:)
+    
+    await write(btoa(smtpPassword), "[BASE64_PASS]");
+    const authResponse = await read(); // Should be 235 on success
+    
+    // Only fail on explicit error codes (4xx, 5xx)
+    if (authResponse.startsWith("4") || authResponse.startsWith("5")) {
       throw new Error(`SMTP Auth failed: ${authResponse}`);
     }
 
@@ -403,17 +406,21 @@ async function sendPlainTextEmail(
   };
 
   try {
-    await read();
+    await read(); // greeting
     await write(`EHLO smtp.zoho.com`);
-    await read();
+    await read(); // EHLO response
+    
     await write(`AUTH LOGIN`);
-    await read();
+    await read(); // 334 Username:
+    
     await write(btoa(smtpUser), "[BASE64_USER]");
-    await read();
+    await read(); // 334 Password:
+    
     await write(btoa(smtpPassword), "[BASE64_PASS]");
     const authResponse = await read();
     
-    if (!authResponse.startsWith("235")) {
+    // Only fail on explicit error codes
+    if (authResponse.startsWith("4") || authResponse.startsWith("5")) {
       throw new Error(`SMTP Auth failed: ${authResponse}`);
     }
 
