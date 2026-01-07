@@ -19,6 +19,7 @@ interface InvoiceCardProps {
   onSendText: (invoice: Invoice) => void;
   onMarkPaid: (invoice: Invoice) => void;
   onDelete: (id: string) => void;
+  onClick?: (invoice: Invoice) => void;
 }
 
 const statusConfig = {
@@ -28,12 +29,15 @@ const statusConfig = {
   overdue: { label: 'Overdue', className: 'bg-destructive/10 text-destructive' },
 };
 
-export function InvoiceCard({ invoice, client, onSendEmail, onSendText, onMarkPaid, onDelete }: InvoiceCardProps) {
+export function InvoiceCard({ invoice, client, onSendEmail, onSendText, onMarkPaid, onDelete, onClick }: InvoiceCardProps) {
   const total = invoice.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
   const status = statusConfig[invoice.status];
 
   return (
-    <div className="bg-card rounded-xl border border-border p-6 shadow-sm hover:shadow-md transition-all duration-200 group">
+    <div 
+      className="bg-card rounded-xl border border-border p-6 shadow-sm hover:shadow-md transition-all duration-200 group cursor-pointer"
+      onClick={() => onClick?.(invoice)}
+    >
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-lg bg-accent/10">
@@ -51,11 +55,16 @@ export function InvoiceCard({ invoice, client, onSendEmail, onSendText, onMarkPa
           </Badge>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 transition-opacity">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="opacity-0 group-hover:opacity-100 transition-opacity"
+                onClick={(e) => e.stopPropagation()}
+              >
                 <MoreVertical className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
               <DropdownMenuItem onClick={() => downloadInvoice(invoice, client)}>
                 <Download className="h-4 w-4 mr-2" />
                 Download / Print

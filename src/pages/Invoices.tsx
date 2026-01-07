@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { InvoiceCard } from '@/components/invoices/InvoiceCard';
 import { InvoiceDialog } from '@/components/invoices/InvoiceDialog';
+import { InvoiceEditDialog } from '@/components/invoices/InvoiceEditDialog';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
@@ -34,6 +35,8 @@ export default function Invoices() {
   const [sendingEmail, setSendingEmail] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [preSelectedClientId, setPreSelectedClientId] = useState<string | null>(null);
+  const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [diagnosticMode, setDiagnosticMode] = useState(false);
   const [plainTextMode, setPlainTextMode] = useState(false);
   const [diagnosticsResult, setDiagnosticsResult] = useState<SmtpDiagnostics | null>(null);
@@ -207,6 +210,21 @@ export default function Invoices() {
     }
   };
 
+  const handleEditInvoice = (invoice: Invoice) => {
+    setEditingInvoice(invoice);
+    setIsEditDialogOpen(true);
+  };
+
+  const handleSaveEdit = (updatedInvoice: Invoice) => {
+    setInvoices((prev) =>
+      prev.map((inv) => (inv.id === updatedInvoice.id ? updatedInvoice : inv))
+    );
+    toast({
+      title: 'Invoice updated',
+      description: `${updatedInvoice.invoiceNumber} has been updated.`,
+    });
+  };
+
   const handleDelete = (id: string) => {
     const invoice = invoices.find((inv) => inv.id === id);
     setInvoices((prev) => prev.filter((inv) => inv.id !== id));
@@ -289,6 +307,7 @@ export default function Invoices() {
               onSendText={handleSendText}
               onMarkPaid={handleMarkPaid}
               onDelete={handleDelete}
+              onClick={handleEditInvoice}
             />
           ))}
         </div>
@@ -303,6 +322,14 @@ export default function Invoices() {
         clients={clients}
         onSave={handleCreateInvoice}
         defaultClientId={preSelectedClientId}
+      />
+
+      <InvoiceEditDialog
+        open={isEditDialogOpen}
+        onOpenChange={setIsEditDialogOpen}
+        invoice={editingInvoice}
+        clients={clients}
+        onSave={handleSaveEdit}
       />
 
       {/* Diagnostics Result Dialog */}
