@@ -97,7 +97,9 @@ function getEmailHeader(title: string, subtitle?: string, logoSrc: string = DEFA
                     <p style="color: #555555; margin: 2px 0 0 0; font-size: 13px; font-style: italic;">Hand-Crafted Wood Works</p>
                   </td>
                   <td style="vertical-align: middle;">
-                    <img src="${logoSrc}" alt="CEB Building" style="width: 65px; height: 65px; border-radius: 50%; object-fit: contain; display: block; background: #fff;">
+                    <a href="https://cebbuilding.com" target="_blank" style="text-decoration: none;">
+                      <img src="${logoSrc}" alt="CEB Building" style="width: 65px; height: 65px; border-radius: 50%; object-fit: contain; display: block; background: #fff; border: 0;">
+                    </a>
                   </td>
                 </tr>
               </table>
