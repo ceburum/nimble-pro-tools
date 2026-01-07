@@ -174,12 +174,26 @@ const handler = async (req: Request): Promise<Response> => {
           <tr>
             <td align="center" style="padding: 20px;">
               <table role="presentation" class="container" width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
-                <!-- Header with Logo -->
+                <!-- Header with Logo and Contact Info -->
                 <tr>
-                  <td class="header" style="background: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%); padding: 32px; text-align: center;">
-                    <img src="${logoUrl}" alt="CEB Building" class="logo" style="width: 100px; height: 100px; border-radius: 50%; background: white; object-fit: contain; margin-bottom: 16px;">
-                    <h1 style="color: white; margin: 0; font-size: 28px; font-weight: 700; letter-spacing: 0.5px;">${businessName}</h1>
-                    <p style="color: rgba(255,255,255,0.85); margin: 8px 0 0 0; font-size: 16px;">Invoice ${invoiceNumber}</p>
+                  <td class="header" style="background: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%); padding: 24px 32px;">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td style="vertical-align: middle; width: 80px;">
+                          <img src="${logoUrl}" alt="CEB Building" style="width: 70px; height: 70px; border-radius: 8px; background: white; object-fit: contain;">
+                        </td>
+                        <td style="vertical-align: middle; padding-left: 16px;">
+                          <h1 style="color: white; margin: 0; font-size: 24px; font-weight: 700;">${businessName}</h1>
+                          <p style="color: rgba(255,255,255,0.9); margin: 4px 0 0 0; font-size: 14px;">Invoice ${invoiceNumber}</p>
+                        </td>
+                        <td style="vertical-align: middle; text-align: right;">
+                          <p style="color: white; margin: 0; font-size: 13px; font-weight: 600;">Chad Burum</p>
+                          <p style="color: rgba(255,255,255,0.85); margin: 2px 0; font-size: 12px;">📞 405-500-8224</p>
+                          <p style="color: rgba(255,255,255,0.85); margin: 2px 0; font-size: 12px;">✉️ chad@cebbuilding.com</p>
+                          <p style="color: rgba(255,255,255,0.85); margin: 2px 0; font-size: 12px;">🌐 cebbuilding.com</p>
+                        </td>
+                      </tr>
+                    </table>
                   </td>
                 </tr>
                 
