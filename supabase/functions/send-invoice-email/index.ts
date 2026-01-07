@@ -40,92 +40,23 @@ const PAYMENT_METHODS = [
   },
 ];
 
-// Logo hosted on your website - used as a source to embed inline (CID)
-// Prioritize smaller JPG version for faster email delivery
-const LOGO_URL_PNG = "https://static.wixstatic.com/media/fc62d0_d3f25abd45e341648b59e65fc94cc7fd~mv2.png";
-const LOGO_URL_JPG = "https://static.wixstatic.com/media/fc62d0_d3f25abd45e341648b59e65fc94cc7fd~mv2.jpg";
-const STORAGE_LOGO_PUBLIC_URL = (() => {
-  const supabaseUrl = Deno.env.get("SUPABASE_URL");
-  return supabaseUrl ? `${supabaseUrl}/storage/v1/object/public/assets/ceb-logo.png` : null;
-})();
-const DEFAULT_LOGO_URL = STORAGE_LOGO_PUBLIC_URL ?? LOGO_URL_PNG;
-
-function wrapBase64(b64: string): string {
-  return b64.match(/.{1,76}/g)?.join("\r\n") ?? b64;
-}
-
-function uint8ToBase64(bytes: Uint8Array): string {
-  let binary = "";
-  const chunkSize = 0x8000;
-  for (let i = 0; i < bytes.length; i += chunkSize) {
-    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
-  }
-  return btoa(binary);
-}
-
-function getLogoCandidateUrls(req?: Request): string[] {
-  const urls: string[] = [];
-  
-  // Try JPG version first (smaller file size for faster email delivery)
-  const origin = req?.headers.get("origin");
-  if (origin) urls.push(`${origin}/ceb-logo-email.jpg`);
-  
-  // Fallback to PNG versions
-  if (STORAGE_LOGO_PUBLIC_URL) urls.push(STORAGE_LOGO_PUBLIC_URL);
-  if (origin) urls.push(`${origin}/ceb-logo.png`);
-  urls.push(LOGO_URL_PNG);
-
-  // De-dupe while preserving order
-  return urls.filter((u, idx) => urls.indexOf(u) === idx);
-}
-
-async function fetchLogoBase64(req?: Request): Promise<string | null> {
-  for (const url of getLogoCandidateUrls(req)) {
-    try {
-      const res = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" } });
-      if (!res.ok) {
-        console.error("Logo fetch failed:", res.status, res.statusText, "url:", url);
-        continue;
-      }
-
-      const bytes = new Uint8Array(await res.arrayBuffer());
-      console.log("Logo fetched OK from:", url, "bytes:", bytes.byteLength);
-      return uint8ToBase64(bytes);
-    } catch (err) {
-      console.error("Logo fetch threw:", err, "url:", url);
-    }
-  }
-
-  return null;
-}
-
-function getEmailHeader(title: string, subtitle?: string, logoSrc: string = DEFAULT_LOGO_URL): string {
+// Simple HTML email header without logo for reliability
+function getEmailHeader(title: string, subtitle?: string): string {
   return `
     <!-- Header - matching cebbuilding.com style -->
     <tr>
       <td style="background-color: #c8c4bd; padding: 20px 24px; border-bottom: 3px solid #a09d95;">
         <table role="presentation" class="header-table" width="100%" cellpadding="0" cellspacing="0">
           <tr>
-            <td class="header-left" style="vertical-align: middle; width: 40%;">
+            <td class="header-left" style="vertical-align: middle; width: 50%;">
               <p style="color: #333333; margin: 0; font-size: 13px; font-weight: 600;">Chad Burum</p>
               <p style="color: #555555; margin: 2px 0; font-size: 12px;">405-500-8224</p>
               <p style="color: #555555; margin: 2px 0; font-size: 12px;">chad@cebbuilding.com</p>
               <p style="color: #555555; margin: 2px 0; font-size: 12px;">cebbuilding.com</p>
             </td>
-            <td class="header-right" style="vertical-align: middle; text-align: right; width: 60%;">
-              <table role="presentation" cellpadding="0" cellspacing="0" style="margin-left: auto;">
-                <tr>
-                  <td style="vertical-align: middle; padding-right: 14px; text-align: right;">
-                    <h1 style="color: #333333; margin: 0; font-size: 22px; font-weight: 400; font-family: Georgia, serif;">CEB Building</h1>
-                    <p style="color: #555555; margin: 2px 0 0 0; font-size: 13px; font-style: italic;">Hand-Crafted Wood Works</p>
-                  </td>
-                  <td style="vertical-align: middle;">
-                    <a href="https://cebbuilding.com" target="_blank" style="text-decoration: none;">
-                      <img src="${logoSrc}" alt="CEB Building" style="width: 65px; height: 65px; border-radius: 50%; object-fit: contain; display: block; background: #fff; border: 0;">
-                    </a>
-                  </td>
-                </tr>
-              </table>
+            <td class="header-right" style="vertical-align: middle; text-align: right; width: 50%;">
+              <h1 style="color: #333333; margin: 0; font-size: 22px; font-weight: 400; font-family: Georgia, serif;">CEB Building</h1>
+              <p style="color: #555555; margin: 2px 0 0 0; font-size: 13px; font-style: italic;">Hand-Crafted Wood Works</p>
             </td>
           </tr>
         </table>
@@ -204,11 +135,11 @@ interface SmtpDiagnostics {
   subject: string;
 }
 
+// Simplified email sender - no logo attachment
 async function sendEmailViaZoho(
   to: string,
   subject: string,
   html: string,
-  inlineLogoBase64?: string | null,
   diagnosticMode: boolean = false,
 ): Promise<SmtpDiagnostics> {
   const smtpUser = Deno.env.get("ZOHO_SMTP_USER");
@@ -301,7 +232,6 @@ async function sendEmailViaZoho(
       throw new Error(`DATA command rejected: ${dataResponse}`);
     }
 
-    const rootBoundary = `----=_Root_${Date.now()}`;
     const altBoundary = `----=_Alt_${Date.now()}`;
 
     const headers = [
@@ -313,54 +243,24 @@ async function sendEmailViaZoho(
       `Message-ID: <${Date.now()}.${Math.random().toString(36).substring(2)}@cebbuilding.com>`,
     ];
 
-    const emailContent = inlineLogoBase64
-      ? [
-          ...headers,
-          `Content-Type: multipart/related; boundary="${rootBoundary}"`,
-          ``,
-          `--${rootBoundary}`,
-          `Content-Type: multipart/alternative; boundary="${altBoundary}"`,
-          ``,
-          `--${altBoundary}`,
-          `Content-Type: text/plain; charset=utf-8`,
-          ``,
-          `Please view this email in an HTML-compatible email client.`,
-          ``,
-          `--${altBoundary}`,
-          `Content-Type: text/html; charset=utf-8`,
-          ``,
-          html,
-          ``,
-          `--${altBoundary}--`,
-          ``,
-          `--${rootBoundary}`,
-          `Content-Type: image/png; name="ceb-logo.png"`,
-          `Content-Transfer-Encoding: base64`,
-          `Content-ID: <ceb-logo>`,
-          `Content-Disposition: inline; filename="ceb-logo.png"`,
-          ``,
-          wrapBase64(inlineLogoBase64),
-          ``,
-          `--${rootBoundary}--`,
-          `.`,
-        ].join("\r\n")
-      : [
-          ...headers,
-          `Content-Type: multipart/alternative; boundary="${altBoundary}"`,
-          ``,
-          `--${altBoundary}`,
-          `Content-Type: text/plain; charset=utf-8`,
-          ``,
-          `Please view this email in an HTML-compatible email client.`,
-          ``,
-          `--${altBoundary}`,
-          `Content-Type: text/html; charset=utf-8`,
-          ``,
-          html,
-          ``,
-          `--${altBoundary}--`,
-          `.`,
-        ].join("\r\n");
+    // Simple HTML email without logo attachment
+    const emailContent = [
+      ...headers,
+      `Content-Type: multipart/alternative; boundary="${altBoundary}"`,
+      ``,
+      `--${altBoundary}`,
+      `Content-Type: text/plain; charset=utf-8`,
+      ``,
+      `Please view this email in an HTML-compatible email client.`,
+      ``,
+      `--${altBoundary}`,
+      `Content-Type: text/html; charset=utf-8`,
+      ``,
+      html,
+      ``,
+      `--${altBoundary}--`,
+      `.`,
+    ].join("\r\n");
 
     messageSize = encoder.encode(emailContent).length;
     
@@ -585,12 +485,9 @@ cebbuilding.com
       });
     }
 
-    // Embed logo inline (CID) so it displays even when external images are blocked
-    const logoBase64 = await fetchLogoBase64(req);
-    const logoSrc = logoBase64 ? "cid:ceb-logo" : DEFAULT_LOGO_URL;
-
+    // Simple HTML email without logo
     const emailContent = `
-      ${getEmailHeader(`INVOICE ${invoiceNumber}`, undefined, logoSrc)}
+      ${getEmailHeader(`INVOICE ${invoiceNumber}`)}
       
       <!-- Content -->
       <tr>
@@ -663,7 +560,6 @@ cebbuilding.com
       clientEmail,
       `Invoice ${invoiceNumber} from ${businessName}`,
       emailHtml,
-      logoBase64,
       diagnosticMode,
     );
 
