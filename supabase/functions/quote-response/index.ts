@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 interface QuoteData {
   projectId: string;
@@ -396,6 +397,34 @@ const handler = async (req: Request): Promise<Response> => {
       
       ${getEmailFooter()}
     `;
+
+    // If accepted, update project status in database
+    if (isAccepted) {
+      try {
+        const supabaseUrl = Deno.env.get("SUPABASE_URL");
+        const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+        
+        if (supabaseUrl && supabaseServiceKey) {
+          const supabase = createClient(supabaseUrl, supabaseServiceKey);
+          
+          const { error: updateError } = await supabase
+            .from('projects')
+            .update({ 
+              status: 'accepted',
+              accepted_at: new Date().toISOString()
+            })
+            .eq('id', projectId);
+          
+          if (updateError) {
+            console.error("Failed to update project status:", updateError);
+          } else {
+            console.log(`Project ${projectId} status updated to 'accepted'`);
+          }
+        }
+      } catch (dbError) {
+        console.error("Database update error:", dbError);
+      }
+    }
 
     try {
       // Send notification only to chad@cebbuilding.com

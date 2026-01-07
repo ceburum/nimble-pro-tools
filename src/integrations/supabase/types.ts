@@ -132,6 +132,204 @@ export type Database = {
           },
         ]
       }
+      project_mileage: {
+        Row: {
+          coordinates: Json | null
+          created_at: string
+          distance: number
+          end_location: string
+          end_time: string | null
+          id: string
+          is_tracking: boolean
+          notes: string | null
+          project_id: string | null
+          start_location: string
+          start_time: string
+          user_id: string
+        }
+        Insert: {
+          coordinates?: Json | null
+          created_at?: string
+          distance?: number
+          end_location: string
+          end_time?: string | null
+          id?: string
+          is_tracking?: boolean
+          notes?: string | null
+          project_id?: string | null
+          start_location: string
+          start_time?: string
+          user_id: string
+        }
+        Update: {
+          coordinates?: Json | null
+          created_at?: string
+          distance?: number
+          end_location?: string
+          end_time?: string | null
+          id?: string
+          is_tracking?: boolean
+          notes?: string | null
+          project_id?: string | null
+          start_location?: string
+          start_time?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_mileage_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_photos: {
+        Row: {
+          caption: string | null
+          created_at: string
+          id: string
+          project_id: string
+          storage_path: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          caption?: string | null
+          created_at?: string
+          id?: string
+          project_id: string
+          storage_path: string
+          type?: string
+          user_id: string
+        }
+        Update: {
+          caption?: string | null
+          created_at?: string
+          id?: string
+          project_id?: string
+          storage_path?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_photos_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_receipts: {
+        Row: {
+          amount: number
+          created_at: string
+          description: string
+          id: string
+          project_id: string
+          storage_path: string
+          user_id: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          description: string
+          id?: string
+          project_id: string
+          storage_path: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          description?: string
+          id?: string
+          project_id?: string
+          storage_path?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_receipts_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      projects: {
+        Row: {
+          accepted_at: string | null
+          client_id: string
+          completed_at: string | null
+          created_at: string
+          description: string | null
+          id: string
+          invoice_id: string | null
+          items: Json
+          quote_notes: string | null
+          sent_at: string | null
+          started_at: string | null
+          status: string
+          title: string
+          user_id: string
+          valid_until: string | null
+        }
+        Insert: {
+          accepted_at?: string | null
+          client_id: string
+          completed_at?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          invoice_id?: string | null
+          items?: Json
+          quote_notes?: string | null
+          sent_at?: string | null
+          started_at?: string | null
+          status?: string
+          title: string
+          user_id: string
+          valid_until?: string | null
+        }
+        Update: {
+          accepted_at?: string | null
+          client_id?: string
+          completed_at?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          invoice_id?: string | null
+          items?: Json
+          quote_notes?: string | null
+          sent_at?: string | null
+          started_at?: string | null
+          status?: string
+          title?: string
+          user_id?: string
+          valid_until?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "projects_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "projects_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

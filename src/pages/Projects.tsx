@@ -5,50 +5,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ProjectCard } from '@/components/projects/ProjectCard';
 import { ProjectDialog } from '@/components/projects/ProjectDialog';
-import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { useClients } from '@/hooks/useClients';
 import { useInvoices } from '@/hooks/useInvoices';
-
-const mockProjects: Project[] = [
-  {
-    id: '1',
-    clientId: '1',
-    title: 'Kitchen Renovation',
-    description: 'Complete kitchen remodel including cabinets and countertops',
-    items: [
-      { id: '1', description: 'Labor - Kitchen demolition', quantity: 8, unitPrice: 75 },
-      { id: '2', description: 'Cabinet installation', quantity: 1, unitPrice: 2500 },
-    ],
-    status: 'in_progress',
-    photos: [],
-    receipts: [],
-    mileageEntries: [],
-    createdAt: new Date('2024-12-01'),
-    acceptedAt: new Date('2024-12-05'),
-    startedAt: new Date('2024-12-10'),
-  },
-  {
-    id: '2',
-    clientId: '2',
-    title: 'Bathroom Remodel',
-    description: 'Master bathroom tile and fixtures',
-    items: [
-      { id: '1', description: 'Tile work', quantity: 1, unitPrice: 1800 },
-      { id: '2', description: 'Fixture installation', quantity: 1, unitPrice: 500 },
-    ],
-    status: 'completed',
-    photos: [],
-    receipts: [],
-    mileageEntries: [],
-    createdAt: new Date('2024-11-20'),
-    completedAt: new Date('2024-12-15'),
-  },
-];
+import { useProjects } from '@/hooks/useProjects';
 
 export default function Projects() {
-  const [projects, setProjects] = useLocalStorage<Project[]>('ceb-projects', mockProjects);
+  const { projects, loading: projectsLoading, addProject, updateProject, deleteProject } = useProjects();
   const { clients, loading: clientsLoading } = useClients();
   const { addInvoice, loading: invoicesLoading } = useInvoices();
   const [searchQuery, setSearchQuery] = useState('');
@@ -78,38 +42,31 @@ export default function Projects() {
     );
   });
 
-  const handleCreateProject = (data: Partial<Project>) => {
-    const newProject: Project = {
-      id: Date.now().toString(),
+  const handleCreateProject = async (data: Partial<Project>) => {
+    const newProject = await addProject({
       clientId: data.clientId || '',
       title: data.title || '',
       description: data.description,
       items: [],
       status: 'draft',
-      photos: [],
-      receipts: [],
-      mileageEntries: [],
-      createdAt: new Date(),
-    };
-    setProjects((prev) => [...prev, newProject]);
-    setIsDialogOpen(false);
-    toast({ title: 'Project created' });
-  };
-
-  const handleUpdateProject = (updatedProject: Project) => {
-    console.log('handleUpdateProject called for project:', updatedProject.id, 'photos:', updatedProject.photos.length);
-    setProjects((prev) => {
-      const existingProject = prev.find(p => p.id === updatedProject.id);
-      console.log('Found existing project:', !!existingProject, 'with', existingProject?.photos.length || 0, 'photos');
-      const newProjects = prev.map((p) => (p.id === updatedProject.id ? updatedProject : p));
-      console.log('Updated projects array, new length:', newProjects.length);
-      return newProjects;
     });
+    
+    if (newProject) {
+      setIsDialogOpen(false);
+      toast({ title: 'Project created' });
+    }
   };
 
-  const handleDeleteProject = (id: string) => {
-    setProjects((prev) => prev.filter((p) => p.id !== id));
-    toast({ title: 'Project deleted' });
+  const handleUpdateProject = async (updatedProject: Project) => {
+    console.log('handleUpdateProject called for project:', updatedProject.id, 'photos:', updatedProject.photos.length);
+    await updateProject(updatedProject);
+  };
+
+  const handleDeleteProject = async (id: string) => {
+    const success = await deleteProject(id);
+    if (success) {
+      toast({ title: 'Project deleted' });
+    }
   };
 
   const handleCreateInvoice = async (project: Project) => {
@@ -148,7 +105,7 @@ export default function Projects() {
     { key: 'invoiced', label: 'Invoiced', icon: DollarSign, projects: invoicedProjects },
   ].filter((g) => g.projects.length > 0);
 
-  const loading = clientsLoading || invoicesLoading;
+  const loading = projectsLoading || clientsLoading || invoicesLoading;
 
   if (loading) {
     return (
