@@ -46,7 +46,7 @@ export default function Invoices() {
           items: invoice.items,
           dueDate: invoice.dueDate.toLocaleDateString(),
           notes: invoice.notes,
-          businessName: 'C.E.B.',
+          businessName: 'CEB Building',
         },
       });
 
