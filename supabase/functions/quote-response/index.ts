@@ -421,191 +421,23 @@ const handler = async (req: Request): Promise<Response> => {
       console.error("Failed to send email:", emailError);
     }
 
-    // Return HTML confirmation page
-    const confirmationHtml = `
-      <!DOCTYPE html>
-      <html lang="en">
-      <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>${isAccepted ? 'Quote Accepted' : 'Quote Declined'} - CEB Building</title>
-        <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-        <style>
-          * { margin: 0; padding: 0; box-sizing: border-box; }
-          body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-            background: #f5f5f0;
-          }
-          .card {
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-            max-width: 450px;
-            width: 100%;
-            overflow: hidden;
-          }
-          .header {
-            background: #c8c4bd;
-            padding: 24px;
-            text-align: center;
-            border-bottom: 3px solid #a09d95;
-          }
-          .logo {
-            width: 70px;
-            height: 70px;
-            border-radius: 50%;
-            margin: 0 auto 12px;
-            background: white;
-          }
-          .brand {
-            font-family: 'Playfair Display', Georgia, serif;
-            font-size: 24px;
-            color: #333;
-            margin-bottom: 4px;
-          }
-          .tagline {
-            font-size: 13px;
-            color: #555;
-            font-style: italic;
-          }
-          .status-bar {
-            background: ${isAccepted ? '#2d5016' : '#8b4513'};
-            color: white;
-            padding: 12px 24px;
-            font-size: 14px;
-            font-weight: 600;
-            letter-spacing: 1px;
-          }
-          .content {
-            padding: 40px 32px;
-            text-align: center;
-          }
-          .icon {
-            font-size: 56px;
-            margin-bottom: 20px;
-          }
-          h1 {
-            font-family: 'Playfair Display', Georgia, serif;
-            color: ${isAccepted ? '#2d5016' : '#8b4513'};
-            font-size: 26px;
-            font-weight: 600;
-            margin-bottom: 16px;
-          }
-          .message {
-            color: #666;
-            font-size: 15px;
-            line-height: 1.7;
-            margin-bottom: 28px;
-          }
-          .project-info {
-            background: #f8f7f5;
-            border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 28px;
-          }
-          .project-title {
-            font-weight: 600;
-            color: #333;
-            font-size: 16px;
-            margin-bottom: 8px;
-          }
-          .project-total {
-            font-size: 28px;
-            font-weight: 700;
-            color: ${isAccepted ? '#2d5016' : '#333'};
-          }
-          .footer {
-            background: #4a4a4a;
-            padding: 20px;
-            text-align: center;
-          }
-          .footer p {
-            color: #b0b0b0;
-            font-size: 12px;
-            margin-bottom: 4px;
-          }
-          .footer .thanks {
-            color: white;
-            font-size: 14px;
-            margin-bottom: 8px;
-          }
-        </style>
-      </head>
-      <body>
-        <div class="card">
-          <div class="header">
-            <div class="logo" style="display: flex; align-items: center; justify-content: center; font-weight: 700; color: #2d5016; font-size: 24px;">CEB</div>
-            <div class="brand">CEB Building</div>
-            <div class="tagline">Hand-Crafted Wood Works</div>
-          </div>
-          <div class="status-bar">${isAccepted ? '✓ QUOTE ACCEPTED' : '✗ QUOTE DECLINED'}</div>
-          <div class="content">
-            <div class="icon">${isAccepted ? '🎉' : '📋'}</div>
-            <h1>${isAccepted ? 'Thank You!' : 'Response Received'}</h1>
-            <p class="message">
-              ${isAccepted 
-                ? 'We\'ve received your acceptance and will be in touch shortly to discuss next steps for your project.'
-                : 'We\'ve received your response. If you have any questions or would like to discuss alternatives, please don\'t hesitate to reach out.'}
-            </p>
-            <div class="project-info">
-              <div class="project-title">${projectTitle}</div>
-              <div class="project-total">$${total.toFixed(2)}</div>
-            </div>
-            <p style="color: #999; font-size: 13px;">Thank you, ${clientName}!</p>
-          </div>
-          <div class="footer">
-            <p class="thanks">Thank you for choosing CEB Building!</p>
-            <p>Hand-Crafted Wood Works · Oklahoma City</p>
-            <p style="margin-top: 8px;">© ${new Date().getFullYear()} CEB Building</p>
-          </div>
-        </div>
-      </body>
-      </html>
-    `;
+    // Return simple plain text response - no HTML page
+    const message = isAccepted 
+      ? `Thank you, ${clientName}! Your quote for "${projectTitle}" has been accepted. We will be in touch shortly to discuss scheduling.`
+      : `Thank you for your response regarding "${projectTitle}". We appreciate you letting us know.`;
 
-    return new Response(confirmationHtml, {
+    return new Response(message, {
       status: 200,
       headers: { 
-        "Content-Type": "text/html; charset=utf-8",
-        "X-Content-Type-Options": "nosniff",
-        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Content-Type": "text/plain; charset=utf-8",
       },
     });
   } catch (error: any) {
     console.error("Error handling quote response:", error);
-    const errorHtml = `
-      <!DOCTYPE html>
-      <html lang="en">
-      <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>Error - CEB Building</title>
-        <style>
-          body { font-family: -apple-system, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; background: #f5f5f0; }
-          .card { background: white; padding: 40px; border-radius: 12px; text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.1); max-width: 400px; }
-          h1 { color: #8b4513; margin-bottom: 12px; font-size: 24px; }
-          p { color: #666; line-height: 1.6; }
-        </style>
-      </head>
-      <body>
-        <div class="card">
-          <h1>Something went wrong</h1>
-          <p>We couldn't process your response. Please contact us directly at chad@cebbuilding.com or call 405-500-8224.</p>
-        </div>
-      </body>
-      </html>
-    `;
-    return new Response(errorHtml, {
+    return new Response("Something went wrong processing your response. Please contact us directly at chad@cebbuilding.com", {
       status: 500,
       headers: { 
-        "Content-Type": "text/html; charset=utf-8",
-        "X-Content-Type-Options": "nosniff",
-        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Content-Type": "text/plain; charset=utf-8",
       },
     });
   }
