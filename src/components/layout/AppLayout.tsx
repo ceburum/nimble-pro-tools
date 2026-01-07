@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import cebLogo from '@/assets/ceb-logo.jpg';
+import cebLogo from '@/assets/ceb-logo.png';
 
 interface AppLayoutProps {
   children: React.ReactNode;
