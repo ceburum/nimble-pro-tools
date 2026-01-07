@@ -1,9 +1,9 @@
-import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Users, FileText, Receipt, DollarSign, FolderKanban } from 'lucide-react';
+import { Users, Receipt, DollarSign, FolderKanban } from 'lucide-react';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { RecentActivity } from '@/components/dashboard/RecentActivity';
 import { OverdueAlerts } from '@/components/dashboard/OverdueAlerts';
+import { MileageCard } from '@/components/dashboard/MileageCard';
 import { mockClients, mockInvoices } from '@/lib/mockData';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { Client, Invoice, Project } from '@/types';
@@ -83,6 +83,8 @@ export default function Dashboard() {
         <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
         <p className="text-muted-foreground mt-1">Welcome back! Here's your business overview.</p>
       </div>
+
+      <MileageCard />
 
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
