@@ -127,7 +127,7 @@ export function ProjectDetailDialog({
           clientEmail: client.email,
           items: project.items,
           notes: project.quoteNotes,
-          notificationEmail: 'cebbuilding@yahoo.com',
+          notificationEmail: 'chad@cebbuilding.com',
         },
       });
 

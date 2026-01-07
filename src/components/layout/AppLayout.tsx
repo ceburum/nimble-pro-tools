@@ -47,7 +47,7 @@ export function AppLayout({ children }: AppLayoutProps) {
           <img src={cebLogo} alt="CEB Building Logo" className="h-10 w-10 rounded-lg object-cover" />
           <div>
             <h1 className="text-lg font-bold text-sidebar-foreground">CEB Building</h1>
-            <p className="text-xs text-sidebar-foreground/60">cebbuilding@yahoo.com</p>
+            <p className="text-xs text-sidebar-foreground/60">chad@cebbuilding.com</p>
           </div>
         </div>
 
