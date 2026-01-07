@@ -40,9 +40,7 @@ const PAYMENT_METHODS = [
   },
 ];
 
-const LOGO_URL = "https://pvgxkznweoedkvebjjpc.supabase.co/storage/v1/object/public/assets/ceb-logo.png";
-
-// HTML email header with logo via hosted URL
+// Simple HTML email header without logo for reliability
 function getEmailHeader(title: string, subtitle?: string): string {
   return `
     <!-- Header - matching cebbuilding.com style -->
@@ -57,10 +55,8 @@ function getEmailHeader(title: string, subtitle?: string): string {
               <p style="color: #555555; margin: 2px 0; font-size: 12px;">cebbuilding.com</p>
             </td>
             <td class="header-right" style="vertical-align: middle; text-align: right; width: 50%;">
-              <a href="https://cebbuilding.com" target="_blank" style="text-decoration: none;">
-                <img src="${LOGO_URL}" alt="CEB Building" width="100" height="100" style="display: block; margin-left: auto; border-radius: 8px;" />
-              </a>
-              <p style="color: #555555; margin: 6px 0 0 0; font-size: 13px; font-style: italic;">Hand-Crafted Wood Works</p>
+              <h1 style="color: #333333; margin: 0; font-size: 22px; font-weight: 400; font-family: Georgia, serif;">CEB Building</h1>
+              <p style="color: #555555; margin: 2px 0 0 0; font-size: 13px; font-style: italic;">Hand-Crafted Wood Works</p>
             </td>
           </tr>
         </table>
