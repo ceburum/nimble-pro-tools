@@ -222,14 +222,30 @@ async function sendEmailViaZoho(
     port: 465,
   });
 
+  // Read SMTP response, handling multi-line responses (lines ending with 250- continue, 250 space ends)
   const read = async (): Promise<string> => {
-    const buf = new Uint8Array(2048);
-    const n = await conn.read(buf);
-    const response = decoder.decode(buf.subarray(0, n!)).trim();
+    let fullResponse = "";
+    const buf = new Uint8Array(4096);
+    
+    while (true) {
+      const n = await conn.read(buf);
+      if (!n) break;
+      fullResponse += decoder.decode(buf.subarray(0, n));
+      
+      // Check if we've received the final line (code followed by space, not hyphen)
+      const lines = fullResponse.trim().split("\r\n");
+      const lastLine = lines[lines.length - 1];
+      // Final line pattern: 3 digits followed by space (e.g., "250 OK" not "250-...")
+      if (/^\d{3} /.test(lastLine) || /^\d{3}$/.test(lastLine)) {
+        break;
+      }
+    }
+    
+    const response = fullResponse.trim();
     if (diagnosticMode) {
       smtpResponses.push(`S: ${response}`);
-      console.log(`SMTP RESPONSE: ${response}`);
     }
+    console.log(`SMTP RESPONSE: ${response}`);
     return response;
   };
 
@@ -237,8 +253,8 @@ async function sendEmailViaZoho(
     await conn.write(encoder.encode(data + "\r\n"));
     if (diagnosticMode) {
       smtpResponses.push(`C: ${logAs || data}`);
-      console.log(`SMTP SENT: ${logAs || data}`);
     }
+    console.log(`SMTP SENT: ${logAs || data}`);
   };
 
   let messageSize = 0;
@@ -390,10 +406,24 @@ async function sendPlainTextEmail(
     port: 465,
   });
 
+  // Read SMTP response, handling multi-line responses
   const read = async (): Promise<string> => {
-    const buf = new Uint8Array(2048);
-    const n = await conn.read(buf);
-    const response = decoder.decode(buf.subarray(0, n!)).trim();
+    let fullResponse = "";
+    const buf = new Uint8Array(4096);
+    
+    while (true) {
+      const n = await conn.read(buf);
+      if (!n) break;
+      fullResponse += decoder.decode(buf.subarray(0, n));
+      
+      const lines = fullResponse.trim().split("\r\n");
+      const lastLine = lines[lines.length - 1];
+      if (/^\d{3} /.test(lastLine) || /^\d{3}$/.test(lastLine)) {
+        break;
+      }
+    }
+    
+    const response = fullResponse.trim();
     smtpResponses.push(`S: ${response}`);
     console.log(`SMTP RESPONSE: ${response}`);
     return response;
