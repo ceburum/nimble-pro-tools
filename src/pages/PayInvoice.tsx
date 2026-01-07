@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { CreditCard, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -24,8 +24,7 @@ interface InvoiceData {
 }
 
 export default function PayInvoice() {
-  const { invoiceId } = useParams<{ invoiceId: string }>();
-  const navigate = useNavigate();
+  const { paymentToken } = useParams<{ paymentToken: string }>();
   const { toast } = useToast();
   const [invoice, setInvoice] = useState<InvoiceData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -34,8 +33,8 @@ export default function PayInvoice() {
 
   useEffect(() => {
     async function fetchInvoice() {
-      if (!invoiceId) {
-        setError('Invalid invoice link');
+      if (!paymentToken) {
+        setError('Invalid payment link');
         setLoading(false);
         return;
       }
@@ -54,11 +53,11 @@ export default function PayInvoice() {
               email
             )
           `)
-          .eq('id', invoiceId)
+          .eq('payment_token', paymentToken)
           .single();
 
         if (fetchError || !data) {
-          setError('Invoice not found');
+          setError('Invoice not found or link expired');
           setLoading(false);
           return;
         }
@@ -66,7 +65,7 @@ export default function PayInvoice() {
         const client = data.clients as { name: string; email: string } | null;
         const rawItems = data.items;
         const items: InvoiceItem[] = Array.isArray(rawItems) ? (rawItems as unknown as InvoiceItem[]) : [];
-        
+
         setInvoice({
           id: data.id,
           invoiceNumber: data.invoice_number,
@@ -85,7 +84,7 @@ export default function PayInvoice() {
     }
 
     fetchInvoice();
-  }, [invoiceId]);
+  }, [paymentToken]);
 
   const total = invoice?.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0) || 0;
   const convenienceFee = total * 0.03;
@@ -99,7 +98,6 @@ export default function PayInvoice() {
     try {
       const { data, error: invokeError } = await supabase.functions.invoke('create-invoice-payment', {
         body: {
-          invoiceId: invoice.id,
           invoiceNumber: invoice.invoiceNumber,
           clientName: invoice.clientName,
           clientEmail: invoice.clientEmail,
@@ -140,7 +138,7 @@ export default function PayInvoice() {
             <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
             <CardTitle>Invoice Not Found</CardTitle>
             <CardDescription>
-              {error || 'This invoice link may be invalid or expired.'}
+              {error || 'This payment link may be invalid or expired.'}
             </CardDescription>
           </CardHeader>
         </Card>
@@ -205,9 +203,9 @@ export default function PayInvoice() {
           </div>
 
           {/* Pay Button */}
-          <Button 
-            className="w-full" 
-            size="lg" 
+          <Button
+            className="w-full"
+            size="lg"
             onClick={handlePayWithCard}
             disabled={processing}
           >
