@@ -539,7 +539,7 @@ const handler = async (req: Request): Promise<Response> => {
       <body>
         <div class="card">
           <div class="header">
-            <img src="${LOGO_URL}" alt="CEB Building" class="logo">
+            <div class="logo" style="display: flex; align-items: center; justify-content: center; font-weight: 700; color: #2d5016; font-size: 24px;">CEB</div>
             <div class="brand">CEB Building</div>
             <div class="tagline">Hand-Crafted Wood Works</div>
           </div>
