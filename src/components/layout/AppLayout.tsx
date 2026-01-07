@@ -1,14 +1,16 @@
 import { useState } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   Users, 
   FolderKanban, 
   Receipt, 
   Menu,
+  LogOut,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/hooks/useAuth';
 import cebLogo from '@/assets/ceb-logo.png';
 
 interface AppLayoutProps {
@@ -25,6 +27,13 @@ const navigation = [
 export function AppLayout({ children }: AppLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, signOut } = useAuth();
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/auth', { replace: true });
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -39,7 +48,7 @@ export function AppLayout({ children }: AppLayoutProps) {
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 w-64 bg-sidebar text-sidebar-foreground transform transition-transform duration-300 ease-in-out lg:translate-x-0",
+          "fixed inset-y-0 left-0 z-50 w-64 bg-sidebar text-sidebar-foreground transform transition-transform duration-300 ease-in-out lg:translate-x-0 flex flex-col",
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
@@ -47,7 +56,7 @@ export function AppLayout({ children }: AppLayoutProps) {
           <img src={cebLogo} alt="CEB Building Logo" className="h-10 w-10 rounded-lg object-cover" />
           <div>
             <h1 className="text-lg font-bold text-sidebar-foreground">CEB Building</h1>
-            <p className="text-xs text-sidebar-foreground/60">chad@cebbuilding.com</p>
+            <p className="text-xs text-sidebar-foreground/60">{user?.email || 'chad@cebbuilding.com'}</p>
           </div>
         </div>
 
@@ -72,6 +81,18 @@ export function AppLayout({ children }: AppLayoutProps) {
             );
           })}
         </nav>
+
+        {/* Sign Out Button */}
+        <div className="px-4 py-4 border-t border-sidebar-border">
+          <Button
+            variant="ghost"
+            className="w-full justify-start gap-3 text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+            onClick={handleSignOut}
+          >
+            <LogOut className="h-5 w-5" />
+            Sign Out
+          </Button>
+        </div>
       </aside>
 
       {/* Main content */}
