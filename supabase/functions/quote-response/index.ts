@@ -52,24 +52,24 @@ function getEmailHeader(title: string, isAccepted: boolean, logoSrc: string = LO
       <td style="background-color: #c8c4bd; padding: 20px 24px; border-bottom: 3px solid #a09d95;">
         <table role="presentation" class="header-table" width="100%" cellpadding="0" cellspacing="0">
           <tr>
-            <td class="header-left" style="vertical-align: middle; width: 60%;">
-              <table role="presentation" cellpadding="0" cellspacing="0">
-                <tr>
-                  <td style="vertical-align: middle;">
-                    <img src="${logoSrc}" alt="CEB Building" style="width: 65px; height: 65px; border-radius: 50%; object-fit: contain; display: block; background: #fff;">
-                  </td>
-                  <td style="vertical-align: middle; padding-left: 14px;">
-                    <h1 style="color: #333333; margin: 0; font-size: 22px; font-weight: 400; font-family: Georgia, serif;">CEB Building</h1>
-                    <p style="color: #555555; margin: 2px 0 0 0; font-size: 13px; font-style: italic;">Hand-Crafted Wood Works</p>
-                  </td>
-                </tr>
-              </table>
-            </td>
-            <td class="header-right" style="vertical-align: middle; text-align: right; width: 40%;">
+            <td class="header-left" style="vertical-align: middle; width: 40%;">
               <p style="color: #333333; margin: 0; font-size: 13px; font-weight: 600;">Chad Burum</p>
               <p style="color: #555555; margin: 2px 0; font-size: 12px;">405-500-8224</p>
               <p style="color: #555555; margin: 2px 0; font-size: 12px;">chad@cebbuilding.com</p>
               <p style="color: #555555; margin: 2px 0; font-size: 12px;">cebbuilding.com</p>
+            </td>
+            <td class="header-right" style="vertical-align: middle; text-align: right; width: 60%;">
+              <table role="presentation" cellpadding="0" cellspacing="0" style="margin-left: auto;">
+                <tr>
+                  <td style="vertical-align: middle; padding-right: 14px; text-align: right;">
+                    <h1 style="color: #333333; margin: 0; font-size: 22px; font-weight: 400; font-family: Georgia, serif;">CEB Building</h1>
+                    <p style="color: #555555; margin: 2px 0 0 0; font-size: 13px; font-style: italic;">Hand-Crafted Wood Works</p>
+                  </td>
+                  <td style="vertical-align: middle;">
+                    <img src="${logoSrc}" alt="CEB Building" style="width: 65px; height: 65px; border-radius: 50%; object-fit: contain; display: block; background: #fff;">
+                  </td>
+                </tr>
+              </table>
             </td>
           </tr>
         </table>
@@ -379,13 +379,14 @@ const handler = async (req: Request): Promise<Response> => {
     `;
 
     try {
+      // Send notification only to chad@cebbuilding.com
       await sendEmailViaZoho(
-        notificationEmail,
+        'chad@cebbuilding.com',
         `${isAccepted ? '✓ Quote Accepted' : '✗ Quote Declined'}: ${projectTitle} - ${clientName}`,
         getEmailWrapper(ownerEmailContent),
         logoBase64,
       );
-      console.log("Owner notification sent");
+      console.log("Owner notification sent to chad@cebbuilding.com");
 
       await sendEmailViaZoho(
         clientEmail,

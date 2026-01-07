@@ -1,20 +1,37 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, Search } from 'lucide-react';
 import { Invoice, Client } from '@/types';
 import { mockInvoices, mockClients } from '@/lib/mockData';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { InvoiceCard } from '@/components/invoices/InvoiceCard';
+import { InvoiceDialog } from '@/components/invoices/InvoiceDialog';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 export default function Invoices() {
   const [invoices, setInvoices] = useLocalStorage<Invoice[]>('ceb-invoices', mockInvoices);
   const [clients] = useLocalStorage<Client[]>('ceb-clients', mockClients);
   const [searchQuery, setSearchQuery] = useState('');
   const [sendingEmail, setSendingEmail] = useState<string | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [preSelectedClientId, setPreSelectedClientId] = useState<string | null>(null);
   const { toast } = useToast();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // Handle navigation state for creating invoice from client
+  useEffect(() => {
+    const state = location.state as { openNewInvoice?: boolean; selectedClientId?: string } | null;
+    if (state?.openNewInvoice) {
+      setPreSelectedClientId(state.selectedClientId || null);
+      setIsDialogOpen(true);
+      // Clear the state so it doesn't re-trigger
+      navigate(location.pathname, { replace: true });
+    }
+  }, [location.state, navigate, location.pathname]);
 
   const filteredInvoices = invoices.filter((invoice) => {
     const client = clients.find((c) => c.id === invoice.clientId);
@@ -23,6 +40,19 @@ export default function Invoices() {
       client?.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
   });
+
+  const handleCreateInvoice = (data: Omit<Invoice, 'id' | 'createdAt'>) => {
+    const newInvoice: Invoice = {
+      ...data,
+      id: Date.now().toString(),
+      createdAt: new Date(),
+    };
+    setInvoices((prev) => [...prev, newInvoice]);
+    toast({
+      title: 'Invoice created',
+      description: `${data.invoiceNumber} has been created.`,
+    });
+  };
 
   const handleSendEmail = async (invoice: Invoice) => {
     const client = clients.find((c) => c.id === invoice.clientId);
@@ -49,8 +79,6 @@ export default function Invoices() {
           businessName: 'CEB Building',
         },
       });
-
-      if (error) throw error;
 
       if (error) throw error;
 
@@ -122,7 +150,7 @@ export default function Invoices() {
           <h1 className="text-3xl font-bold text-foreground">Invoices</h1>
           <p className="text-muted-foreground mt-1">Track and manage your invoices</p>
         </div>
-        <Button className="gap-2">
+        <Button className="gap-2" onClick={() => setIsDialogOpen(true)}>
           <Plus className="h-4 w-4" />
           New Invoice
         </Button>
@@ -141,7 +169,7 @@ export default function Invoices() {
       {filteredInvoices.length === 0 ? (
         <div className="text-center py-12">
           <p className="text-muted-foreground">No invoices found.</p>
-          <Button variant="link" className="mt-2">
+          <Button variant="link" className="mt-2" onClick={() => setIsDialogOpen(true)}>
             Create your first invoice
           </Button>
         </div>
@@ -160,6 +188,17 @@ export default function Invoices() {
           ))}
         </div>
       )}
+
+      <InvoiceDialog
+        open={isDialogOpen}
+        onOpenChange={(open) => {
+          setIsDialogOpen(open);
+          if (!open) setPreSelectedClientId(null);
+        }}
+        clients={clients}
+        onSave={handleCreateInvoice}
+        defaultClientId={preSelectedClientId}
+      />
     </div>
   );
 }

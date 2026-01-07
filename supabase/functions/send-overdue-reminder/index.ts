@@ -20,6 +20,19 @@ interface ReminderRequest {
 // Logo hosted on your website - used as a source to embed inline (CID)
 const LOGO_URL = "https://static.wixstatic.com/media/fc62d0_d3f25abd45e341648b59e65fc94cc7fd~mv2.png";
 
+const PAYMENT_METHODS = [
+  {
+    name: 'Venmo',
+    link: 'https://venmo.com/Chad-Burum-1',
+    color: '#008CFF',
+  },
+  {
+    name: 'CashApp',
+    link: 'https://cash.app/$ceburum',
+    color: '#00D632',
+  },
+];
+
 function wrapBase64(b64: string): string {
   return b64.match(/.{1,76}/g)?.join("\r\n") ?? b64;
 }
@@ -61,24 +74,24 @@ function getEmailHeader(title: string, subtitle?: string, logoSrc: string = LOGO
       <td style="background-color: #c8c4bd; padding: 20px 24px; border-bottom: 3px solid #a09d95;">
         <table role="presentation" class="header-table" width="100%" cellpadding="0" cellspacing="0">
           <tr>
-            <td class="header-left" style="vertical-align: middle; width: 60%;">
-              <table role="presentation" cellpadding="0" cellspacing="0">
-                <tr>
-                  <td style="vertical-align: middle;">
-                    <img src="${logoSrc}" alt="CEB Building" style="width: 65px; height: 65px; border-radius: 50%; object-fit: contain; display: block; background: #fff;">
-                  </td>
-                  <td style="vertical-align: middle; padding-left: 14px;">
-                    <h1 style="color: #333333; margin: 0; font-size: 22px; font-weight: 400; font-family: Georgia, serif;">CEB Building</h1>
-                    <p style="color: #555555; margin: 2px 0 0 0; font-size: 13px; font-style: italic;">Hand-Crafted Wood Works</p>
-                  </td>
-                </tr>
-              </table>
-            </td>
-            <td class="header-right" style="vertical-align: middle; text-align: right; width: 40%;">
+            <td class="header-left" style="vertical-align: middle; width: 40%;">
               <p style="color: #333333; margin: 0; font-size: 13px; font-weight: 600;">Chad Burum</p>
               <p style="color: #555555; margin: 2px 0; font-size: 12px;">405-500-8224</p>
               <p style="color: #555555; margin: 2px 0; font-size: 12px;">chad@cebbuilding.com</p>
               <p style="color: #555555; margin: 2px 0; font-size: 12px;">cebbuilding.com</p>
+            </td>
+            <td class="header-right" style="vertical-align: middle; text-align: right; width: 60%;">
+              <table role="presentation" cellpadding="0" cellspacing="0" style="margin-left: auto;">
+                <tr>
+                  <td style="vertical-align: middle; padding-right: 14px; text-align: right;">
+                    <h1 style="color: #333333; margin: 0; font-size: 22px; font-weight: 400; font-family: Georgia, serif;">CEB Building</h1>
+                    <p style="color: #555555; margin: 2px 0 0 0; font-size: 13px; font-style: italic;">Hand-Crafted Wood Works</p>
+                  </td>
+                  <td style="vertical-align: middle;">
+                    <img src="${logoSrc}" alt="CEB Building" style="width: 65px; height: 65px; border-radius: 50%; object-fit: contain; display: block; background: #fff;">
+                  </td>
+                </tr>
+              </table>
             </td>
           </tr>
         </table>
@@ -335,7 +348,7 @@ const handler = async (req: Request): Promise<Response> => {
               <p style="font-size: 16px; font-weight: 600; margin: 0 0 16px 0; color: #333;">Payment Options</p>
               <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 0 auto;">
                 <tr>
-                  ${PAYMENT_METHODS.map(method => `
+                ${PAYMENT_METHODS.map((method: { name: string; link: string; color: string }) => `
                     <td style="padding: 6px;">
                       <a href="${method.link}" target="_blank" style="display: inline-block; padding: 14px 28px; background-color: ${method.color}; color: white; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 14px; font-family: -apple-system, sans-serif;">
                         Pay with ${method.name}
