@@ -98,12 +98,13 @@ export function useInvoices() {
     if (!user) return null;
 
     try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data: newInvoice, error } = await supabase
         .from('invoices')
         .insert([{
           client_id: data.clientId,
           invoice_number: data.invoiceNumber,
-          items: JSON.stringify(data.items),
+          items: data.items as any, // jsonb accepts arrays directly
           status: data.status,
           due_date: data.dueDate.toISOString(),
           notes: data.notes || null,
@@ -133,7 +134,7 @@ export function useInvoices() {
       const updateData: Record<string, unknown> = {};
       if (data.clientId !== undefined) updateData.client_id = data.clientId;
       if (data.invoiceNumber !== undefined) updateData.invoice_number = data.invoiceNumber;
-      if (data.items !== undefined) updateData.items = JSON.stringify(data.items);
+      if (data.items !== undefined) updateData.items = data.items as any; // eslint-disable-line @typescript-eslint/no-explicit-any
       if (data.status !== undefined) updateData.status = data.status;
       if (data.dueDate !== undefined) updateData.due_date = data.dueDate.toISOString();
       if (data.notes !== undefined) updateData.notes = data.notes || null;

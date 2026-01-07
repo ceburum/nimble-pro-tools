@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Plus, Search, FolderKanban, Send, CheckCircle, Play, DollarSign } from 'lucide-react';
-import { Project, Client, Invoice, LineItem } from '@/types';
-import { mockClients } from '@/lib/mockData';
+import { Plus, Search, FolderKanban, Send, CheckCircle, Play, DollarSign, Loader2 } from 'lucide-react';
+import { Project } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ProjectCard } from '@/components/projects/ProjectCard';
@@ -9,6 +8,8 @@ import { ProjectDialog } from '@/components/projects/ProjectDialog';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
+import { useClients } from '@/hooks/useClients';
+import { useInvoices } from '@/hooks/useInvoices';
 
 const mockProjects: Project[] = [
   {
@@ -48,8 +49,8 @@ const mockProjects: Project[] = [
 
 export default function Projects() {
   const [projects, setProjects] = useLocalStorage<Project[]>('ceb-projects', mockProjects);
-  const [clients] = useLocalStorage<Client[]>('ceb-clients', mockClients);
-  const [invoices, setInvoices] = useLocalStorage<Invoice[]>('ceb-invoices', []);
+  const { clients, loading: clientsLoading } = useClients();
+  const { addInvoice, loading: invoicesLoading } = useInvoices();
   const [searchQuery, setSearchQuery] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
@@ -111,24 +112,23 @@ export default function Projects() {
     toast({ title: 'Project deleted' });
   };
 
-  const handleCreateInvoice = (project: Project) => {
+  const handleCreateInvoice = async (project: Project) => {
     const invoiceNumber = `INV-${Date.now().toString().slice(-6)}`;
-    const newInvoice: Invoice = {
-      id: Date.now().toString(),
-      quoteId: project.id,
+    
+    const newInvoice = await addInvoice({
       clientId: project.clientId,
       invoiceNumber,
       items: project.items,
       status: 'draft',
-      createdAt: new Date(),
       dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
       notes: project.quoteNotes,
-    };
+    });
     
-    setInvoices((prev) => [...prev, newInvoice]);
-    handleUpdateProject({ ...project, status: 'invoiced', invoiceId: newInvoice.id });
-    toast({ title: 'Invoice created', description: `Invoice ${invoiceNumber} ready` });
-    navigate('/invoices');
+    if (newInvoice) {
+      handleUpdateProject({ ...project, status: 'invoiced', invoiceId: newInvoice.id });
+      toast({ title: 'Invoice created', description: `Invoice ${invoiceNumber} ready` });
+      navigate('/invoices');
+    }
   };
 
   // Group projects by status
@@ -147,6 +147,16 @@ export default function Projects() {
     { key: 'completed', label: 'Completed', icon: CheckCircle, projects: completedProjects },
     { key: 'invoiced', label: 'Invoiced', icon: DollarSign, projects: invoicedProjects },
   ].filter((g) => g.projects.length > 0);
+
+  const loading = clientsLoading || invoicesLoading;
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
