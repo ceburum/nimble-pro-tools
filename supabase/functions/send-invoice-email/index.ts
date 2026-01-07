@@ -149,7 +149,8 @@ const handler = async (req: Request): Promise<Response> => {
       </a>
     `).join('');
 
-    const logoUrl = 'https://pvgxkznweoedkvebjjpc.supabase.co/storage/v1/object/public/assets/ceb-logo.png';
+    // Logo hosted in public folder of the deployed app
+    const logoUrl = 'https://ceb-contractor.lovable.app/ceb-logo.png';
 
     const emailHtml = `
       <!DOCTYPE html>
