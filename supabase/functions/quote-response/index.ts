@@ -570,7 +570,11 @@ const handler = async (req: Request): Promise<Response> => {
 
     return new Response(confirmationHtml, {
       status: 200,
-      headers: { "Content-Type": "text/html; charset=utf-8" },
+      headers: { 
+        "Content-Type": "text/html; charset=utf-8",
+        "X-Content-Type-Options": "nosniff",
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+      },
     });
   } catch (error: any) {
     console.error("Error handling quote response:", error);
@@ -598,7 +602,11 @@ const handler = async (req: Request): Promise<Response> => {
     `;
     return new Response(errorHtml, {
       status: 500,
-      headers: { "Content-Type": "text/html; charset=utf-8" },
+      headers: { 
+        "Content-Type": "text/html; charset=utf-8",
+        "X-Content-Type-Options": "nosniff",
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+      },
     });
   }
 };
