@@ -34,6 +34,15 @@ export default function Dashboard() {
       return;
     }
 
+    // SMS not yet implemented
+    if (method === 'text') {
+      toast({
+        title: "Coming soon",
+        description: `Text messaging to ${client.phone} will be available soon.`,
+      });
+      return;
+    }
+
     const total = invoice.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
 
     try {
@@ -54,13 +63,13 @@ export default function Dashboard() {
 
       toast({
         title: "Reminder Sent",
-        description: `${method === 'email' ? 'Email' : 'Text'} reminder sent to ${client.name}`,
+        description: `Email reminder sent to ${client.name}`,
       });
     } catch (error) {
       console.error('Error sending reminder:', error);
       toast({
         title: "Error",
-        description: `Failed to send ${method} reminder`,
+        description: "Failed to send email reminder",
         variant: "destructive"
       });
     }
