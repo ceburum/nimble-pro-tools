@@ -38,11 +38,7 @@ export default function Invoices() {
     setSendingEmail(invoice.id);
     
     try {
-      // Use AbortController with longer timeout for SMTP operations
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
-      
-      const { data, error } = await supabase.functions.invoke('send-invoice-email', {
+      const { error } = await supabase.functions.invoke('send-invoice-email', {
         body: {
           clientName: client.name,
           clientEmail: client.email,
@@ -53,8 +49,8 @@ export default function Invoices() {
           businessName: 'C.E.B.',
         },
       });
-      
-      clearTimeout(timeoutId);
+
+      if (error) throw error;
 
       if (error) throw error;
 
@@ -71,14 +67,17 @@ export default function Invoices() {
       });
     } catch (error: any) {
       console.error('Failed to send invoice:', error);
-      // Check if it's an abort/timeout - the email may have still sent
-      const isTimeout = error.name === 'AbortError' || error.message?.includes('fetch');
+      const message = error?.message ? String(error.message) : String(error);
+      const looksLikeBlockedRequest =
+        message.includes('Failed to fetch') ||
+        message.includes('Failed to send a request to the Edge Function');
+
       toast({
-        title: isTimeout ? 'Sending...' : 'Failed to send',
-        description: isTimeout 
-          ? 'Email is being sent. Check your inbox shortly.' 
-          : (error.message || 'Could not send invoice email.'),
-        variant: isTimeout ? 'default' : 'destructive',
+        title: 'Failed to send',
+        description: looksLikeBlockedRequest
+          ? 'Your browser blocked the request. If you\'re using DuckDuckGo/Brave, disable tracking protection for this site or try Chrome/Safari, then retry.'
+          : (message || 'Could not send invoice email.'),
+        variant: 'destructive',
       });
     } finally {
       setSendingEmail(null);
