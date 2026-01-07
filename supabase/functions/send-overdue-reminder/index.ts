@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-
-const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -17,6 +16,40 @@ interface ReminderRequest {
   dueDate: string;
   method: 'email' | 'text';
   daysOverdue?: number;
+}
+
+async function sendEmailViaZoho(to: string, subject: string, html: string): Promise<void> {
+  const smtpUser = Deno.env.get("ZOHO_SMTP_USER");
+  const smtpPassword = Deno.env.get("ZOHO_SMTP_PASSWORD");
+
+  if (!smtpUser || !smtpPassword) {
+    throw new Error("Zoho SMTP credentials not configured");
+  }
+
+  const client = new SMTPClient({
+    connection: {
+      hostname: "smtp.zoho.com",
+      port: 465,
+      tls: true,
+      auth: {
+        username: smtpUser,
+        password: smtpPassword,
+      },
+    },
+  });
+
+  try {
+    await client.send({
+      from: `CEB Building <${smtpUser}>`,
+      to: to,
+      subject: subject,
+      content: "Please view this email in an HTML-compatible email client.",
+      html: html,
+    });
+    console.log(`Email sent successfully to ${to}`);
+  } finally {
+    await client.close();
+  }
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -82,35 +115,21 @@ const handler = async (req: Request): Promise<Response> => {
               
               <p>Thank you for your prompt attention to this matter.</p>
               
-              <p>Best regards,<br>Chad Burum<br>CEB Electric</p>
+              <p>Best regards,<br>Chad Burum<br>CEB Building</p>
             </div>
             <div class="footer">
-              <p>CEB Electric | chad.burum@ceb-electric.com</p>
+              <p>CEB Building | chad@cebbuilding.com</p>
             </div>
           </div>
         </body>
         </html>
       `;
 
-      const res = await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${RESEND_API_KEY}`,
-        },
-        body: JSON.stringify({
-          from: "CEB Electric <onboarding@resend.dev>",
-          to: [clientEmail],
-          subject: `⚠️ Payment Reminder: Invoice ${invoiceNumber} is ${calculatedDaysOverdue} days overdue`,
-          html: emailHtml,
-        }),
-      });
-
-      if (!res.ok) {
-        const errorData = await res.text();
-        console.error("Error sending email:", errorData);
-        throw new Error(errorData);
-      }
+      await sendEmailViaZoho(
+        clientEmail,
+        `⚠️ Payment Reminder: Invoice ${invoiceNumber} is ${calculatedDaysOverdue} days overdue`,
+        emailHtml
+      );
 
       return new Response(
         JSON.stringify({ success: true, method: 'email' }),
