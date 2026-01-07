@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { encode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -37,6 +38,25 @@ const PAYMENT_METHODS = [
     color: '#00D632',
   },
 ];
+
+let cachedLogoDataUri: string | null = null;
+const LOGO_FILE_URL = new URL("./ceb-logo.png", import.meta.url);
+
+async function getLogoDataUri(): Promise<string> {
+  if (cachedLogoDataUri) return cachedLogoDataUri;
+  try {
+    const bytes = await Deno.readFile(LOGO_FILE_URL);
+    const arrayBuffer = bytes.buffer.slice(
+      bytes.byteOffset,
+      bytes.byteOffset + bytes.byteLength
+    );
+    cachedLogoDataUri = `data:image/png;base64,${encode(arrayBuffer)}`;
+    return cachedLogoDataUri;
+  } catch (err) {
+    console.warn("Logo file not found for email header.", err);
+    return "";
+  }
+}
 
 async function sendEmailViaZoho(to: string, subject: string, html: string): Promise<void> {
   const smtpUser = Deno.env.get("ZOHO_SMTP_USER");
@@ -149,8 +169,7 @@ const handler = async (req: Request): Promise<Response> => {
       </a>
     `).join('');
 
-    // Logo hosted in public folder of the deployed app
-    const logoUrl = 'https://ceb-contractor.lovable.app/ceb-logo.png';
+    const logoDataUri = await getLogoDataUri();
 
     const emailHtml = `
       <!DOCTYPE html>
@@ -164,9 +183,9 @@ const handler = async (req: Request): Promise<Response> => {
           table { border-collapse: collapse; }
           @media only screen and (max-width: 600px) {
             .container { width: 100% !important; padding: 16px !important; }
-            .header { padding: 24px 16px !important; }
+            .header { padding: 20px 16px !important; }
             .content { padding: 24px 16px !important; }
-            .logo { width: 80px !important; height: 80px !important; }
+            .header img { width: 56px !important; height: 56px !important; }
           }
         </style>
       </head>
@@ -181,7 +200,10 @@ const handler = async (req: Request): Promise<Response> => {
                     <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                       <tr>
                         <td style="vertical-align: middle; width: 80px;">
-                          <img src="${logoUrl}" alt="CEB Building" style="width: 70px; height: 70px; border-radius: 8px; background: white; object-fit: contain;">
+                          ${logoDataUri
+                            ? `<img src="${logoDataUri}" alt="CEB Building logo" style="width: 70px; height: 70px; border-radius: 8px; background: white; object-fit: contain; display:block;">`
+                            : `<div style="width:70px;height:70px;border-radius:8px;background:#ffffff;display:flex;align-items:center;justify-content:center;font-weight:700;color:#111827;">CEB</div>`
+                          }
                         </td>
                         <td style="vertical-align: middle; padding-left: 16px;">
                           <h1 style="color: white; margin: 0; font-size: 24px; font-weight: 700;">${businessName}</h1>
@@ -191,8 +213,8 @@ const handler = async (req: Request): Promise<Response> => {
                           <p style="color: white; margin: 0; font-size: 13px; font-weight: 600;">Chad Burum</p>
                           <p style="color: rgba(255,255,255,0.85); margin: 2px 0; font-size: 12px;">📞 405-500-8224</p>
                           <p style="color: rgba(255,255,255,0.85); margin: 2px 0; font-size: 12px;">✉️ chad@cebbuilding.com</p>
+                          <p style="color: rgba(255,255,255,0.85); margin: 2px 0; font-size: 12px;">✉️ cebbuilding@yahoo.com</p>
                           <p style="color: rgba(255,255,255,0.85); margin: 2px 0; font-size: 12px;">🌐 cebbuilding.com</p>
-                        </td>
                       </tr>
                     </table>
                   </td>
