@@ -1,5 +1,4 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { encode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -39,21 +38,22 @@ const PAYMENT_METHODS = [
   },
 ];
 
-let cachedLogoDataUri: string | null = null;
-const LOGO_FILE_URL = new URL("./ceb-logo.png", import.meta.url);
-
+// Fetch the logo from the web and convert to base64
 async function getLogoDataUri(): Promise<string> {
-  if (cachedLogoDataUri) return cachedLogoDataUri;
   try {
-    const bytes = await Deno.readFile(LOGO_FILE_URL);
-    const arrayBuffer = bytes.buffer.slice(
-      bytes.byteOffset,
-      bytes.byteOffset + bytes.byteLength
-    );
-    cachedLogoDataUri = `data:image/png;base64,${encode(arrayBuffer)}`;
-    return cachedLogoDataUri;
+    const response = await fetch("https://ceb-contractor.lovable.app/ceb-logo.png");
+    if (!response.ok) throw new Error("Failed to fetch logo");
+    const arrayBuffer = await response.arrayBuffer();
+    const bytes = new Uint8Array(arrayBuffer);
+    let binary = '';
+    for (let i = 0; i < bytes.length; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    const base64 = btoa(binary);
+    console.log("Logo fetched and converted to base64 successfully");
+    return `data:image/png;base64,${base64}`;
   } catch (err) {
-    console.warn("Logo file not found for email header.", err);
+    console.warn("Failed to fetch logo:", err);
     return "";
   }
 }
