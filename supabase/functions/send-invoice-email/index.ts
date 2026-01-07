@@ -149,64 +149,113 @@ const handler = async (req: Request): Promise<Response> => {
       </a>
     `).join('');
 
+    const logoUrl = 'https://pvgxkznweoedkvebjjpc.supabase.co/storage/v1/object/public/assets/ceb-logo.png';
+
     const emailHtml = `
       <!DOCTYPE html>
       <html>
       <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+          * { box-sizing: border-box; }
+          body { margin: 0; padding: 0; }
+          table { border-collapse: collapse; }
+          @media only screen and (max-width: 600px) {
+            .container { width: 100% !important; padding: 16px !important; }
+            .header { padding: 24px 16px !important; }
+            .content { padding: 24px 16px !important; }
+            .logo { width: 80px !important; height: 80px !important; }
+          }
+        </style>
       </head>
-      <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
-          <h1 style="color: white; margin: 0; font-size: 28px;">${businessName}</h1>
-          <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0;">Invoice ${invoiceNumber}</p>
-        </div>
-        
-        <div style="background: white; padding: 30px; border: 1px solid #eee; border-top: none;">
-          <p style="font-size: 16px;">Hello ${clientName},</p>
-          <p>Please find your invoice details below:</p>
-          
-          <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
-            <thead>
-              <tr style="background: #f8f9fa;">
-                <th style="padding: 12px; text-align: left; border-bottom: 2px solid #dee2e6;">Description</th>
-                <th style="padding: 12px; text-align: center; border-bottom: 2px solid #dee2e6;">Qty</th>
-                <th style="padding: 12px; text-align: right; border-bottom: 2px solid #dee2e6;">Price</th>
-                <th style="padding: 12px; text-align: right; border-bottom: 2px solid #dee2e6;">Amount</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${itemsHtml}
-            </tbody>
-            <tfoot>
-              <tr>
-                <td colspan="3" style="padding: 15px 12px; text-align: right; font-weight: bold; font-size: 18px;">Total:</td>
-                <td style="padding: 15px 12px; text-align: right; font-weight: bold; font-size: 18px; color: #667eea;">$${formattedTotal}</td>
-              </tr>
-            </tfoot>
-          </table>
-          
-          <div style="background: #f8f9fa; padding: 15px; border-radius: 6px; margin: 20px 0;">
-            <p style="margin: 0;"><strong>Due Date:</strong> ${dueDate}</p>
-            ${notes ? `<p style="margin: 10px 0 0 0;"><strong>Notes:</strong> ${notes}</p>` : ''}
-          </div>
-          
-          <div style="text-align: center; margin: 30px 0;">
-            <p style="font-size: 18px; font-weight: 600; margin-bottom: 15px;">Payment Options</p>
-            ${paymentButtonsHtml}
-          </div>
-          
-          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-          
-          <p style="color: #666; font-size: 14px; text-align: center;">
-            Thank you for your business!<br>
-            If you have any questions, please don't hesitate to reach out.
-          </p>
-        </div>
-        
-        <div style="text-align: center; padding: 20px; color: #999; font-size: 12px;">
-          <p>© ${new Date().getFullYear()} ${businessName}. All rights reserved.</p>
-        </div>
+      <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #1f2937; background-color: #f3f4f6; margin: 0; padding: 20px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #f3f4f6;">
+          <tr>
+            <td align="center" style="padding: 20px;">
+              <table role="presentation" class="container" width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+                <!-- Header with Logo -->
+                <tr>
+                  <td class="header" style="background: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%); padding: 32px; text-align: center;">
+                    <img src="${logoUrl}" alt="CEB Building" class="logo" style="width: 100px; height: 100px; border-radius: 50%; background: white; object-fit: contain; margin-bottom: 16px;">
+                    <h1 style="color: white; margin: 0; font-size: 28px; font-weight: 700; letter-spacing: 0.5px;">${businessName}</h1>
+                    <p style="color: rgba(255,255,255,0.85); margin: 8px 0 0 0; font-size: 16px;">Invoice ${invoiceNumber}</p>
+                  </td>
+                </tr>
+                
+                <!-- Content -->
+                <tr>
+                  <td class="content" style="padding: 32px;">
+                    <p style="font-size: 16px; margin: 0 0 24px 0;">Hello <strong>${clientName}</strong>,</p>
+                    <p style="font-size: 15px; color: #4b5563; margin: 0 0 24px 0;">Please find your invoice details below:</p>
+                    
+                    <!-- Invoice Items Table -->
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 24px; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
+                      <thead>
+                        <tr style="background: #f9fafb;">
+                          <th style="padding: 14px 16px; text-align: left; font-size: 13px; font-weight: 600; color: #374151; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e5e7eb;">Description</th>
+                          <th style="padding: 14px 12px; text-align: center; font-size: 13px; font-weight: 600; color: #374151; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e5e7eb;">Qty</th>
+                          <th style="padding: 14px 12px; text-align: right; font-size: 13px; font-weight: 600; color: #374151; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e5e7eb;">Price</th>
+                          <th style="padding: 14px 16px; text-align: right; font-size: 13px; font-weight: 600; color: #374151; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e5e7eb;">Amount</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        ${itemsHtml}
+                      </tbody>
+                      <tfoot>
+                        <tr style="background: #f0fdf4;">
+                          <td colspan="3" style="padding: 16px; text-align: right; font-weight: 700; font-size: 16px; color: #1f2937;">Total:</td>
+                          <td style="padding: 16px; text-align: right; font-weight: 700; font-size: 20px; color: #059669;">$${formattedTotal}</td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                    
+                    <!-- Due Date -->
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background: #fef3c7; padding: 16px; border-radius: 8px; margin-bottom: 24px;">
+                      <tr>
+                        <td style="padding: 12px 16px;">
+                          <p style="margin: 0; font-size: 14px; color: #92400e;"><strong>📅 Due Date:</strong> ${dueDate}</p>
+                          ${notes ? `<p style="margin: 8px 0 0 0; font-size: 14px; color: #92400e;"><strong>📝 Notes:</strong> ${notes}</p>` : ''}
+                        </td>
+                      </tr>
+                    </table>
+                    
+                    <!-- Payment Options -->
+                    <div style="text-align: center; margin-bottom: 24px;">
+                      <p style="font-size: 18px; font-weight: 600; margin: 0 0 16px 0; color: #1f2937;">💳 Payment Options</p>
+                      <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 0 auto;">
+                        <tr>
+                          ${PAYMENT_METHODS.map(method => `
+                            <td style="padding: 6px;">
+                              <a href="${method.link}" target="_blank" style="display: inline-block; padding: 14px 28px; background-color: ${method.color}; color: white; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 15px;">
+                                Pay with ${method.name}
+                              </a>
+                            </td>
+                          `).join('')}
+                        </tr>
+                      </table>
+                    </div>
+                  </td>
+                </tr>
+                
+                <!-- Footer -->
+                <tr>
+                  <td style="background: #f9fafb; padding: 24px; text-align: center; border-top: 1px solid #e5e7eb;">
+                    <p style="color: #6b7280; font-size: 14px; margin: 0 0 8px 0;">
+                      Thank you for your business!
+                    </p>
+                    <p style="color: #9ca3af; font-size: 13px; margin: 0;">
+                      If you have any questions, please don't hesitate to reach out.
+                    </p>
+                    <p style="color: #9ca3af; font-size: 12px; margin: 16px 0 0 0;">
+                      © ${new Date().getFullYear()} ${businessName}. All rights reserved.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
       </body>
       </html>
     `;
