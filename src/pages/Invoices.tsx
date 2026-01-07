@@ -93,6 +93,7 @@ export default function Invoices() {
           clientName: client.name,
           clientEmail: client.email,
           invoiceNumber: invoice.invoiceNumber,
+          invoiceId: invoice.id,
           items: invoice.items,
           dueDate: invoice.dueDate.toLocaleDateString(),
           notes: invoice.notes,

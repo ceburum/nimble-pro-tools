@@ -1,5 +1,4 @@
-import { useState } from 'react';
-import { Receipt, Calendar, MoreVertical, Mail, MessageSquare, CreditCard, Download, Loader2 } from 'lucide-react';
+import { Receipt, Calendar, MoreVertical, Mail, MessageSquare, CreditCard, Download } from 'lucide-react';
 import { Invoice, Client } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -10,20 +9,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
 import { downloadInvoice } from '@/lib/generateInvoicePdf';
-import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
 
 interface InvoiceCardProps {
   invoice: Invoice;
@@ -44,179 +31,90 @@ const statusConfig = {
 export function InvoiceCard({ invoice, client, onSendEmail, onSendText, onMarkPaid, onDelete }: InvoiceCardProps) {
   const total = invoice.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
   const status = statusConfig[invoice.status];
-  const { toast } = useToast();
-  const [showFeeDialog, setShowFeeDialog] = useState(false);
-  const [processingPayment, setProcessingPayment] = useState(false);
-
-  const handlePayWithCard = async (includeConvenienceFee: boolean) => {
-    if (!client) {
-      toast({
-        title: 'Error',
-        description: 'Client information not found.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    setProcessingPayment(true);
-    setShowFeeDialog(false);
-
-    try {
-      const { data, error } = await supabase.functions.invoke('create-invoice-payment', {
-        body: {
-          invoiceNumber: invoice.invoiceNumber,
-          clientName: client.name,
-          clientEmail: client.email,
-          amount: total,
-          includeConvenienceFee,
-        },
-      });
-
-      if (error) throw error;
-
-      if (data?.url) {
-        window.open(data.url, '_blank');
-      }
-    } catch (error: any) {
-      console.error('Payment error:', error);
-      toast({
-        title: 'Payment failed',
-        description: error?.message || 'Could not create payment session.',
-        variant: 'destructive',
-      });
-    } finally {
-      setProcessingPayment(false);
-    }
-  };
-
-  const convenienceFee = total * 0.03;
-  const totalWithFee = total + convenienceFee;
 
   return (
-    <>
-      <div className="bg-card rounded-xl border border-border p-6 shadow-sm hover:shadow-md transition-all duration-200 group">
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-accent/10">
-              <Receipt className="h-5 w-5 text-accent" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-card-foreground">{invoice.invoiceNumber}</h3>
-              <p className="text-sm text-muted-foreground">{client?.name || 'Unknown Client'}</p>
-            </div>
+    <div className="bg-card rounded-xl border border-border p-6 shadow-sm hover:shadow-md transition-all duration-200 group">
+      <div className="flex items-start justify-between mb-4">
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-lg bg-accent/10">
+            <Receipt className="h-5 w-5 text-accent" />
           </div>
-          
-          <div className="flex items-center gap-2">
-            <Badge className={cn("font-medium", status.className)}>
-              {status.label}
-            </Badge>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 transition-opacity">
-                  <MoreVertical className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => downloadInvoice(invoice, client)}>
-                  <Download className="h-4 w-4 mr-2" />
-                  Download / Print
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => onSendEmail(invoice)}>
-                  <Mail className="h-4 w-4 mr-2" />
-                  Send Email
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onSendText(invoice)}>
-                  <MessageSquare className="h-4 w-4 mr-2" />
-                  Send Text
-                </DropdownMenuItem>
-                {invoice.status !== 'paid' && (
-                  <>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => setShowFeeDialog(true)} disabled={processingPayment}>
-                      <CreditCard className="h-4 w-4 mr-2" />
-                      {processingPayment ? 'Processing...' : 'Pay with Card'}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => onMarkPaid(invoice)}>
-                      <CreditCard className="h-4 w-4 mr-2" />
-                      Mark as Paid
-                    </DropdownMenuItem>
-                  </>
-                )}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem 
-                  onClick={() => onDelete(invoice.id)}
-                  className="text-destructive focus:text-destructive"
-                >
-                  Delete
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+          <div>
+            <h3 className="font-semibold text-card-foreground">{invoice.invoiceNumber}</h3>
+            <p className="text-sm text-muted-foreground">{client?.name || 'Unknown Client'}</p>
           </div>
         </div>
-
-        <div className="space-y-3 mb-4">
-          {invoice.items.slice(0, 2).map((item) => (
-            <div key={item.id} className="flex justify-between text-sm">
-              <span className="text-muted-foreground truncate flex-1 mr-4">{item.description}</span>
-              <span className="text-card-foreground font-medium">
-                ${(item.quantity * item.unitPrice).toLocaleString()}
-              </span>
-            </div>
-          ))}
-          {invoice.items.length > 2 && (
-            <p className="text-sm text-muted-foreground">
-              +{invoice.items.length - 2} more items
-            </p>
-          )}
-        </div>
-
-        <div className="flex items-center justify-between pt-4 border-t border-border">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Calendar className="h-4 w-4" />
-            <span>Due {invoice.dueDate.toLocaleDateString()}</span>
-          </div>
-          <p className="text-xl font-bold text-card-foreground">
-            ${total.toLocaleString('en-US', { minimumFractionDigits: 2 })}
-          </p>
+        
+        <div className="flex items-center gap-2">
+          <Badge className={cn("font-medium", status.className)}>
+            {status.label}
+          </Badge>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 transition-opacity">
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => downloadInvoice(invoice, client)}>
+                <Download className="h-4 w-4 mr-2" />
+                Download / Print
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => onSendEmail(invoice)}>
+                <Mail className="h-4 w-4 mr-2" />
+                Send Email
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onSendText(invoice)}>
+                <MessageSquare className="h-4 w-4 mr-2" />
+                Send Text
+              </DropdownMenuItem>
+              {invoice.status !== 'paid' && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => onMarkPaid(invoice)}>
+                    <CreditCard className="h-4 w-4 mr-2" />
+                    Mark as Paid
+                  </DropdownMenuItem>
+                </>
+              )}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem 
+                onClick={() => onDelete(invoice.id)}
+                className="text-destructive focus:text-destructive"
+              >
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
-      {/* Convenience Fee Dialog */}
-      <AlertDialog open={showFeeDialog} onOpenChange={setShowFeeDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Card Payment Options</AlertDialogTitle>
-            <AlertDialogDescription className="space-y-4">
-              <p>Credit card payments include a 3% convenience fee to cover processing costs.</p>
-              <div className="bg-muted/50 p-4 rounded-lg space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span>Invoice Total:</span>
-                  <span className="font-medium">${total.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
-                </div>
-                <div className="flex justify-between text-muted-foreground">
-                  <span>Convenience Fee (3%):</span>
-                  <span>+${convenienceFee.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
-                </div>
-                <div className="flex justify-between font-semibold pt-2 border-t">
-                  <span>Total with Fee:</span>
-                  <span>${totalWithFee.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
-                </div>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                To avoid fees, use Venmo or CashApp instead.
-              </p>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => handlePayWithCard(true)} className="gap-2">
-              {processingPayment && <Loader2 className="h-4 w-4 animate-spin" />}
-              Pay ${totalWithFee.toLocaleString('en-US', { minimumFractionDigits: 2 })}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </>
+      <div className="space-y-3 mb-4">
+        {invoice.items.slice(0, 2).map((item) => (
+          <div key={item.id} className="flex justify-between text-sm">
+            <span className="text-muted-foreground truncate flex-1 mr-4">{item.description}</span>
+            <span className="text-card-foreground font-medium">
+              ${(item.quantity * item.unitPrice).toLocaleString()}
+            </span>
+          </div>
+        ))}
+        {invoice.items.length > 2 && (
+          <p className="text-sm text-muted-foreground">
+            +{invoice.items.length - 2} more items
+          </p>
+        )}
+      </div>
+
+      <div className="flex items-center justify-between pt-4 border-t border-border">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Calendar className="h-4 w-4" />
+          <span>Due {invoice.dueDate.toLocaleDateString()}</span>
+        </div>
+        <p className="text-xl font-bold text-card-foreground">
+          ${total.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+        </p>
+      </div>
+    </div>
   );
 }

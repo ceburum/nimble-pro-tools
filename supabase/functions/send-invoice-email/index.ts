@@ -18,13 +18,14 @@ interface SendInvoiceRequest {
   clientName: string;
   clientEmail: string;
   invoiceNumber: string;
+  invoiceId: string;
   items: InvoiceItem[];
   dueDate: string;
   notes?: string;
   businessName?: string;
   businessEmail?: string;
-  diagnosticMode?: boolean; // NEW: capture full SMTP trace
-  plainTextOnly?: boolean;  // NEW: skip HTML/logo for deliverability test
+  diagnosticMode?: boolean;
+  plainTextOnly?: boolean;
 }
 
 const PAYMENT_METHODS = [
@@ -39,6 +40,12 @@ const PAYMENT_METHODS = [
     color: '#00D632',
   },
 ];
+
+// Get the app base URL for payment links
+function getAppBaseUrl(): string {
+  // Use the production URL or fallback
+  return Deno.env.get("APP_BASE_URL") || "https://cebbuilding.lovable.app";
+}
 
 // Simple HTML email header without logo for reliability
 function getEmailHeader(title: string, subtitle?: string): string {
@@ -425,6 +432,7 @@ const handler = async (req: Request): Promise<Response> => {
       clientName,
       clientEmail,
       invoiceNumber,
+      invoiceId,
       items,
       dueDate,
       notes,
@@ -437,6 +445,12 @@ const handler = async (req: Request): Promise<Response> => {
 
     const total = items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
     const formattedTotal = total.toLocaleString('en-US', { minimumFractionDigits: 2 });
+    const convenienceFee = total * 0.03;
+    const totalWithFee = (total + convenienceFee).toLocaleString('en-US', { minimumFractionDigits: 2 });
+    
+    // Build card payment URL
+    const baseUrl = getAppBaseUrl();
+    const cardPaymentUrl = invoiceId ? `${baseUrl}/pay/${invoiceId}` : null;
 
     // If plain text mode, send a simple text email for deliverability testing
     if (plainTextOnly) {
@@ -547,6 +561,14 @@ cebbuilding.com
                 `).join('')}
               </tr>
             </table>
+            ${cardPaymentUrl ? `
+              <div style="margin-top: 20px; padding-top: 20px; border-top: 1px dashed #d4d0c8;">
+                <p style="font-size: 13px; color: #666; margin: 0 0 12px 0;">Or pay by credit card (3% convenience fee applies):</p>
+                <a href="${cardPaymentUrl}" target="_blank" style="display: inline-block; padding: 14px 28px; background-color: #4a4a4a; color: white; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 14px; font-family: -apple-system, sans-serif;">
+                  Pay $${totalWithFee} with Card
+                </a>
+              </div>
+            ` : ''}
           </div>
         </td>
       </tr>
