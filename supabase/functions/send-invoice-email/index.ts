@@ -182,89 +182,111 @@ const handler = async (req: Request): Promise<Response> => {
           body { margin: 0; padding: 0; }
           table { border-collapse: collapse; }
           @media only screen and (max-width: 600px) {
-            .container { width: 100% !important; padding: 16px !important; }
-            .header { padding: 20px 16px !important; }
+            .container { width: 100% !important; }
+            .header-table { display: block !important; }
+            .header-left { display: block !important; width: 100% !important; text-align: center !important; padding-bottom: 16px !important; }
+            .header-right { display: block !important; width: 100% !important; text-align: center !important; }
             .content { padding: 24px 16px !important; }
-            .header img { width: 56px !important; height: 56px !important; }
           }
         </style>
       </head>
-      <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #1f2937; background-color: #f3f4f6; margin: 0; padding: 20px;">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #f3f4f6;">
+      <body style="font-family: Georgia, 'Times New Roman', serif; line-height: 1.6; color: #333333; background-color: #f5f5f0; margin: 0; padding: 20px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f5f0;">
           <tr>
             <td align="center" style="padding: 20px;">
-              <table role="presentation" class="container" width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
-                <!-- Header with Logo and Contact Info -->
+              <table role="presentation" class="container" width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; overflow: hidden; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);">
+                
+                <!-- Header - matching cebbuilding.com style -->
                 <tr>
-                  <td class="header" style="background: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%); padding: 24px 32px;">
-                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                  <td style="background-color: #c8c4bd; padding: 20px 24px; border-bottom: 3px solid #a09d95;">
+                    <table role="presentation" class="header-table" width="100%" cellpadding="0" cellspacing="0">
                       <tr>
-                        <td style="vertical-align: middle; width: 80px;">
-                          ${logoDataUri
-                            ? `<img src="${logoDataUri}" alt="CEB Building logo" style="width: 70px; height: 70px; border-radius: 8px; background: white; object-fit: contain; display:block;">`
-                            : `<div style="width:70px;height:70px;border-radius:8px;background:#ffffff;display:flex;align-items:center;justify-content:center;font-weight:700;color:#111827;">CEB</div>`
-                          }
+                        <td class="header-left" style="vertical-align: middle; width: 60%;">
+                          <table role="presentation" cellpadding="0" cellspacing="0">
+                            <tr>
+                              <td style="vertical-align: middle;">
+                                ${logoDataUri
+                                  ? `<img src="${logoDataUri}" alt="CEB Building" style="width: 65px; height: 65px; border-radius: 50%; object-fit: contain; display: block;">`
+                                  : `<div style="width: 65px; height: 65px; border-radius: 50%; background: #333; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">CEB</div>`
+                                }
+                              </td>
+                              <td style="vertical-align: middle; padding-left: 14px;">
+                                <h1 style="color: #333333; margin: 0; font-size: 22px; font-weight: 400; font-family: Georgia, serif;">${businessName}</h1>
+                                <p style="color: #555555; margin: 2px 0 0 0; font-size: 13px; font-style: italic;">Hand-Crafted Wood Works</p>
+                              </td>
+                            </tr>
+                          </table>
                         </td>
-                        <td style="vertical-align: middle; padding-left: 16px;">
-                          <h1 style="color: white; margin: 0; font-size: 24px; font-weight: 700;">${businessName}</h1>
-                          <p style="color: rgba(255,255,255,0.9); margin: 4px 0 0 0; font-size: 14px;">Invoice ${invoiceNumber}</p>
+                        <td class="header-right" style="vertical-align: middle; text-align: right; width: 40%;">
+                          <p style="color: #333333; margin: 0; font-size: 13px; font-weight: 600;">Chad Burum</p>
+                          <p style="color: #555555; margin: 2px 0; font-size: 12px;">405-500-8224</p>
+                          <p style="color: #555555; margin: 2px 0; font-size: 12px;">chad@cebbuilding.com</p>
+                          <p style="color: #555555; margin: 2px 0; font-size: 12px;">cebbuilding.com</p>
                         </td>
-                        <td style="vertical-align: middle; text-align: right;">
-                          <p style="color: white; margin: 0; font-size: 13px; font-weight: 600;">Chad Burum</p>
-                          <p style="color: rgba(255,255,255,0.85); margin: 2px 0; font-size: 12px;">📞 405-500-8224</p>
-                          <p style="color: rgba(255,255,255,0.85); margin: 2px 0; font-size: 12px;">✉️ chad@cebbuilding.com</p>
-                          <p style="color: rgba(255,255,255,0.85); margin: 2px 0; font-size: 12px;">✉️ cebbuilding@yahoo.com</p>
-                          <p style="color: rgba(255,255,255,0.85); margin: 2px 0; font-size: 12px;">🌐 cebbuilding.com</p>
                       </tr>
                     </table>
+                  </td>
+                </tr>
+
+                <!-- Invoice Title Bar -->
+                <tr>
+                  <td style="background-color: #4a4a4a; padding: 12px 24px;">
+                    <p style="color: #ffffff; margin: 0; font-size: 16px; font-weight: 600; letter-spacing: 1px;">INVOICE ${invoiceNumber}</p>
                   </td>
                 </tr>
                 
                 <!-- Content -->
                 <tr>
-                  <td class="content" style="padding: 32px;">
-                    <p style="font-size: 16px; margin: 0 0 24px 0;">Hello <strong>${clientName}</strong>,</p>
-                    <p style="font-size: 15px; color: #4b5563; margin: 0 0 24px 0;">Please find your invoice details below:</p>
+                  <td class="content" style="padding: 32px 24px;">
+                    <p style="font-size: 16px; margin: 0 0 20px 0; color: #333;">Hello <strong>${clientName}</strong>,</p>
+                    <p style="font-size: 15px; color: #666666; margin: 0 0 24px 0;">Thank you for your business. Please find your invoice details below:</p>
                     
                     <!-- Invoice Items Table -->
-                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 24px; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 24px;">
                       <thead>
-                        <tr style="background: #f9fafb;">
-                          <th style="padding: 14px 16px; text-align: left; font-size: 13px; font-weight: 600; color: #374151; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e5e7eb;">Description</th>
-                          <th style="padding: 14px 12px; text-align: center; font-size: 13px; font-weight: 600; color: #374151; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e5e7eb;">Qty</th>
-                          <th style="padding: 14px 12px; text-align: right; font-size: 13px; font-weight: 600; color: #374151; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e5e7eb;">Price</th>
-                          <th style="padding: 14px 16px; text-align: right; font-size: 13px; font-weight: 600; color: #374151; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e5e7eb;">Amount</th>
+                        <tr style="background: #f8f7f5; border-bottom: 2px solid #d4d0c8;">
+                          <th style="padding: 12px 16px; text-align: left; font-size: 12px; font-weight: 600; color: #4a4a4a; text-transform: uppercase; letter-spacing: 0.5px;">Description</th>
+                          <th style="padding: 12px 10px; text-align: center; font-size: 12px; font-weight: 600; color: #4a4a4a; text-transform: uppercase; letter-spacing: 0.5px;">Qty</th>
+                          <th style="padding: 12px 10px; text-align: right; font-size: 12px; font-weight: 600; color: #4a4a4a; text-transform: uppercase; letter-spacing: 0.5px;">Price</th>
+                          <th style="padding: 12px 16px; text-align: right; font-size: 12px; font-weight: 600; color: #4a4a4a; text-transform: uppercase; letter-spacing: 0.5px;">Amount</th>
                         </tr>
                       </thead>
                       <tbody>
-                        ${itemsHtml}
+                        ${items.map(item => `
+                          <tr style="border-bottom: 1px solid #e8e6e1;">
+                            <td style="padding: 14px 16px; color: #333;">${item.description}</td>
+                            <td style="padding: 14px 10px; text-align: center; color: #333;">${item.quantity}</td>
+                            <td style="padding: 14px 10px; text-align: right; color: #333;">$${item.unitPrice.toFixed(2)}</td>
+                            <td style="padding: 14px 16px; text-align: right; color: #333;">$${(item.quantity * item.unitPrice).toFixed(2)}</td>
+                          </tr>
+                        `).join('')}
                       </tbody>
                       <tfoot>
-                        <tr style="background: #f0fdf4;">
-                          <td colspan="3" style="padding: 16px; text-align: right; font-weight: 700; font-size: 16px; color: #1f2937;">Total:</td>
-                          <td style="padding: 16px; text-align: right; font-weight: 700; font-size: 20px; color: #059669;">$${formattedTotal}</td>
+                        <tr style="background: #f8f7f5;">
+                          <td colspan="3" style="padding: 16px; text-align: right; font-weight: 700; font-size: 16px; color: #333; border-top: 2px solid #d4d0c8;">Total Due:</td>
+                          <td style="padding: 16px; text-align: right; font-weight: 700; font-size: 20px; color: #2d5016; border-top: 2px solid #d4d0c8;">$${formattedTotal}</td>
                         </tr>
                       </tfoot>
                     </table>
                     
                     <!-- Due Date -->
-                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background: #fef3c7; padding: 16px; border-radius: 8px; margin-bottom: 24px;">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background: #faf9f7; border-left: 4px solid #c8a45c; margin-bottom: 28px;">
                       <tr>
-                        <td style="padding: 12px 16px;">
-                          <p style="margin: 0; font-size: 14px; color: #92400e;"><strong>📅 Due Date:</strong> ${dueDate}</p>
-                          ${notes ? `<p style="margin: 8px 0 0 0; font-size: 14px; color: #92400e;"><strong>📝 Notes:</strong> ${notes}</p>` : ''}
+                        <td style="padding: 16px 20px;">
+                          <p style="margin: 0; font-size: 15px; color: #333;"><strong>Due Date:</strong> ${dueDate}</p>
+                          ${notes ? `<p style="margin: 10px 0 0 0; font-size: 14px; color: #666;"><strong>Notes:</strong> ${notes}</p>` : ''}
                         </td>
                       </tr>
                     </table>
                     
                     <!-- Payment Options -->
-                    <div style="text-align: center; margin-bottom: 24px;">
-                      <p style="font-size: 18px; font-weight: 600; margin: 0 0 16px 0; color: #1f2937;">💳 Payment Options</p>
+                    <div style="text-align: center; padding: 24px 0; border-top: 1px solid #e8e6e1;">
+                      <p style="font-size: 16px; font-weight: 600; margin: 0 0 16px 0; color: #333;">Payment Options</p>
                       <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 0 auto;">
                         <tr>
                           ${PAYMENT_METHODS.map(method => `
                             <td style="padding: 6px;">
-                              <a href="${method.link}" target="_blank" style="display: inline-block; padding: 14px 28px; background-color: ${method.color}; color: white; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 15px;">
+                              <a href="${method.link}" target="_blank" style="display: inline-block; padding: 14px 28px; background-color: ${method.color}; color: white; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 14px; font-family: -apple-system, sans-serif;">
                                 Pay with ${method.name}
                               </a>
                             </td>
@@ -277,14 +299,14 @@ const handler = async (req: Request): Promise<Response> => {
                 
                 <!-- Footer -->
                 <tr>
-                  <td style="background: #f9fafb; padding: 24px; text-align: center; border-top: 1px solid #e5e7eb;">
-                    <p style="color: #6b7280; font-size: 14px; margin: 0 0 8px 0;">
-                      Thank you for your business!
+                  <td style="background-color: #4a4a4a; padding: 20px 24px; text-align: center;">
+                    <p style="color: #ffffff; font-size: 14px; margin: 0 0 6px 0;">
+                      Thank you for choosing CEB Building!
                     </p>
-                    <p style="color: #9ca3af; font-size: 13px; margin: 0;">
-                      If you have any questions, please don't hesitate to reach out.
+                    <p style="color: #b0b0b0; font-size: 12px; margin: 0;">
+                      Hand-Crafted Wood Works · Oklahoma City
                     </p>
-                    <p style="color: #9ca3af; font-size: 12px; margin: 16px 0 0 0;">
+                    <p style="color: #888888; font-size: 11px; margin: 12px 0 0 0;">
                       © ${new Date().getFullYear()} ${businessName}. All rights reserved.
                     </p>
                   </td>
