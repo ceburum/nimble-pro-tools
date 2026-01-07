@@ -24,7 +24,7 @@ const App = () => (
         <Routes>
           {/* Public routes */}
           <Route path="/auth" element={<Auth />} />
-          <Route path="/pay/:invoiceId" element={<PayInvoice />} />
+          <Route path="/pay/:paymentToken" element={<PayInvoice />} />
           
           {/* Protected admin routes with AppLayout */}
           <Route 

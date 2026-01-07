@@ -46,7 +46,7 @@ interface SendInvoiceRequest {
   clientName: string;
   clientEmail: string;
   invoiceNumber: string;
-  invoiceId: string;
+  paymentToken?: string;
   items: InvoiceItem[];
   dueDate: string;
   notes?: string;
@@ -471,7 +471,7 @@ const handler = async (req: Request): Promise<Response> => {
       clientName,
       clientEmail,
       invoiceNumber,
-      invoiceId,
+      paymentToken,
       items,
       dueDate,
       notes,
@@ -487,9 +487,9 @@ const handler = async (req: Request): Promise<Response> => {
     const convenienceFee = total * 0.03;
     const totalWithFee = (total + convenienceFee).toLocaleString('en-US', { minimumFractionDigits: 2 });
     
-    // Build card payment URL
+    // Build card payment URL using payment token for security
     const baseUrl = getAppBaseUrl();
-    const cardPaymentUrl = invoiceId ? `${baseUrl}/pay/${invoiceId}` : null;
+    const cardPaymentUrl = paymentToken ? `${baseUrl}/pay/${paymentToken}` : null;
 
     // If plain text mode, send a simple text email for deliverability testing
     if (plainTextOnly) {

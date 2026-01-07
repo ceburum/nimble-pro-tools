@@ -22,6 +22,7 @@ export type Database = {
           id: string
           name: string
           phone: string
+          user_id: string | null
         }
         Insert: {
           address: string
@@ -30,6 +31,7 @@ export type Database = {
           id?: string
           name: string
           phone: string
+          user_id?: string | null
         }
         Update: {
           address?: string
@@ -38,6 +40,7 @@ export type Database = {
           id?: string
           name?: string
           phone?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -48,6 +51,7 @@ export type Database = {
           method: string
           reminder_type: string
           sent_at: string
+          user_id: string | null
         }
         Insert: {
           id?: string
@@ -55,6 +59,7 @@ export type Database = {
           method: string
           reminder_type: string
           sent_at?: string
+          user_id?: string | null
         }
         Update: {
           id?: string
@@ -62,6 +67,7 @@ export type Database = {
           method?: string
           reminder_type?: string
           sent_at?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -83,8 +89,10 @@ export type Database = {
           items: Json
           notes: string | null
           paid_at: string | null
+          payment_token: string | null
           quote_id: string | null
           status: string
+          user_id: string | null
         }
         Insert: {
           client_id: string
@@ -95,8 +103,10 @@ export type Database = {
           items?: Json
           notes?: string | null
           paid_at?: string | null
+          payment_token?: string | null
           quote_id?: string | null
           status?: string
+          user_id?: string | null
         }
         Update: {
           client_id?: string
@@ -107,8 +117,10 @@ export type Database = {
           items?: Json
           notes?: string | null
           paid_at?: string | null
+          payment_token?: string | null
           quote_id?: string | null
           status?: string
+          user_id?: string | null
         }
         Relationships: [
           {

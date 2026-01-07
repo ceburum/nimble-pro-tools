@@ -1,7 +1,6 @@
 import { useState } from 'react';
-import { Plus, Search } from 'lucide-react';
+import { Plus, Search, Loader2 } from 'lucide-react';
 import { Client } from '@/types';
-import { mockClients } from '@/lib/mockData';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ClientCard } from '@/components/clients/ClientCard';
@@ -9,10 +8,10 @@ import { ClientDialog } from '@/components/clients/ClientDialog';
 import { ClientDetailDialog } from '@/components/clients/ClientDetailDialog';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
-import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { useClients } from '@/hooks/useClients';
 
 export default function Clients() {
-  const [clients, setClients] = useLocalStorage<Client[]>('ceb-clients', mockClients);
+  const { clients, loading, addClient, updateClient, deleteClient } = useClients();
   const [searchQuery, setSearchQuery] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
@@ -27,28 +26,23 @@ export default function Clients() {
       client.email.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleSave = (data: Omit<Client, 'id' | 'createdAt'>) => {
+  const handleSave = async (data: Omit<Client, 'id' | 'createdAt'>) => {
     if (editingClient) {
-      setClients((prev) =>
-        prev.map((c) =>
-          c.id === editingClient.id ? { ...c, ...data } : c
-        )
-      );
-      toast({
-        title: 'Client updated',
-        description: `${data.name}'s information has been updated.`,
-      });
+      const success = await updateClient(editingClient.id, data);
+      if (success) {
+        toast({
+          title: 'Client updated',
+          description: `${data.name}'s information has been updated.`,
+        });
+      }
     } else {
-      const newClient: Client = {
-        ...data,
-        id: Date.now().toString(),
-        createdAt: new Date(),
-      };
-      setClients((prev) => [...prev, newClient]);
-      toast({
-        title: 'Client added',
-        description: `${data.name} has been added to your clients.`,
-      });
+      const newClient = await addClient(data);
+      if (newClient) {
+        toast({
+          title: 'Client added',
+          description: `${data.name} has been added to your clients.`,
+        });
+      }
     }
     setEditingClient(null);
   };
@@ -58,13 +52,15 @@ export default function Clients() {
     setDialogOpen(true);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     const client = clients.find((c) => c.id === id);
-    setClients((prev) => prev.filter((c) => c.id !== id));
-    toast({
-      title: 'Client deleted',
-      description: `${client?.name} has been removed.`,
-    });
+    const success = await deleteClient(id);
+    if (success) {
+      toast({
+        title: 'Client deleted',
+        description: `${client?.name} has been removed.`,
+      });
+    }
   };
 
   const handleCreateProject = (client: Client) => {
@@ -79,6 +75,14 @@ export default function Clients() {
   const handleSendInvoice = (client: Client) => {
     navigate('/invoices', { state: { openNewInvoice: true, selectedClientId: client.id } });
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

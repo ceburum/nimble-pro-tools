@@ -38,6 +38,7 @@ export interface Invoice {
   dueDate: Date;
   paidAt?: Date;
   notes?: string;
+  paymentToken?: string;
 }
 
 // Project photos and receipts

@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Plus, Search, Bug, FileText } from 'lucide-react';
+import { Plus, Search, Bug, FileText, Loader2 } from 'lucide-react';
 import { Invoice, Client } from '@/types';
-import { mockInvoices, mockClients } from '@/lib/mockData';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { InvoiceCard } from '@/components/invoices/InvoiceCard';
@@ -9,7 +8,8 @@ import { InvoiceDialog } from '@/components/invoices/InvoiceDialog';
 import { InvoiceEditDialog } from '@/components/invoices/InvoiceEditDialog';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { useClients } from '@/hooks/useClients';
+import { useInvoices } from '@/hooks/useInvoices';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -29,8 +29,8 @@ interface SmtpDiagnostics {
 }
 
 export default function Invoices() {
-  const [invoices, setInvoices] = useLocalStorage<Invoice[]>('ceb-invoices', mockInvoices);
-  const [clients] = useLocalStorage<Client[]>('ceb-clients', mockClients);
+  const { invoices, loading: invoicesLoading, addInvoice, updateInvoice, deleteInvoice } = useInvoices();
+  const { clients, loading: clientsLoading } = useClients();
   const [searchQuery, setSearchQuery] = useState('');
   const [sendingEmail, setSendingEmail] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -51,7 +51,6 @@ export default function Invoices() {
     if (state?.openNewInvoice) {
       setPreSelectedClientId(state.selectedClientId || null);
       setIsDialogOpen(true);
-      // Clear the state so it doesn't re-trigger
       navigate(location.pathname, { replace: true });
     }
   }, [location.state, navigate, location.pathname]);
@@ -64,17 +63,14 @@ export default function Invoices() {
     );
   });
 
-  const handleCreateInvoice = (data: Omit<Invoice, 'id' | 'createdAt'>) => {
-    const newInvoice: Invoice = {
-      ...data,
-      id: Date.now().toString(),
-      createdAt: new Date(),
-    };
-    setInvoices((prev) => [...prev, newInvoice]);
-    toast({
-      title: 'Invoice created',
-      description: `${data.invoiceNumber} has been created.`,
-    });
+  const handleCreateInvoice = async (data: Omit<Invoice, 'id' | 'createdAt'>) => {
+    const newInvoice = await addInvoice(data);
+    if (newInvoice) {
+      toast({
+        title: 'Invoice created',
+        description: `${data.invoiceNumber} has been created.`,
+      });
+    }
   };
 
   const handleSendEmail = async (invoice: Invoice) => {
@@ -89,14 +85,16 @@ export default function Invoices() {
     }
 
     setSendingEmail(invoice.id);
-    
+
     try {
+      const { data: session } = await supabase.auth.getSession();
+      
       const { data, error } = await supabase.functions.invoke('send-invoice-email', {
         body: {
           clientName: client.name,
           clientEmail: client.email,
           invoiceNumber: invoice.invoiceNumber,
-          invoiceId: invoice.id,
+          paymentToken: invoice.paymentToken,
           items: invoice.items,
           dueDate: invoice.dueDate.toLocaleDateString(),
           notes: invoice.notes,
@@ -108,18 +106,12 @@ export default function Invoices() {
 
       if (error) throw error;
 
-      // If diagnostic mode, show the diagnostics dialog
       if (diagnosticMode && data?.diagnostics) {
         setDiagnosticsResult(data.diagnostics);
         setShowDiagnostics(true);
       }
 
-      // Update invoice status to sent
-      setInvoices((prev) =>
-        prev.map((inv) =>
-          inv.id === invoice.id ? { ...inv, status: 'sent' as const } : inv
-        )
-      );
+      await updateInvoice(invoice.id, { status: 'sent' });
 
       toast({
         title: 'Invoice sent!',
@@ -135,7 +127,7 @@ export default function Invoices() {
       toast({
         title: 'Failed to send',
         description: looksLikeBlockedRequest
-          ? 'Your browser blocked the request. If you\'re using DuckDuckGo/Brave, disable tracking protection for this site or try Chrome/Safari, then retry.'
+          ? 'Your browser blocked the request. Try disabling tracking protection or use Chrome/Safari.'
           : (message || 'Could not send invoice email.'),
         variant: 'destructive',
       });
@@ -157,22 +149,14 @@ export default function Invoices() {
   const handleMarkPaid = async (invoice: Invoice) => {
     const client = clients.find((c) => c.id === invoice.clientId);
     const paidAt = new Date();
-    
-    // Update local state first
-    setInvoices((prev) =>
-      prev.map((inv) =>
-        inv.id === invoice.id
-          ? { ...inv, status: 'paid' as const, paidAt }
-          : inv
-      )
-    );
+
+    await updateInvoice(invoice.id, { status: 'paid', paidAt });
 
     toast({
       title: 'Payment recorded',
       description: `${invoice.invoiceNumber} has been marked as paid.`,
     });
 
-    // Send receipt email in background
     if (client?.email) {
       setSendingReceipt(invoice.id);
       try {
@@ -201,7 +185,7 @@ export default function Invoices() {
         console.error('Failed to send receipt:', error);
         toast({
           title: 'Receipt not sent',
-          description: 'Payment recorded, but receipt email failed. You can resend later.',
+          description: 'Payment recorded, but receipt email failed.',
           variant: 'destructive',
         });
       } finally {
@@ -215,24 +199,34 @@ export default function Invoices() {
     setIsEditDialogOpen(true);
   };
 
-  const handleSaveEdit = (updatedInvoice: Invoice) => {
-    setInvoices((prev) =>
-      prev.map((inv) => (inv.id === updatedInvoice.id ? updatedInvoice : inv))
-    );
+  const handleSaveEdit = async (updatedInvoice: Invoice) => {
+    await updateInvoice(updatedInvoice.id, updatedInvoice);
     toast({
       title: 'Invoice updated',
       description: `${updatedInvoice.invoiceNumber} has been updated.`,
     });
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     const invoice = invoices.find((inv) => inv.id === id);
-    setInvoices((prev) => prev.filter((inv) => inv.id !== id));
-    toast({
-      title: 'Invoice deleted',
-      description: `${invoice?.invoiceNumber} has been removed.`,
-    });
+    const success = await deleteInvoice(id);
+    if (success) {
+      toast({
+        title: 'Invoice deleted',
+        description: `${invoice?.invoiceNumber} has been removed.`,
+      });
+    }
   };
+
+  const loading = invoicesLoading || clientsLoading;
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -366,15 +360,6 @@ export default function Invoices() {
                 <pre className="bg-muted p-3 rounded-lg text-xs overflow-auto max-h-64 font-mono">
                   {diagnosticsResult.smtpResponses.join('\n')}
                 </pre>
-              </div>
-              <div className="text-xs text-muted-foreground">
-                <p><strong>Key responses to look for:</strong></p>
-                <ul className="list-disc list-inside mt-1 space-y-1">
-                  <li><code>235</code> = Auth success</li>
-                  <li><code>250</code> = Command accepted / Message queued</li>
-                  <li><code>354</code> = Ready for message data</li>
-                  <li>Any <code>4xx</code> or <code>5xx</code> = Error/rejection</li>
-                </ul>
               </div>
             </div>
           )}
