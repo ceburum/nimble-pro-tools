@@ -40,40 +40,28 @@ export default function PayInvoice() {
       }
 
       try {
+        // Use secure RPC function instead of direct table access
         const { data, error: fetchError } = await supabase
-          .from('invoices')
-          .select(`
-            id,
-            invoice_number,
-            items,
-            due_date,
-            status,
-            clients (
-              name,
-              email
-            )
-          `)
-          .eq('payment_token', paymentToken)
-          .single();
+          .rpc('get_invoice_by_payment_token', { p_token: paymentToken });
 
-        if (fetchError || !data) {
+        if (fetchError || !data || data.length === 0) {
           setError('Invoice not found or link expired');
           setLoading(false);
           return;
         }
 
-        const client = data.clients as { name: string; email: string } | null;
-        const rawItems = data.items;
+        const invoiceData = data[0];
+        const rawItems = invoiceData.items;
         const items: InvoiceItem[] = Array.isArray(rawItems) ? (rawItems as unknown as InvoiceItem[]) : [];
 
         setInvoice({
-          id: data.id,
-          invoiceNumber: data.invoice_number,
+          id: invoiceData.id,
+          invoiceNumber: invoiceData.invoice_number,
           items,
-          dueDate: data.due_date,
-          status: data.status,
-          clientName: client?.name || 'Customer',
-          clientEmail: client?.email || '',
+          dueDate: invoiceData.due_date,
+          status: invoiceData.status,
+          clientName: invoiceData.client_name || 'Customer',
+          clientEmail: invoiceData.client_email || '',
         });
       } catch (err) {
         console.error('Error fetching invoice:', err);
