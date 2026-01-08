@@ -335,7 +335,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_invoice_by_payment_token: {
+        Args: { p_token: string }
+        Returns: {
+          client_email: string
+          client_name: string
+          due_date: string
+          id: string
+          invoice_number: string
+          items: Json
+          status: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
