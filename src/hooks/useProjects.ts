@@ -275,29 +275,27 @@ export function useProjects() {
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) throw new Error('Not authenticated');
 
-      // Upload to storage
+      // Upload to private storage bucket
       const fileExt = file.name.split('.').pop();
       const filePath = `${userData.user.id}/projects/${projectId}/${Date.now()}.${fileExt}`;
 
       const { error: uploadError } = await supabase.storage
-        .from('assets')
+        .from('project-files')
         .upload(filePath, file);
 
       if (uploadError) throw uploadError;
 
-      // Get public URL
-      const { data: urlData } = supabase.storage
-        .from('assets')
-        .getPublicUrl(filePath);
+      // Store the path (not the full URL) for private bucket
+      // We'll generate signed URLs when displaying
 
-      // Save to database
+      // Save to database with storage path (not full URL)
       const { data: newPhoto, error: dbError } = await supabase
         .from('project_photos')
         .insert({
           user_id: userData.user.id,
           project_id: projectId,
           type,
-          storage_path: urlData.publicUrl,
+          storage_path: filePath,
           caption: caption || null,
         })
         .select()
@@ -305,7 +303,12 @@ export function useProjects() {
 
       if (dbError) throw dbError;
 
-      // Update local state
+      // Generate signed URL for immediate display
+      const { data: signedUrlData } = await supabase.storage
+        .from('project-files')
+        .createSignedUrl(filePath, 3600);
+
+      // Update local state with signed URL
       setProjects(prev =>
         prev.map(p => {
           if (p.id === projectId) {
@@ -317,7 +320,7 @@ export function useProjects() {
                   id: newPhoto.id,
                   projectId,
                   type,
-                  dataUrl: urlData.publicUrl,
+                  dataUrl: signedUrlData?.signedUrl || filePath,
                   caption,
                   createdAt: new Date(),
                 },
@@ -351,28 +354,23 @@ export function useProjects() {
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) throw new Error('Not authenticated');
 
-      // Upload to storage
+      // Upload to private storage bucket
       const fileExt = file.name.split('.').pop();
       const filePath = `${userData.user.id}/projects/${projectId}/receipts/${Date.now()}.${fileExt}`;
 
       const { error: uploadError } = await supabase.storage
-        .from('assets')
+        .from('project-files')
         .upload(filePath, file);
 
       if (uploadError) throw uploadError;
 
-      // Get public URL
-      const { data: urlData } = supabase.storage
-        .from('assets')
-        .getPublicUrl(filePath);
-
-      // Save to database
+      // Save to database with storage path (not full URL)
       const { data: newReceipt, error: dbError } = await supabase
         .from('project_receipts')
         .insert({
           user_id: userData.user.id,
           project_id: projectId,
-          storage_path: urlData.publicUrl,
+          storage_path: filePath,
           description,
           amount,
         })
@@ -381,7 +379,12 @@ export function useProjects() {
 
       if (dbError) throw dbError;
 
-      // Update local state
+      // Generate signed URL for immediate display
+      const { data: signedUrlData } = await supabase.storage
+        .from('project-files')
+        .createSignedUrl(filePath, 3600);
+
+      // Update local state with signed URL
       setProjects(prev =>
         prev.map(p => {
           if (p.id === projectId) {
@@ -392,7 +395,7 @@ export function useProjects() {
                 {
                   id: newReceipt.id,
                   projectId,
-                  dataUrl: urlData.publicUrl,
+                  dataUrl: signedUrlData?.signedUrl || filePath,
                   description,
                   amount,
                   createdAt: new Date(),

@@ -272,6 +272,8 @@ export type Database = {
           invoice_id: string | null
           items: Json
           quote_notes: string | null
+          response_token: string | null
+          response_token_used_at: string | null
           sent_at: string | null
           started_at: string | null
           status: string
@@ -289,6 +291,8 @@ export type Database = {
           invoice_id?: string | null
           items?: Json
           quote_notes?: string | null
+          response_token?: string | null
+          response_token_used_at?: string | null
           sent_at?: string | null
           started_at?: string | null
           status?: string
@@ -306,6 +310,8 @@ export type Database = {
           invoice_id?: string | null
           items?: Json
           quote_notes?: string | null
+          response_token?: string | null
+          response_token_used_at?: string | null
           sent_at?: string | null
           started_at?: string | null
           status?: string

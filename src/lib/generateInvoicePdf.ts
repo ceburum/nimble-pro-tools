@@ -1,5 +1,15 @@
 import { Invoice, Client } from '@/types';
 
+// HTML escape function to prevent XSS
+function escapeHtml(unsafe: string): string {
+  return unsafe
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 const PAYMENT_METHODS = {
   venmo: {
     name: 'Venmo',
@@ -18,7 +28,7 @@ export function generateInvoiceHtml(invoice: Invoice, client: Client | undefined
   
   const itemsHtml = invoice.items.map(item => `
     <tr>
-      <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">${item.description}</td>
+      <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">${escapeHtml(item.description)}</td>
       <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">${item.quantity}</td>
       <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: right;">$${item.unitPrice.toFixed(2)}</td>
       <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: right;">$${(item.quantity * item.unitPrice).toFixed(2)}</td>
@@ -30,7 +40,8 @@ export function generateInvoiceHtml(invoice: Invoice, client: Client | undefined
     <html>
     <head>
       <meta charset="utf-8">
-      <title>Invoice ${invoice.invoiceNumber}</title>
+      <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src https: data:; style-src 'unsafe-inline'; font-src 'self';">
+      <title>Invoice ${escapeHtml(invoice.invoiceNumber)}</title>
       <style>
         @media print {
           body { 
@@ -204,23 +215,23 @@ export function generateInvoiceHtml(invoice: Invoice, client: Client | undefined
           </div>
           <div style="text-align: right;">
             <div class="invoice-title">INVOICE</div>
-            <div class="invoice-number">${invoice.invoiceNumber}</div>
+            <div class="invoice-number">${escapeHtml(invoice.invoiceNumber)}</div>
           </div>
         </div>
 
         <div class="info-section">
           <div class="info-block">
             <h3>Bill To</h3>
-            <p><strong>${client?.name || 'Client'}</strong></p>
-            <p>${client?.email || ''}</p>
-            <p>${client?.phone || ''}</p>
-            <p>${client?.address || ''}</p>
+            <p><strong>${escapeHtml(client?.name || 'Client')}</strong></p>
+            <p>${escapeHtml(client?.email || '')}</p>
+            <p>${escapeHtml(client?.phone || '')}</p>
+            <p>${escapeHtml(client?.address || '')}</p>
           </div>
           <div class="info-block" style="text-align: right;">
             <h3>Invoice Details</h3>
             <p><strong>Date:</strong> ${new Date(invoice.createdAt).toLocaleDateString()}</p>
             <p><strong>Due Date:</strong> ${new Date(invoice.dueDate).toLocaleDateString()}</p>
-            <p><strong>Status:</strong> ${invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}</p>
+            <p><strong>Status:</strong> ${escapeHtml(invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1))}</p>
           </div>
         </div>
 
@@ -245,7 +256,7 @@ export function generateInvoiceHtml(invoice: Invoice, client: Client | undefined
         ${invoice.notes ? `
           <div style="margin-bottom: 16px;">
             <h3 style="font-size: 12px; color: #6b7280; margin-bottom: 4px;">Notes</h3>
-            <p style="color: #374151; font-size: 12px;">${invoice.notes}</p>
+            <p style="color: #374151; font-size: 12px;">${escapeHtml(invoice.notes)}</p>
           </div>
         ` : ''}
 

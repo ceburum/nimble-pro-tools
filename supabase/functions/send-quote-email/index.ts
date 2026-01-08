@@ -52,8 +52,15 @@ interface SendQuoteRequest {
   notificationEmail: string;
 }
 
-// No logo embedding in quote emails to prevent timeouts
-// Logo is only embedded in PDF receipts after payment
+// HTML escape function to prevent XSS
+function escapeHtml(unsafe: string): string {
+  return unsafe
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
 
 function getEmailHeader(title: string, subtitle?: string): string {
   return `
@@ -91,8 +98,8 @@ function getEmailHeader(title: string, subtitle?: string): string {
     <!-- Title Bar -->
     <tr>
       <td style="background-color: #4a4a4a; padding: 12px 24px;">
-        <p style="color: #ffffff; margin: 0; font-size: 16px; font-weight: 600; letter-spacing: 1px;">${title}</p>
-        ${subtitle ? `<p style="color: #b0b0b0; margin: 4px 0 0 0; font-size: 13px;">${subtitle}</p>` : ''}
+        <p style="color: #ffffff; margin: 0; font-size: 16px; font-weight: 600; letter-spacing: 1px;">${escapeHtml(title)}</p>
+        ${subtitle ? `<p style="color: #b0b0b0; margin: 4px 0 0 0; font-size: 13px;">${escapeHtml(subtitle)}</p>` : ''}
       </td>
     </tr>
   `;
@@ -261,7 +268,6 @@ const handler = async (req: Request): Promise<Response> => {
       clientEmail,
       items,
       notes,
-      notificationEmail,
     }: SendQuoteRequest = await req.json();
 
     console.log(`Sending quote for project ${projectId} to ${clientEmail}`);
@@ -269,19 +275,34 @@ const handler = async (req: Request): Promise<Response> => {
     const total = items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
     const formattedTotal = total.toLocaleString('en-US', { minimumFractionDigits: 2 });
 
-    // Generate response URLs
-    const baseUrl = Deno.env.get("SUPABASE_URL") || "";
-    const encodedData = btoa(JSON.stringify({
-      projectId,
-      projectTitle,
-      clientName,
-      clientEmail,
-      total,
-      notificationEmail,
-    }));
-    
-    const acceptUrl = `${baseUrl}/functions/v1/quote-response?action=accept&data=${encodedData}`;
-    const declineUrl = `${baseUrl}/functions/v1/quote-response?action=decline&data=${encodedData}`;
+    // Generate a new response token for this quote
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+    if (!supabaseServiceKey) {
+      throw new Error("Missing Supabase service role key");
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Generate a new response token and update the project
+    const responseToken = crypto.randomUUID();
+    const { error: updateError } = await supabase
+      .from('projects')
+      .update({ 
+        response_token: responseToken,
+        response_token_used_at: null // Reset in case quote is being resent
+      })
+      .eq('id', projectId);
+
+    if (updateError) {
+      console.error("Failed to update project with response token:", updateError);
+      throw new Error("Failed to prepare quote for sending");
+    }
+
+    // Generate secure response URLs using the token
+    const acceptUrl = `${supabaseUrl}/functions/v1/quote-response?token=${responseToken}&action=accept`;
+    const declineUrl = `${supabaseUrl}/functions/v1/quote-response?token=${responseToken}&action=decline`;
 
     const emailContent = `
       ${getEmailHeader('PROJECT QUOTE', projectTitle)}
@@ -289,14 +310,14 @@ const handler = async (req: Request): Promise<Response> => {
       <!-- Content -->
       <tr>
         <td class="content" style="padding: 32px 24px;">
-          <p style="font-size: 16px; margin: 0 0 20px 0; color: #333;">Hello <strong>${clientName}</strong>,</p>
+          <p style="font-size: 16px; margin: 0 0 20px 0; color: #333;">Hello <strong>${escapeHtml(clientName)}</strong>,</p>
           <p style="font-size: 15px; color: #666666; margin: 0 0 24px 0;">Thank you for your interest! Please review the quote below for your project:</p>
           
           ${projectDescription ? `
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background: #faf9f7; border-left: 4px solid #c8a45c; margin-bottom: 24px;">
               <tr>
                 <td style="padding: 16px 20px;">
-                  <p style="margin: 0; font-size: 14px; font-style: italic; color: #666;">${projectDescription}</p>
+                  <p style="margin: 0; font-size: 14px; font-style: italic; color: #666;">${escapeHtml(projectDescription)}</p>
                 </td>
               </tr>
             </table>
@@ -315,7 +336,7 @@ const handler = async (req: Request): Promise<Response> => {
             <tbody>
               ${items.map(item => `
                 <tr style="border-bottom: 1px solid #e8e6e1;">
-                  <td style="padding: 14px 16px; color: #333;">${item.description}</td>
+                  <td style="padding: 14px 16px; color: #333;">${escapeHtml(item.description)}</td>
                   <td style="padding: 14px 10px; text-align: center; color: #333;">${item.quantity}</td>
                   <td style="padding: 14px 10px; text-align: right; color: #333;">$${item.unitPrice.toFixed(2)}</td>
                   <td style="padding: 14px 16px; text-align: right; color: #333;">$${(item.quantity * item.unitPrice).toFixed(2)}</td>
@@ -334,7 +355,7 @@ const handler = async (req: Request): Promise<Response> => {
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background: #faf9f7; border-left: 4px solid #c8a45c; margin-bottom: 28px;">
               <tr>
                 <td style="padding: 16px 20px;">
-                  <p style="margin: 0; font-size: 14px; color: #666;"><strong>Notes:</strong> ${notes}</p>
+                  <p style="margin: 0; font-size: 14px; color: #666;"><strong>Notes:</strong> ${escapeHtml(notes)}</p>
                 </td>
               </tr>
             </table>
@@ -385,10 +406,11 @@ const handler = async (req: Request): Promise<Response> => {
         ...corsHeaders,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error sending quote email:", error);
+    const message = error instanceof Error ? error.message : "Unknown error";
     return new Response(
-      JSON.stringify({ success: false, error: error.message }),
+      JSON.stringify({ success: false, error: message }),
       {
         status: 500,
         headers: { "Content-Type": "application/json", ...corsHeaders },

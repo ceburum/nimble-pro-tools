@@ -1,15 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-interface QuoteData {
-  projectId: string;
-  projectTitle: string;
-  clientName: string;
-  clientEmail: string;
-  total: number;
-  notificationEmail: string;
-}
-
 // Logo hosted on your website - used as a source to embed inline (CID)
 const LOGO_URL = "https://static.wixstatic.com/media/fc62d0_d3f25abd45e341648b59e65fc94cc7fd~mv2.png";
 const STORAGE_LOGO_PUBLIC_URL = (() => {
@@ -62,6 +53,16 @@ async function fetchLogoBase64(req?: Request): Promise<string | null> {
   return null;
 }
 
+// HTML escape function to prevent XSS in emails
+function escapeHtml(unsafe: string): string {
+  return unsafe
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 function getEmailHeader(title: string, isAccepted: boolean, logoSrc: string = DEFAULT_LOGO_URL): string {
   const barColor = isAccepted ? '#2d5016' : '#8b4513';
   return `
@@ -99,7 +100,7 @@ function getEmailHeader(title: string, isAccepted: boolean, logoSrc: string = DE
     <!-- Title Bar -->
     <tr>
       <td style="background-color: ${barColor}; padding: 12px 24px;">
-        <p style="color: #ffffff; margin: 0; font-size: 16px; font-weight: 600; letter-spacing: 1px;">${title}</p>
+        <p style="color: #ffffff; margin: 0; font-size: 16px; font-weight: 600; letter-spacing: 1px;">${escapeHtml(title)}</p>
       </td>
     </tr>
   `;
@@ -279,39 +280,126 @@ async function sendEmailViaZoho(
 const handler = async (req: Request): Promise<Response> => {
   try {
     const url = new URL(req.url);
+    const token = url.searchParams.get("token");
     const action = url.searchParams.get("action");
-    const encodedData = url.searchParams.get("data");
 
-    console.log("Quote response received:", { action, hasData: !!encodedData });
+    console.log("Quote response received:", { hasToken: !!token, action });
 
-    if (!action || !encodedData) {
-      console.error("Missing required parameters");
-      return new Response(JSON.stringify({ error: "Missing required parameters" }), {
+    // Validate required parameters
+    if (!token || !action) {
+      console.error("Missing required parameters: token or action");
+      return new Response("Invalid link. Please contact us directly at chad@cebbuilding.com", {
         status: 400,
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "text/plain; charset=utf-8" },
       });
     }
 
-    let quoteData: QuoteData;
-    try {
-      quoteData = JSON.parse(atob(encodedData));
-      console.log("Decoded quote data:", quoteData);
-    } catch (decodeError) {
-      console.error("Failed to decode quote data:", decodeError);
-      return new Response(JSON.stringify({ error: "Could not decode quote data" }), {
+    // Validate token is a valid UUID
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(token)) {
+      console.error("Invalid token format");
+      return new Response("Invalid link format. Please contact us directly at chad@cebbuilding.com", {
         status: 400,
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "text/plain; charset=utf-8" },
       });
     }
 
-    const { projectId, projectTitle, clientName, clientEmail, total, notificationEmail } = quoteData;
+    // Validate action
+    if (action !== "accept" && action !== "decline") {
+      console.error("Invalid action:", action);
+      return new Response("Invalid action. Please contact us directly at chad@cebbuilding.com", {
+        status: 400,
+        headers: { "Content-Type": "text/plain; charset=utf-8" },
+      });
+    }
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.error("Missing Supabase configuration");
+      return new Response("Server configuration error. Please contact us directly.", {
+        status: 500,
+        headers: { "Content-Type": "text/plain; charset=utf-8" },
+      });
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Look up the project by response_token
+    const { data: project, error: projectError } = await supabase
+      .from('projects')
+      .select(`
+        id,
+        title,
+        response_token,
+        response_token_used_at,
+        status,
+        clients (
+          name,
+          email
+        )
+      `)
+      .eq('response_token', token)
+      .single();
+
+    if (projectError || !project) {
+      console.error("Project not found for token:", projectError?.message);
+      return new Response("This link is invalid or has expired. Please contact us directly at chad@cebbuilding.com", {
+        status: 404,
+        headers: { "Content-Type": "text/plain; charset=utf-8" },
+      });
+    }
+
+    // Check if token was already used
+    if (project.response_token_used_at) {
+      console.log("Token already used at:", project.response_token_used_at);
+      return new Response(
+        `This link has already been used. Your response was recorded on ${new Date(project.response_token_used_at).toLocaleDateString()}. If you need to make changes, please contact us directly at chad@cebbuilding.com`,
+        {
+          status: 400,
+          headers: { "Content-Type": "text/plain; charset=utf-8" },
+        }
+      );
+    }
+
+    const clientData = project.clients as { name: string; email: string }[] | null;
+    const client = Array.isArray(clientData) ? clientData[0] : null;
+    const clientName = client?.name || 'Customer';
+    const clientEmail = client?.email || '';
+    const projectTitle = project.title;
     const isAccepted = action === "accept";
+
+    console.log(`Quote ${isAccepted ? "ACCEPTED" : "DECLINED"} for project ${project.id} by ${clientName}`);
+
+    // Mark the token as used and update project status
+    const updateData: Record<string, unknown> = {
+      response_token_used_at: new Date().toISOString(),
+    };
+
+    if (isAccepted) {
+      updateData.status = 'accepted';
+      updateData.accepted_at = new Date().toISOString();
+    }
+
+    const { error: updateError } = await supabase
+      .from('projects')
+      .update(updateData)
+      .eq('id', project.id);
+
+    if (updateError) {
+      console.error("Failed to update project:", updateError);
+      return new Response("Failed to process your response. Please try again or contact us directly.", {
+        status: 500,
+        headers: { "Content-Type": "text/plain; charset=utf-8" },
+      });
+    }
+
+    console.log(`Project ${project.id} updated successfully`);
 
     // Embed logo inline (CID) so it displays even when external images are blocked
     const logoBase64 = await fetchLogoBase64(req);
     const logoSrc = logoBase64 ? "cid:ceb-logo" : DEFAULT_LOGO_URL;
-
-    console.log(`Quote ${isAccepted ? "ACCEPTED" : "DECLINED"} for project ${projectId} by ${clientName}`);
 
     // Owner notification email
     const ownerEmailContent = `
@@ -332,25 +420,19 @@ const handler = async (req: Request): Promise<Response> => {
             <tr>
               <td style="padding: 16px 20px; border-bottom: 1px solid #e8e6e1;">
                 <p style="margin: 0; font-size: 14px; color: #666;"><strong>Project:</strong></p>
-                <p style="margin: 4px 0 0 0; font-size: 16px; color: #333;">${projectTitle}</p>
+                <p style="margin: 4px 0 0 0; font-size: 16px; color: #333;">${escapeHtml(projectTitle)}</p>
               </td>
             </tr>
             <tr>
               <td style="padding: 16px 20px; border-bottom: 1px solid #e8e6e1;">
                 <p style="margin: 0; font-size: 14px; color: #666;"><strong>Client:</strong></p>
-                <p style="margin: 4px 0 0 0; font-size: 16px; color: #333;">${clientName}</p>
-              </td>
-            </tr>
-            <tr>
-              <td style="padding: 16px 20px; border-bottom: 1px solid #e8e6e1;">
-                <p style="margin: 0; font-size: 14px; color: #666;"><strong>Email:</strong></p>
-                <p style="margin: 4px 0 0 0; font-size: 16px; color: #333;">${clientEmail}</p>
+                <p style="margin: 4px 0 0 0; font-size: 16px; color: #333;">${escapeHtml(clientName)}</p>
               </td>
             </tr>
             <tr>
               <td style="padding: 16px 20px;">
-                <p style="margin: 0; font-size: 14px; color: #666;"><strong>Quote Total:</strong></p>
-                <p style="margin: 4px 0 0 0; font-size: 20px; color: #2d5016; font-weight: 700;">$${total.toFixed(2)}</p>
+                <p style="margin: 0; font-size: 14px; color: #666;"><strong>Email:</strong></p>
+                <p style="margin: 4px 0 0 0; font-size: 16px; color: #333;">${escapeHtml(clientEmail)}</p>
               </td>
             </tr>
           </table>
@@ -380,14 +462,9 @@ const handler = async (req: Request): Promise<Response> => {
           
           <p style="font-size: 15px; color: #666666; margin: 0 0 24px 0; line-height: 1.6;">
             ${isAccepted 
-              ? `Thank you for accepting the quote for "${projectTitle}"! We will be in touch shortly to discuss next steps.`
-              : `We've received your response regarding "${projectTitle}". If you have any questions or would like to discuss alternatives, please don't hesitate to reach out.`}
+              ? `Thank you for accepting the quote for "${escapeHtml(projectTitle)}"! We will be in touch shortly to discuss next steps.`
+              : `We've received your response regarding "${escapeHtml(projectTitle)}". If you have any questions or would like to discuss alternatives, please don't hesitate to reach out.`}
           </p>
-          
-          <div style="background: #f8f7f5; padding: 20px; border-radius: 8px; margin-bottom: 24px; display: inline-block;">
-            <p style="margin: 0; font-size: 14px; color: #666;">Quote Total</p>
-            <p style="margin: 8px 0 0 0; font-size: 28px; font-weight: 700; color: ${isAccepted ? '#2d5016' : '#333'};">$${total.toFixed(2)}</p>
-          </div>
           
           <p style="color: #666; font-size: 14px; margin: 0;">
             We look forward to working with you!
@@ -397,34 +474,6 @@ const handler = async (req: Request): Promise<Response> => {
       
       ${getEmailFooter()}
     `;
-
-    // If accepted, update project status in database
-    if (isAccepted) {
-      try {
-        const supabaseUrl = Deno.env.get("SUPABASE_URL");
-        const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-        
-        if (supabaseUrl && supabaseServiceKey) {
-          const supabase = createClient(supabaseUrl, supabaseServiceKey);
-          
-          const { error: updateError } = await supabase
-            .from('projects')
-            .update({ 
-              status: 'accepted',
-              accepted_at: new Date().toISOString()
-            })
-            .eq('id', projectId);
-          
-          if (updateError) {
-            console.error("Failed to update project status:", updateError);
-          } else {
-            console.log(`Project ${projectId} status updated to 'accepted'`);
-          }
-        }
-      } catch (dbError) {
-        console.error("Database update error:", dbError);
-      }
-    }
 
     try {
       // Send notification only to chad@cebbuilding.com
@@ -436,18 +485,20 @@ const handler = async (req: Request): Promise<Response> => {
       );
       console.log("Owner notification sent to chad@cebbuilding.com");
 
-      await sendEmailViaZoho(
-        clientEmail,
-        isAccepted 
-          ? `Thank you for accepting your quote - ${projectTitle}` 
-          : `Quote Response Received - ${projectTitle}`,
-        getEmailWrapper(clientEmailContent),
-        logoBase64,
-      );
-      console.log("Client confirmation sent");
-
-    } catch (emailError: any) {
+      if (clientEmail) {
+        await sendEmailViaZoho(
+          clientEmail,
+          isAccepted 
+            ? `Thank you for accepting your quote - ${projectTitle}` 
+            : `Quote Response Received - ${projectTitle}`,
+          getEmailWrapper(clientEmailContent),
+          logoBase64,
+        );
+        console.log("Client confirmation sent");
+      }
+    } catch (emailError: unknown) {
       console.error("Failed to send email:", emailError);
+      // Don't fail the request if email fails - the response was already recorded
     }
 
     // Return simple plain text response - no HTML page
@@ -461,7 +512,7 @@ const handler = async (req: Request): Promise<Response> => {
         "Content-Type": "text/plain; charset=utf-8",
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error handling quote response:", error);
     return new Response("Something went wrong processing your response. Please contact us directly at chad@cebbuilding.com", {
       status: 500,
