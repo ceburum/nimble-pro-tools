@@ -9,30 +9,25 @@ import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { Client, Invoice, Project } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-
 export default function Dashboard() {
   const navigate = useNavigate();
   const [clients] = useLocalStorage<Client[]>('ceb-clients', mockClients);
   const [projects] = useLocalStorage<Project[]>('ceb-projects', []);
   const [invoices] = useLocalStorage<Invoice[]>('ceb-invoices', mockInvoices);
-
-  const totalRevenue = invoices
-    .filter(inv => inv.status === 'paid')
-    .reduce((sum, inv) => sum + inv.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0), 0);
-
-  const pendingAmount = invoices
-    .filter(inv => inv.status === 'sent' || inv.status === 'overdue')
-    .reduce((sum, inv) => sum + inv.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0), 0);
-
+  const totalRevenue = invoices.filter(inv => inv.status === 'paid').reduce((sum, inv) => sum + inv.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0), 0);
+  const pendingAmount = invoices.filter(inv => inv.status === 'sent' || inv.status === 'overdue').reduce((sum, inv) => sum + inv.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0), 0);
   const overdueCount = invoices.filter(inv => {
     if (inv.status === 'paid') return false;
     return new Date(inv.dueDate) < new Date();
   }).length;
-
   const handleSendReminder = async (invoice: Invoice, method: 'email' | 'text') => {
     const client = clients.find(c => c.id === invoice.clientId);
     if (!client) {
-      toast({ title: "Error", description: "Client not found", variant: "destructive" });
+      toast({
+        title: "Error",
+        description: "Client not found",
+        variant: "destructive"
+      });
       return;
     }
 
@@ -40,15 +35,15 @@ export default function Dashboard() {
     if (method === 'text') {
       toast({
         title: "Coming soon",
-        description: `Text messaging to ${client.phone} will be available soon.`,
+        description: `Text messaging to ${client.phone} will be available soon.`
       });
       return;
     }
-
     const total = invoice.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
-
     try {
-      const { error } = await supabase.functions.invoke('send-overdue-reminder', {
+      const {
+        error
+      } = await supabase.functions.invoke('send-overdue-reminder', {
         body: {
           invoiceId: invoice.id,
           invoiceNumber: invoice.invoiceNumber,
@@ -60,12 +55,10 @@ export default function Dashboard() {
           method
         }
       });
-
       if (error) throw error;
-
       toast({
         title: "Reminder Sent",
-        description: `Email reminder sent to ${client.name}`,
+        description: `Email reminder sent to ${client.name}`
       });
     } catch (error) {
       console.error('Error sending reminder:', error);
@@ -76,9 +69,7 @@ export default function Dashboard() {
       });
     }
   };
-
-  return (
-    <div className="space-y-8">
+  return <div className="space-y-8">
       <div>
         <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
         <p className="text-muted-foreground mt-1">Welcome back! Here's your business overview.</p>
@@ -87,44 +78,16 @@ export default function Dashboard() {
       <MileageCard />
 
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          title="Total Clients"
-          value={clients.length}
-          icon={Users}
-          variant="default"
-          href="/clients"
-        />
-        <StatCard
-          title="Active Projects"
-          value={projects.filter(p => p.status === 'draft' || p.status === 'sent' || p.status === 'accepted' || p.status === 'in_progress').length}
-          icon={FolderKanban}
-          variant="primary"
-          href="/projects"
-        />
-        <StatCard
-          title="Pending Invoices"
-          value={`$${pendingAmount.toLocaleString()}`}
-          icon={Receipt}
-          variant={overdueCount > 0 ? "danger" : "warning"}
-          href="/invoices"
-        />
-        <StatCard
-          title="Total Revenue"
-          value={`$${totalRevenue.toLocaleString()}`}
-          icon={DollarSign}
-          variant="success"
-          trend={{ value: 12, isPositive: true }}
-          href="/invoices"
-        />
+        <StatCard title="Total Clients" value={clients.length} icon={Users} variant="default" href="/clients" />
+        <StatCard title="Active Projects" value={projects.filter(p => p.status === 'draft' || p.status === 'sent' || p.status === 'accepted' || p.status === 'in_progress').length} icon={FolderKanban} variant="primary" href="/projects" />
+        <StatCard title="Pending Invoices" value={`$${pendingAmount.toLocaleString()}`} icon={Receipt} variant={overdueCount > 0 ? "danger" : "warning"} href="/invoices" />
+        <StatCard title="Total Revenue" value={`$${totalRevenue.toLocaleString()}`} icon={DollarSign} variant="success" trend={{
+        value: 12,
+        isPositive: true
+      }} href="/invoices" />
       </div>
 
-      {overdueCount > 0 && (
-        <OverdueAlerts 
-          invoices={invoices} 
-          clients={clients} 
-          onSendReminder={handleSendReminder}
-        />
-      )}
+      {overdueCount > 0 && <OverdueAlerts invoices={invoices} clients={clients} onSendReminder={handleSendReminder} />}
 
       <div className="grid gap-6 lg:grid-cols-2">
         <RecentActivity />
@@ -132,49 +95,40 @@ export default function Dashboard() {
         <div className="bg-card rounded-xl border border-border p-6 shadow-sm">
           <h3 className="text-lg font-semibold text-card-foreground mb-4">Quick Actions</h3>
           <div className="grid gap-3 sm:grid-cols-2">
-            <Link 
-              to="/clients" 
-              className="flex items-center gap-3 p-4 rounded-lg border border-border hover:border-primary/50 hover:bg-primary/5 transition-all duration-200"
-            >
-              <Users className="h-5 w-5 text-primary" />
+            <Link to="/clients" className="flex items-center gap-3 p-4 rounded-lg border border-border hover:border-primary/50 hover:bg-primary/5 transition-all duration-200">
+              <Users className="text-primary w-[35px] h-[35px]" />
               <div>
-                <p className="font-medium text-card-foreground">Add Client</p>
+                <p className="text-card-foreground font-bold text-sm">Add Client</p>
                 <p className="text-sm text-muted-foreground">Create new contact</p>
               </div>
             </Link>
-            <Link 
-              to="/projects" 
-              className="flex items-center gap-3 p-4 rounded-lg border border-border hover:border-primary/50 hover:bg-primary/5 transition-all duration-200"
-            >
-              <FolderKanban className="h-5 w-5 text-primary" />
+            <Link to="/projects" className="flex items-center gap-3 p-4 rounded-lg border border-border hover:border-primary/50 hover:bg-primary/5 transition-all duration-200">
+              <FolderKanban className="text-primary w-[35px] h-[35px]" />
               <div>
-                <p className="font-medium text-card-foreground">New Project</p>
+                <p className="text-card-foreground text-sm font-bold">New Project</p>
                 <p className="text-sm text-muted-foreground">Create quote/job</p>
               </div>
             </Link>
-            <button 
-              onClick={() => navigate('/invoices', { state: { openNewInvoice: true } })}
-              className="flex items-center gap-3 p-4 rounded-lg border border-border hover:border-primary/50 hover:bg-primary/5 transition-all duration-200 w-full text-left"
-            >
-              <Receipt className="h-5 w-5 text-accent" />
+            <button onClick={() => navigate('/invoices', {
+            state: {
+              openNewInvoice: true
+            }
+          })} className="flex items-center gap-3 p-4 rounded-lg border border-border hover:border-primary/50 hover:bg-primary/5 transition-all duration-200 w-full text-left">
+              <Receipt className="text-accent w-[35px] h-[35px]" />
               <div>
-                <p className="font-medium text-card-foreground">New Invoice</p>
+                <p className="text-card-foreground text-sm font-bold">New Invoice</p>
                 <p className="text-sm text-muted-foreground">Bill a client</p>
               </div>
             </button>
-            <Link 
-              to="/invoices" 
-              className="flex items-center gap-3 p-4 rounded-lg border border-border hover:border-success/50 hover:bg-success/5 transition-all duration-200"
-            >
-              <DollarSign className="h-5 w-5 text-success" />
+            <Link to="/invoices" className="flex items-center gap-3 p-4 rounded-lg border border-border hover:border-success/50 hover:bg-success/5 transition-all duration-200">
+              <DollarSign className="text-success w-[35px] h-[35px]" />
               <div>
-                <p className="font-medium text-card-foreground">Record Payment</p>
+                <p className="text-card-foreground text-sm font-bold">Record Payment</p>
                 <p className="text-sm text-muted-foreground">Mark invoice paid</p>
               </div>
             </Link>
           </div>
         </div>
       </div>
-    </div>
-  );
+    </div>;
 }

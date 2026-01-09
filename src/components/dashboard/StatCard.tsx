@@ -30,7 +30,7 @@ export function StatCard({
   const content = <div className="flex items-start justify-between">
       <div className="space-y-2">
         <p className="text-muted-foreground text-center text-xl font-bold">{title}</p>
-        <p className="text-3xl text-card-foreground font-extrabold">{value}</p>
+        <p className="text-3xl text-card-foreground font-extrabold font-sans">{value}</p>
         {trend && <p className={cn("text-sm font-medium", trend.isPositive ? "text-success" : "text-destructive")}>
             {trend.isPositive ? '↑' : '↓'} {Math.abs(trend.value)}% from last month
           </p>}
