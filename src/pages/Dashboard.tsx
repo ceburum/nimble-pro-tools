@@ -1,9 +1,11 @@
 import { Link, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import { Users, Receipt, DollarSign, FolderKanban } from 'lucide-react';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { RecentActivity } from '@/components/dashboard/RecentActivity';
 import { OverdueAlerts } from '@/components/dashboard/OverdueAlerts';
 import { MileageCard } from '@/components/dashboard/MileageCard';
+import { DashboardAvatar } from '@/components/dashboard/DashboardAvatar';
 import { mockClients, mockInvoices } from '@/lib/mockData';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { Client, Invoice, Project } from '@/types';
@@ -14,6 +16,39 @@ export default function Dashboard() {
   const [clients] = useLocalStorage<Client[]>('ceb-clients', mockClients);
   const [projects] = useLocalStorage<Project[]>('ceb-projects', []);
   const [invoices] = useLocalStorage<Invoice[]>('ceb-invoices', mockInvoices);
+  
+  // Dashboard avatar state
+  const [dashboardLogoUrl, setDashboardLogoUrl] = useState<string | null>(null);
+  const [isLoadingAvatar, setIsLoadingAvatar] = useState(true);
+
+  // Fetch dashboard logo on mount
+  useEffect(() => {
+    const fetchDashboardLogo = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          setIsLoadingAvatar(false);
+          return;
+        }
+
+        const { data } = await supabase
+          .from('user_settings')
+          .select('dashboard_logo_url')
+          .eq('user_id', user.id)
+          .single();
+
+        if (data?.dashboard_logo_url) {
+          setDashboardLogoUrl(data.dashboard_logo_url);
+        }
+      } catch (error) {
+        console.error('Error fetching dashboard logo:', error);
+      } finally {
+        setIsLoadingAvatar(false);
+      }
+    };
+
+    fetchDashboardLogo();
+  }, []);
   const totalRevenue = invoices.filter(inv => inv.status === 'paid').reduce((sum, inv) => sum + inv.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0), 0);
   const pendingAmount = invoices.filter(inv => inv.status === 'sent' || inv.status === 'overdue').reduce((sum, inv) => sum + inv.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0), 0);
   const overdueCount = invoices.filter(inv => {
@@ -70,9 +105,16 @@ export default function Dashboard() {
     }
   };
   return <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
-        <p className="text-muted-foreground mt-1">Welcome back! Here's your business overview.</p>
+      <div className="flex items-center gap-4">
+        <DashboardAvatar 
+          imageUrl={dashboardLogoUrl} 
+          onImageChange={setDashboardLogoUrl}
+          isLoading={isLoadingAvatar}
+        />
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
+          <p className="text-muted-foreground mt-1">Welcome back! Here's your business overview.</p>
+        </div>
       </div>
 
       <MileageCard />
