@@ -31,18 +31,33 @@ export default defineConfig(({ mode }) => ({
             src: "/ceb-logo.png",
             sizes: "192x192",
             type: "image/png",
-            purpose: "any maskable"
+            purpose: "any"
           },
           {
             src: "/ceb-logo.png",
             sizes: "512x512",
             type: "image/png",
-            purpose: "any maskable"
+            purpose: "any"
+          },
+          {
+            src: "/ceb-logo.png",
+            sizes: "192x192",
+            type: "image/png",
+            purpose: "maskable"
+          },
+          {
+            src: "/ceb-logo.png",
+            sizes: "512x512",
+            type: "image/png",
+            purpose: "maskable"
           }
         ]
       },
       workbox: {
         globPatterns: ["**/*.{js,css,html,ico,png,svg,jpg,jpeg,woff,woff2}"],
+        // Critical: Handle SPA navigation in standalone PWA mode
+        navigateFallback: "/index.html",
+        navigateFallbackDenylist: [/^\/api/, /^\/pay\//],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/pvgxkznweoedkvebjjpc\.supabase\.co\/.*/i,
