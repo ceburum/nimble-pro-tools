@@ -18,8 +18,8 @@ export function DashboardAvatar({ imageUrl, onImageChange, isLoading }: Dashboar
         onClick={() => setDialogOpen(true)}
         disabled={isLoading}
         className={cn(
-          "relative w-24 h-24 rounded-xl border-2 border-border bg-muted/50 overflow-hidden",
-          "hover:border-primary/50 hover:shadow-md transition-all duration-200",
+          "relative w-32 h-32 rounded-xl border-2 border-border bg-muted/50 overflow-hidden shadow-sm",
+          "hover:border-primary/50 hover:shadow-lg transition-all duration-200",
           "flex items-center justify-center group flex-shrink-0",
           isLoading && "opacity-50 cursor-not-allowed"
         )}
