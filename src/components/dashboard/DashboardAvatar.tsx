@@ -18,9 +18,9 @@ export function DashboardAvatar({ imageUrl, onImageChange, isLoading }: Dashboar
         onClick={() => setDialogOpen(true)}
         disabled={isLoading}
         className={cn(
-          "relative w-16 h-16 rounded-lg border-2 border-border bg-muted/50 overflow-hidden",
+          "relative w-24 h-24 rounded-xl border-2 border-border bg-muted/50 overflow-hidden",
           "hover:border-primary/50 hover:shadow-md transition-all duration-200",
-          "flex items-center justify-center group",
+          "flex items-center justify-center group flex-shrink-0",
           isLoading && "opacity-50 cursor-not-allowed"
         )}
         aria-label="Update dashboard logo or profile picture"
@@ -32,7 +32,7 @@ export function DashboardAvatar({ imageUrl, onImageChange, isLoading }: Dashboar
             className="w-full h-full object-cover"
           />
         ) : (
-          <User className="w-8 h-8 text-muted-foreground" />
+          <User className="w-10 h-10 text-muted-foreground" />
         )}
         
         {/* Hover overlay */}
@@ -40,7 +40,7 @@ export function DashboardAvatar({ imageUrl, onImageChange, isLoading }: Dashboar
           "absolute inset-0 bg-black/50 flex items-center justify-center",
           "opacity-0 group-hover:opacity-100 transition-opacity duration-200"
         )}>
-          <ImagePlus className="w-5 h-5 text-white" />
+          <ImagePlus className="w-6 h-6 text-white" />
         </div>
       </button>
 
