@@ -11,6 +11,7 @@ import Projects from "./pages/Projects";
 import Invoices from "./pages/Invoices";
 import PayInvoice from "./pages/PayInvoice";
 import Auth from "./pages/Auth";
+import Install from "./pages/Install";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -24,6 +25,7 @@ const App = () => (
         <Routes>
           {/* Public routes */}
           <Route path="/auth" element={<Auth />} />
+          <Route path="/install" element={<Install />} />
           <Route path="/pay/:paymentToken" element={<PayInvoice />} />
           
           {/* Protected admin routes with AppLayout */}
