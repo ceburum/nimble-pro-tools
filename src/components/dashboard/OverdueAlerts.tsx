@@ -34,7 +34,7 @@ export function OverdueAlerts({
   return <div className="bg-destructive/5 border border-destructive/20 rounded-xl p-6">
       <div className="flex items-center gap-2 mb-4">
         <AlertTriangle className="h-5 w-5 text-destructive" />
-        <h3 className="text-lg font-semibold text-destructive">Overdue Invoices</h3>
+        <h3 className="font-semibold text-destructive text-xl">Overdue Invoices</h3>
         <span className="ml-auto bg-destructive text-destructive-foreground text-xs font-bold px-2 py-1 rounded-full">
           {overdueInvoices.length}
         </span>
