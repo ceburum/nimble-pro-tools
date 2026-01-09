@@ -40,7 +40,7 @@ export function StatCard({
       </div>
     </div>;
   if (href) {
-    return <Link to={href} className="block bg-card rounded-xl border border-border p-6 shadow-sm hover:shadow-md hover:border-primary/50 transition-all duration-200 cursor-pointer px-[16px] py-[16px]">
+    return <Link to={href} className="block rounded-xl border border-border p-6 shadow-sm hover:shadow-md hover:border-primary/50 transition-all duration-200 cursor-pointer px-[16px] py-[16px] bg-secondary">
         {content}
       </Link>;
   }

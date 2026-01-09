@@ -31,7 +31,7 @@ export function OverdueAlerts({
     };
   }).sort((a, b) => b.daysOverdue - a.daysOverdue);
   if (overdueInvoices.length === 0) return null;
-  return <div className="bg-destructive/5 border border-destructive/20 rounded-xl p-6">
+  return <div className="border border-destructive/20 rounded-xl p-6 bg-red-100">
       <div className="flex items-center gap-2 mb-4">
         <AlertTriangle className="h-5 w-5 text-destructive" />
         <h3 className="font-semibold text-destructive text-xl">Overdue Invoices</h3>
