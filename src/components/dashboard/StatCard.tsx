@@ -27,20 +27,20 @@ export function StatCard({
     warning: 'bg-accent/10 text-accent',
     danger: 'bg-destructive/10 text-destructive'
   };
-  const content = <div className="flex items-start justify-between">
+  const content = <div className="flex items-start justify-between py-0 px-0 pr-0">
       <div className="space-y-2">
-        <p className="text-muted-foreground text-center text-xl font-bold">{title}</p>
+        <p className="text-muted-foreground font-bold text-base text-left px-[10px]">{title}</p>
         <p className="text-3xl text-card-foreground font-extrabold font-sans">{value}</p>
         {trend && <p className={cn("text-sm font-medium", trend.isPositive ? "text-success" : "text-destructive")}>
             {trend.isPositive ? '↑' : '↓'} {Math.abs(trend.value)}% from last month
           </p>}
       </div>
       <div className={cn("p-3 rounded-lg", iconVariants[variant])}>
-        <Icon className="h-6 w-6" />
+        <Icon className="h-6 w-6 px-0" />
       </div>
     </div>;
   if (href) {
-    return <Link to={href} className="block bg-card rounded-xl border border-border p-6 shadow-sm hover:shadow-md hover:border-primary/50 transition-all duration-200 cursor-pointer">
+    return <Link to={href} className="block bg-card rounded-xl border border-border p-6 shadow-sm hover:shadow-md hover:border-primary/50 transition-all duration-200 cursor-pointer px-[16px] py-[16px]">
         {content}
       </Link>;
   }
