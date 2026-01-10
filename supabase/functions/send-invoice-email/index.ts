@@ -70,8 +70,8 @@ const PAYMENT_METHODS = [
 
 // Get the app base URL for payment links
 function getAppBaseUrl(): string {
-  // Use the production URL or fallback
-  return Deno.env.get("APP_BASE_URL") || "https://cebbuilding.lovable.app";
+  // Use the production URL - this is the custom domain
+  return Deno.env.get("APP_BASE_URL") || "https://app.cebbuilding.com";
 }
 
 // Simple HTML email header without logo for reliability
