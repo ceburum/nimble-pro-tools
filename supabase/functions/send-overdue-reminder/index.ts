@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.2";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -32,6 +33,19 @@ async function verifyAuth(req: Request): Promise<{ userId: string } | null> {
     return null;
   }
 }
+
+// Zod schema for input validation
+const ReminderRequestSchema = z.object({
+  invoiceId: z.string().uuid(),
+  invoiceNumber: z.string().min(1).max(50),
+  clientName: z.string().min(1).max(200),
+  clientEmail: z.string().email().max(255),
+  clientPhone: z.string().max(50),
+  amount: z.number().positive().max(10000000),
+  dueDate: z.string().max(50),
+  method: z.enum(['email', 'text']),
+  daysOverdue: z.number().nonnegative().max(10000).optional(),
+});
 
 interface ReminderRequest {
   invoiceId: string;
@@ -342,7 +356,19 @@ const handler = async (req: Request): Promise<Response> => {
   console.log(`Authenticated request from user: ${auth.userId}`);
 
   try {
-    const data: ReminderRequest = await req.json();
+    // Validate input with Zod schema
+    const rawData = await req.json();
+    const validationResult = ReminderRequestSchema.safeParse(rawData);
+    
+    if (!validationResult.success) {
+      console.error("Validation error:", validationResult.error.issues);
+      return new Response(
+        JSON.stringify({ error: "Invalid request data", details: validationResult.error.issues }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    const data = validationResult.data;
     const { invoiceNumber, clientName, clientEmail, amount, dueDate, method, daysOverdue } = data;
 
     const formattedAmount = amount.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
