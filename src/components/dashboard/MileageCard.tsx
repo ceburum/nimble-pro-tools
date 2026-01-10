@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Car, Plus, Play, Square, MapPin, Settings, Navigation } from 'lucide-react';
+import { Car, Plus, Play, Square, MapPin, Settings, Navigation, Crosshair, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -38,10 +38,65 @@ export function MileageCard() {
     lng: number;
   }[]>([]);
   const [currentDistance, setCurrentDistance] = useState(0);
+  const [isGettingLocation, setIsGettingLocation] = useState(false);
   const watchIdRef = useRef<number | null>(null);
   const {
     toast
   } = useToast();
+
+  const useCurrentLocation = () => {
+    if (!('geolocation' in navigator)) {
+      toast({
+        title: 'GPS unavailable',
+        description: 'Your device does not support location services',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    setIsGettingLocation(true);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        // Try to get a readable address via reverse geocoding
+        try {
+          const response = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
+          );
+          const data = await response.json();
+          const address = data.address;
+          // Build a concise location string
+          const locationParts = [
+            address.house_number,
+            address.road,
+            address.city || address.town || address.village
+          ].filter(Boolean);
+          const locationName = locationParts.length > 0 
+            ? locationParts.join(' ')
+            : `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+          setStartLocation(locationName);
+        } catch {
+          // Fallback to coordinates if geocoding fails
+          setStartLocation(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+        }
+        setIsGettingLocation(false);
+        toast({
+          title: 'Location found',
+          description: 'Start location set to your current position'
+        });
+      },
+      (error) => {
+        setIsGettingLocation(false);
+        console.error('Geolocation error:', error);
+        toast({
+          title: 'Could not get location',
+          description: 'Please enter location manually',
+          variant: 'destructive'
+        });
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
 
   // Calculate totals
   const totalTrackedMiles = mileageEntries.reduce((sum, entry) => sum + entry.miles, 0);
@@ -356,9 +411,25 @@ export function MileageCard() {
               </div> : <div className="space-y-4">
                 <div className="space-y-2">
                   <Label>Start Location</Label>
-                  <div className="relative">
-                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input value={startLocation} onChange={e => setStartLocation(e.target.value)} placeholder="e.g., Office, Home, Job site" className="pl-10" />
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input value={startLocation} onChange={e => setStartLocation(e.target.value)} placeholder="e.g., Office, Home, Job site" className="pl-10" />
+                    </div>
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      size="icon"
+                      onClick={useCurrentLocation}
+                      disabled={isGettingLocation}
+                      title="Use current location"
+                    >
+                      {isGettingLocation ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Crosshair className="h-4 w-4" />
+                      )}
+                    </Button>
                   </div>
                 </div>
 

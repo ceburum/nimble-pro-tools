@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { LineItemInput } from '@/components/ui/line-item-input';
 import {
   Dialog,
   DialogContent,
@@ -190,10 +191,10 @@ export function QuoteDialog({
               {items.map((item, index) => (
                 <div key={item.id} className="flex gap-3 items-start">
                   <div className="flex-1">
-                    <Input
+                    <LineItemInput
                       placeholder="Description"
                       value={item.description}
-                      onChange={(e) => handleItemChange(item.id, 'description', e.target.value)}
+                      onChange={(val) => handleItemChange(item.id, 'description', val)}
                     />
                   </div>
                   <div className="w-20">

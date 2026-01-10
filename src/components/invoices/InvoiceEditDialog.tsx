@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { LineItemInput } from '@/components/ui/line-item-input';
 import {
   Select,
   SelectContent,
@@ -143,10 +144,10 @@ export function InvoiceEditDialog({ open, onOpenChange, invoice, clients, onSave
               {items.map((item) => (
                 <div key={item.id} className="flex gap-3 items-start">
                   <div className="flex-1">
-                    <Input
+                    <LineItemInput
                       placeholder="Description"
                       value={item.description}
-                      onChange={(e) => updateItem(item.id, 'description', e.target.value)}
+                      onChange={(val) => updateItem(item.id, 'description', val)}
                     />
                   </div>
                   <div className="w-20">
