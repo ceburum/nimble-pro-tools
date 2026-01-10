@@ -132,6 +132,48 @@ export type Database = {
           },
         ]
       }
+      mileage_entries: {
+        Row: {
+          coordinates: Json | null
+          created_at: string
+          distance: number
+          end_location: string | null
+          end_time: string | null
+          id: string
+          is_tracking: boolean
+          purpose: string | null
+          start_location: string | null
+          start_time: string | null
+          user_id: string
+        }
+        Insert: {
+          coordinates?: Json | null
+          created_at?: string
+          distance?: number
+          end_location?: string | null
+          end_time?: string | null
+          id?: string
+          is_tracking?: boolean
+          purpose?: string | null
+          start_location?: string | null
+          start_time?: string | null
+          user_id: string
+        }
+        Update: {
+          coordinates?: Json | null
+          created_at?: string
+          distance?: number
+          end_location?: string | null
+          end_time?: string | null
+          id?: string
+          is_tracking?: boolean
+          purpose?: string | null
+          start_location?: string | null
+          start_time?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       project_mileage: {
         Row: {
           coordinates: Json | null
