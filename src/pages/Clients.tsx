@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { ClientCard } from '@/components/clients/ClientCard';
 import { ClientDialog } from '@/components/clients/ClientDialog';
 import { ClientDetailDialog } from '@/components/clients/ClientDetailDialog';
+import { PageHeader } from '@/components/layout/PageHeader';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { useClients } from '@/hooks/useClients';
@@ -86,16 +87,16 @@ export default function Clients() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Clients</h1>
-          <p className="text-muted-foreground mt-1">Manage your client contacts</p>
-        </div>
-        <Button onClick={() => setDialogOpen(true)} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Add Client
-        </Button>
-      </div>
+      <PageHeader
+        title="Clients"
+        description="Manage your client contacts"
+        action={
+          <Button onClick={() => setDialogOpen(true)} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Add Client
+          </Button>
+        }
+      />
 
       <div className="relative max-w-md">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
