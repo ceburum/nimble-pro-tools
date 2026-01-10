@@ -4,7 +4,9 @@ import { LayoutDashboard, Users, FolderKanban, Receipt, Menu, LogOut } from 'luc
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
+import { useUserLogo } from '@/hooks/useUserLogo';
 import cebLogo from '@/assets/ceb-logo.png';
+
 interface AppLayoutProps {
   children: React.ReactNode;
 }
@@ -35,6 +37,10 @@ export function AppLayout({
     user,
     signOut
   } = useAuth();
+  const { logoUrl } = useUserLogo();
+  
+  // Use custom logo if set, otherwise fall back to default
+  const displayLogo = logoUrl || cebLogo;
   const handleSignOut = async () => {
     await signOut();
     navigate('/auth', {
@@ -48,7 +54,7 @@ export function AppLayout({
       {/* Sidebar */}
       <aside className={cn("fixed inset-y-0 left-0 z-50 w-64 bg-sidebar text-sidebar-foreground transform transition-transform duration-300 ease-in-out lg:translate-x-0 flex flex-col", sidebarOpen ? "translate-x-0" : "-translate-x-full")}>
         <div className="flex h-16 items-center gap-3 px-6 border-b border-sidebar-border">
-          <img src={cebLogo} alt="CEB Building Logo" className="h-10 w-10 rounded-lg object-fill border-0" />
+          <img src={displayLogo} alt="CEB Building Logo" className="h-10 w-10 rounded-lg object-cover border-0" />
           <div>
             <h1 className="text-lg font-bold text-sidebar-foreground">CEB Building</h1>
             <p className="text-xs text-sidebar-foreground/60">{user?.email || 'chad@cebbuilding.com'}</p>
