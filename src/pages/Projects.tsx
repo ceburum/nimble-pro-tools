@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ProjectCard } from '@/components/projects/ProjectCard';
 import { ProjectDialog } from '@/components/projects/ProjectDialog';
+import { PageHeader } from '@/components/layout/PageHeader';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { useClients } from '@/hooks/useClients';
@@ -117,16 +118,16 @@ export default function Projects() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Projects</h1>
-          <p className="text-muted-foreground mt-1">Quote, track, and invoice your work</p>
-        </div>
-        <Button className="gap-2" onClick={() => setIsDialogOpen(true)}>
-          <Plus className="h-4 w-4" />
-          New Project
-        </Button>
-      </div>
+      <PageHeader
+        title="Projects"
+        description="Quote, track, and invoice your work"
+        action={
+          <Button className="gap-2" onClick={() => setIsDialogOpen(true)}>
+            <Plus className="h-4 w-4" />
+            New Project
+          </Button>
+        }
+      />
 
       {/* Quick stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
