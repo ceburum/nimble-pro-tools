@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.2";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -35,6 +36,26 @@ async function verifyAuth(req: Request): Promise<{ userId: string } | null> {
   }
 }
 
+// Zod schema for input validation
+const InvoiceItemSchema = z.object({
+  id: z.string().max(100),
+  description: z.string().max(500),
+  quantity: z.number().positive().max(10000),
+  unitPrice: z.number().nonnegative().max(1000000),
+});
+
+const SendInvoiceRequestSchema = z.object({
+  clientName: z.string().min(1).max(200),
+  clientEmail: z.string().email().max(255),
+  invoiceNumber: z.string().min(1).max(50),
+  paymentToken: z.string().uuid().optional(),
+  items: z.array(InvoiceItemSchema).min(1).max(100),
+  dueDate: z.string().max(50),
+  notes: z.string().max(2000).optional(),
+  businessName: z.string().max(200).optional(),
+  plainTextOnly: z.boolean().optional(),
+});
+
 interface InvoiceItem {
   id: string;
   description: string;
@@ -51,7 +72,6 @@ interface SendInvoiceRequest {
   dueDate: string;
   notes?: string;
   businessName?: string;
-  businessEmail?: string;
   plainTextOnly?: boolean;
 }
 
@@ -408,6 +428,18 @@ const handler = async (req: Request): Promise<Response> => {
   console.log(`Authenticated request from user: ${auth.userId}`);
 
   try {
+    // Validate input with Zod schema
+    const rawData = await req.json();
+    const validationResult = SendInvoiceRequestSchema.safeParse(rawData);
+    
+    if (!validationResult.success) {
+      console.error("Validation error:", validationResult.error.issues);
+      return new Response(
+        JSON.stringify({ error: "Invalid request data", details: validationResult.error.issues }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
     const {
       clientName,
       clientEmail,
@@ -418,7 +450,7 @@ const handler = async (req: Request): Promise<Response> => {
       notes,
       businessName = "CEB Building",
       plainTextOnly = false,
-    }: SendInvoiceRequest = await req.json();
+    } = validationResult.data;
 
     const total = items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
     const formattedTotal = total.toLocaleString('en-US', { minimumFractionDigits: 2 });

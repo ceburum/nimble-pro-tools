@@ -1,10 +1,20 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+// Zod schema for input validation
+const PaymentRequestSchema = z.object({
+  invoiceNumber: z.string().min(1).max(50),
+  clientName: z.string().min(1).max(200),
+  clientEmail: z.string().email().max(255).optional(),
+  amount: z.number().positive().max(1000000), // max $1M
+  includeConvenienceFee: z.boolean(),
+});
 
 interface PaymentRequest {
   invoiceNumber: string;
@@ -21,11 +31,20 @@ serve(async (req) => {
   }
 
   try {
-    const { invoiceNumber, clientName, clientEmail, amount, includeConvenienceFee }: PaymentRequest = await req.json();
-
-    if (!invoiceNumber || !amount || amount <= 0) {
-      throw new Error("Invalid invoice data");
+    // Validate input with Zod schema
+    const rawData = await req.json();
+    const validationResult = PaymentRequestSchema.safeParse(rawData);
+    
+    if (!validationResult.success) {
+      console.error("Validation error:", validationResult.error.issues);
+      return new Response(
+        JSON.stringify({ error: "Invalid request data", details: validationResult.error.issues }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400 }
+      );
     }
+    
+    const { invoiceNumber, clientName, clientEmail, amount, includeConvenienceFee } = validationResult.data;
 
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
       apiVersion: "2025-08-27.basil",

@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.2";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -33,6 +34,25 @@ async function verifyAuth(req: Request): Promise<{ userId: string } | null> {
     return null;
   }
 }
+
+// Zod schema for input validation
+const LineItemSchema = z.object({
+  id: z.string().max(100),
+  description: z.string().max(500),
+  quantity: z.number().positive().max(10000),
+  unitPrice: z.number().nonnegative().max(1000000),
+});
+
+const SendQuoteRequestSchema = z.object({
+  projectId: z.string().uuid(),
+  projectTitle: z.string().min(1).max(200),
+  projectDescription: z.string().max(2000).optional(),
+  clientName: z.string().min(1).max(200),
+  clientEmail: z.string().email().max(255),
+  items: z.array(LineItemSchema).min(1).max(100),
+  notes: z.string().max(2000).optional(),
+  notificationEmail: z.string().email().max(255),
+});
 
 interface LineItem {
   id: string;
@@ -260,6 +280,18 @@ const handler = async (req: Request): Promise<Response> => {
   console.log(`Authenticated request from user: ${auth.userId}`);
 
   try {
+    // Validate input with Zod schema
+    const rawData = await req.json();
+    const validationResult = SendQuoteRequestSchema.safeParse(rawData);
+    
+    if (!validationResult.success) {
+      console.error("Validation error:", validationResult.error.issues);
+      return new Response(
+        JSON.stringify({ error: "Invalid request data", details: validationResult.error.issues }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
     const {
       projectId,
       projectTitle,
@@ -268,7 +300,7 @@ const handler = async (req: Request): Promise<Response> => {
       clientEmail,
       items,
       notes,
-    }: SendQuoteRequest = await req.json();
+    } = validationResult.data;
 
     console.log(`Sending quote for project ${projectId} to ${clientEmail}`);
 
