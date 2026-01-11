@@ -363,10 +363,19 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    const clientData = project.clients as { name: string; email: string }[] | null;
-    const client = Array.isArray(clientData) ? clientData[0] : null;
-    const clientName = client?.name || 'Customer';
-    const clientEmail = client?.email || '';
+    // Handle both array and object formats from Supabase join
+    const clientData = project.clients as unknown;
+    let clientName = 'Customer';
+    let clientEmail = '';
+    
+    if (Array.isArray(clientData) && clientData.length > 0) {
+      clientName = clientData[0]?.name || 'Customer';
+      clientEmail = clientData[0]?.email || '';
+    } else if (clientData && typeof clientData === 'object') {
+      const client = clientData as { name?: string; email?: string };
+      clientName = client.name || 'Customer';
+      clientEmail = client.email || '';
+    }
     const projectTitle = project.title;
     const isAccepted = action === "accept";
 
