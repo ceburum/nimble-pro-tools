@@ -9,6 +9,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Loader2, Camera, X } from 'lucide-react';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 interface BarcodeScannerDialogProps {
   open: boolean;
@@ -87,14 +88,23 @@ export function BarcodeScannerDialog({
     setIsLookingUp(true);
     
     try {
-      // Call our edge function to lookup the barcode
+      // Get the current user's session token for authenticated request
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.access_token) {
+        toast.error('You must be logged in to scan barcodes.');
+        onOpenChange(false);
+        return;
+      }
+
+      // Call our edge function to lookup the barcode with authenticated token
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/lookup-barcode`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            'Authorization': `Bearer ${session.access_token}`,
           },
           body: JSON.stringify({ barcode }),
         }
