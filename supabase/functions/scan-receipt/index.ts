@@ -38,7 +38,27 @@ serve(async (req) => {
             content: [
               {
                 type: "text",
-                text: "Analyze this receipt image and extract the following information. Return ONLY a JSON object with these fields, no other text:\n- store_name: The name of the store/business\n- total_amount: The total amount (just the number, no currency symbol)\n- date: The date on the receipt if visible (in YYYY-MM-DD format, or null if not found)\n\nIf you cannot determine a value, use null for that field."
+                text: `Analyze this receipt image and extract the following information. Return ONLY a JSON object with these fields, no other text:
+- store_name: The name of the store/business
+- total_amount: The total amount (just the number, no currency symbol)
+- date: The date on the receipt if visible (in YYYY-MM-DD format, or null if not found)
+- line_items: An array of items purchased. For each item include:
+  - description: The item name/description
+  - quantity: The quantity (default to 1 if not shown)
+  - unit_price: The price per unit (just the number)
+
+Example response:
+{
+  "store_name": "Home Depot",
+  "total_amount": 156.78,
+  "date": "2024-01-15",
+  "line_items": [
+    { "description": "2x4x8 Lumber", "quantity": 10, "unit_price": 5.99 },
+    { "description": "Deck Screws 1lb", "quantity": 2, "unit_price": 8.49 }
+  ]
+}
+
+If you cannot determine a value, use null for that field. For line_items, return an empty array [] if items cannot be read clearly.`
               },
               {
                 type: "image_url",
@@ -96,10 +116,20 @@ serve(async (req) => {
       });
     }
 
+    // Normalize line items
+    const lineItems = Array.isArray(parsed.line_items) 
+      ? parsed.line_items.map((item: any) => ({
+          description: item.description || "Unknown item",
+          quantity: parseFloat(item.quantity) || 1,
+          unit_price: parseFloat(item.unit_price) || 0,
+        }))
+      : [];
+
     return new Response(JSON.stringify({
       store_name: parsed.store_name || null,
       total_amount: parsed.total_amount ? parseFloat(parsed.total_amount) : null,
       date: parsed.date || null,
+      line_items: lineItems,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
