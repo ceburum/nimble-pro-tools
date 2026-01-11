@@ -148,6 +148,7 @@ export function useInvoices() {
       if (data.dueDate !== undefined) updateData.due_date = data.dueDate.toISOString();
       if (data.notes !== undefined) updateData.notes = data.notes || null;
       if (data.paidAt !== undefined) updateData.paid_at = data.paidAt?.toISOString() || null;
+      if (data.receiptAttachments !== undefined) updateData.receipt_attachments = data.receiptAttachments || [];
 
       const { error } = await supabase
         .from('invoices')
