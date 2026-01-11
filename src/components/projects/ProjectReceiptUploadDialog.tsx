@@ -1,6 +1,5 @@
 import { useState, useRef } from 'react';
-import { Receipt, Upload, X, Scan, Loader2, Package, Trash2 } from 'lucide-react';
-import { ProjectReceipt, LineItem } from '@/types';
+import { Receipt, Upload, X, Scan, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import {
@@ -13,41 +12,42 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
-interface ScannedLineItem {
-  description: string;
-  quantity: number;
-  unit_price: number;
-}
-
 interface ProjectReceiptUploadDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   projectId: string;
-  onSave: (receipt: ProjectReceipt, lineItems?: LineItem[]) => void;
+  onSave: (file: File, storeName: string, totalAmount: number) => Promise<boolean>;
 }
 
-export function ProjectReceiptUploadDialog({ open, onOpenChange, projectId, onSave }: ProjectReceiptUploadDialogProps) {
-  const [description, setDescription] = useState('');
+export function ProjectReceiptUploadDialog({
+  open,
+  onOpenChange,
+  projectId,
+  onSave,
+}: ProjectReceiptUploadDialogProps) {
+  const [storeName, setStoreName] = useState('');
   const [amount, setAmount] = useState('');
-  const [preview, setPreview] = useState<string | null>(null);
+  const [previewBase64, setPreviewBase64] = useState<string | null>(null);
+  const [file, setFile] = useState<File | null>(null);
   const [isScanning, setIsScanning] = useState(false);
-  const [scannedItems, setScannedItems] = useState<ScannedLineItem[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64 = reader.result as string;
-        setPreview(base64);
-      };
-      reader.readAsDataURL(file);
-    }
+    const nextFile = e.target.files?.[0];
+    if (!nextFile) return;
+
+    setFile(nextFile);
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setPreviewBase64(reader.result as string);
+    };
+    reader.readAsDataURL(nextFile);
   };
 
   const handleScanReceipt = async () => {
-    if (!preview) {
+    if (!previewBase64) {
       toast.error('Please upload a receipt image first');
       return;
     }
@@ -55,33 +55,19 @@ export function ProjectReceiptUploadDialog({ open, onOpenChange, projectId, onSa
     setIsScanning(true);
     try {
       const { data, error } = await supabase.functions.invoke('scan-receipt', {
-        body: { imageBase64: preview }
+        body: { imageBase64: previewBase64 },
       });
 
-      if (error) {
-        throw error;
-      }
-
-      if (data.error) {
+      if (error) throw error;
+      if (data?.error) {
         toast.error(data.error);
         return;
       }
 
-      // Auto-fill the fields with scanned data
-      if (data.store_name) {
-        setDescription(data.store_name);
-      }
-      if (data.total_amount) {
-        setAmount(data.total_amount.toString());
-      }
-      
-      // Set scanned line items
-      if (data.line_items && data.line_items.length > 0) {
-        setScannedItems(data.line_items);
-        toast.success(`Scanned ${data.line_items.length} items from receipt!`);
-      } else {
-        toast.success('Receipt scanned - no individual items found');
-      }
+      if (data?.store_name) setStoreName(String(data.store_name));
+      if (data?.total_amount != null) setAmount(String(data.total_amount));
+
+      toast.success('Receipt scanned');
     } catch (error) {
       console.error('Scan error:', error);
       toast.error('Failed to scan receipt. Please enter details manually.');
@@ -90,48 +76,40 @@ export function ProjectReceiptUploadDialog({ open, onOpenChange, projectId, onSa
     }
   };
 
-  const handleRemoveItem = (index: number) => {
-    setScannedItems(prev => prev.filter((_, i) => i !== index));
-  };
+  const handleSave = async () => {
+    if (!file || !storeName || !amount) return;
 
-  const handleSave = () => {
-    if (!description || !amount) return;
+    const parsedAmount = Number.parseFloat(amount);
+    if (Number.isNaN(parsedAmount) || parsedAmount <= 0) {
+      toast.error('Please enter a valid total amount');
+      return;
+    }
 
-    const receipt: ProjectReceipt = {
-      id: Date.now().toString(),
-      projectId,
-      dataUrl: preview || '',
-      description,
-      amount: parseFloat(amount),
-      createdAt: new Date(),
-    };
-
-    // Convert scanned items to LineItem format
-    const lineItems: LineItem[] = scannedItems.map((item, index) => ({
-      id: `receipt-item-${Date.now()}-${index}`,
-      description: item.description,
-      quantity: item.quantity,
-      unitPrice: item.unit_price,
-    }));
-
-    onSave(receipt, lineItems.length > 0 ? lineItems : undefined);
-    handleClose();
+    setIsSaving(true);
+    try {
+      const ok = await onSave(file, storeName, parsedAmount);
+      if (ok) handleClose();
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleClose = () => {
-    setDescription('');
+    setStoreName('');
     setAmount('');
-    setPreview(null);
+    setPreviewBase64(null);
+    setFile(null);
     setIsScanning(false);
-    setScannedItems([]);
+    setIsSaving(false);
     onOpenChange(false);
-  };
 
-  const itemsTotal = scannedItems.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
+    // Allow uploading the same file again
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[500px] max-h-[90vh] flex flex-col overflow-hidden">
+      <DialogContent className="sm:max-w-[520px] max-h-[90vh] flex flex-col overflow-hidden">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <Receipt className="h-5 w-5" />
@@ -139,22 +117,28 @@ export function ProjectReceiptUploadDialog({ open, onOpenChange, projectId, onSa
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto max-h-[60vh] pr-2">
+        {/* Scrollable content area */}
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain pr-2 [-webkit-overflow-scrolling:touch]">
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>Receipt Photo</Label>
-              {preview ? (
+              {previewBase64 ? (
                 <div className="relative">
-                  <img src={preview} alt="Receipt preview" className="w-full h-40 object-cover rounded-lg" />
+                  <img
+                    src={previewBase64}
+                    alt="Receipt preview"
+                    className="w-full h-40 object-cover rounded-lg"
+                  />
                   <Button
                     variant="destructive"
                     size="icon"
                     className="absolute top-2 right-2"
                     onClick={() => {
-                      setPreview(null);
-                      setDescription('');
+                      setPreviewBase64(null);
+                      setFile(null);
+                      setStoreName('');
                       setAmount('');
-                      setScannedItems([]);
+                      if (fileInputRef.current) fileInputRef.current.value = '';
                     }}
                   >
                     <X className="h-4 w-4" />
@@ -169,12 +153,18 @@ export function ProjectReceiptUploadDialog({ open, onOpenChange, projectId, onSa
                   <p className="text-sm text-muted-foreground">Click to upload receipt image</p>
                 </div>
               )}
-              <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleFileChange}
+              />
             </div>
 
-            {preview && (
-              <Button 
-                onClick={handleScanReceipt} 
+            {previewBase64 && (
+              <Button
+                onClick={handleScanReceipt}
                 disabled={isScanning}
                 variant="secondary"
                 className="w-full"
@@ -187,18 +177,18 @@ export function ProjectReceiptUploadDialog({ open, onOpenChange, projectId, onSa
                 ) : (
                   <>
                     <Scan className="h-4 w-4 mr-2" />
-                    Scan Receipt (Auto-fill)
+                    Scan Receipt
                   </>
                 )}
               </Button>
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="description">Store / Description</Label>
+              <Label htmlFor="storeName">Store Name</Label>
               <Input
-                id="description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                id="storeName"
+                value={storeName}
+                onChange={(e) => setStoreName(e.target.value)}
                 placeholder="e.g., Home Depot"
                 required
               />
@@ -220,52 +210,23 @@ export function ProjectReceiptUploadDialog({ open, onOpenChange, projectId, onSa
                 />
               </div>
             </div>
-
-            {/* Scanned Line Items */}
-            {scannedItems.length > 0 && (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label className="flex items-center gap-2">
-                    <Package className="h-4 w-4" />
-                    Scanned Items ({scannedItems.length})
-                  </Label>
-                  <span className="text-sm text-muted-foreground">
-                    Total: ${itemsTotal.toFixed(2)}
-                  </span>
-                </div>
-                <div className="space-y-2 max-h-48 overflow-y-auto">
-                  {scannedItems.map((item, index) => (
-                    <div key={index} className="flex items-center gap-2 p-2 bg-muted/50 rounded-lg text-sm">
-                      <div className="flex-1 min-w-0">
-                        <p className="truncate font-medium">{item.description}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {item.quantity} × ${item.unit_price.toFixed(2)} = ${(item.quantity * item.unit_price).toFixed(2)}
-                        </p>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6 shrink-0"
-                        onClick={() => handleRemoveItem(index)}
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  These items will be added to the quote as individual line items
-                </p>
-              </div>
-            )}
-
-            <div className="flex justify-end gap-2 pt-2">
-              <Button variant="outline" onClick={handleClose}>Cancel</Button>
-              <Button onClick={handleSave} disabled={!description || !amount}>Save Receipt</Button>
-            </div>
           </div>
+        </div>
+
+        {/* Fixed footer so Save is always reachable */}
+        <div className="flex-shrink-0 border-t border-border pt-3 mt-3 flex justify-end gap-2">
+          <Button variant="outline" onClick={handleClose} disabled={isSaving}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSave}
+            disabled={!file || !storeName || !amount || isSaving}
+          >
+            {isSaving ? 'Saving...' : 'Save Receipt'}
+          </Button>
         </div>
       </DialogContent>
     </Dialog>
   );
 }
+
