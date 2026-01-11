@@ -509,26 +509,92 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Fetch receipt images from storage if any
     const attachments: { filename: string; data: string; contentType: string }[] = [];
+    const skippedReceiptLinks: {
+      filename: string;
+      url: string;
+      sizeBytes: number;
+      reason: string;
+    }[] = [];
+
+    // Zoho (and many SMTP servers) enforce attachment/message size limits.
+    // Base64 inflates size by ~33%, so keep a conservative cap.
+    const MAX_SINGLE_ATTACHMENT_BYTES = 7 * 1024 * 1024; // ~7MB
+    const MAX_TOTAL_ATTACHMENT_BYTES = 9 * 1024 * 1024; // ~9MB total
+    let totalAttachmentBytes = 0;
+
     if (receiptAttachments.length > 0) {
       console.log(`Fetching ${receiptAttachments.length} receipt attachments...`);
-      
+
       const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
       const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-      
+
       const supabase = createClient(supabaseUrl, supabaseServiceKey);
-      
+
       for (let i = 0; i < receiptAttachments.length; i++) {
         const storagePath = receiptAttachments[i];
+        const ext = storagePath.split('.').pop()?.toLowerCase() || 'jpg';
+        const filename = `receipt-${i + 1}.${ext}`;
+
         try {
           const { data: fileData, error } = await supabase.storage
             .from('project-files')
             .download(storagePath);
-          
-          if (error) {
-            console.error(`Failed to download receipt ${storagePath}:`, error.message);
+
+          if (error || !fileData) {
+            console.error(`Failed to download receipt ${storagePath}:`, error?.message);
             continue;
           }
-          
+
+          const sizeBytes = (fileData as unknown as { size?: number }).size ?? 0;
+          console.log(`Receipt ${filename} size: ${sizeBytes} bytes`);
+
+          const wouldExceedTotal =
+            sizeBytes > 0 && totalAttachmentBytes + sizeBytes > MAX_TOTAL_ATTACHMENT_BYTES;
+          const tooLargeSingle = sizeBytes > 0 && sizeBytes > MAX_SINGLE_ATTACHMENT_BYTES;
+
+          // If the file is too large to safely attach, include a signed download link instead.
+          if (tooLargeSingle || wouldExceedTotal) {
+            const reason = tooLargeSingle
+              ? `Too large to attach (${Math.round(sizeBytes / 1024 / 1024)}MB)`
+              : `Total attachments too large`;
+
+            let signedUrl: string | null = null;
+            try {
+              // Some versions support the download option; fall back if not.
+              const signed1 = await supabase.storage
+                .from('project-files')
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                .createSignedUrl(storagePath, 60 * 60 * 24 * 14, { download: filename } as any);
+
+              if (!signed1.error && signed1.data?.signedUrl) {
+                signedUrl = signed1.data.signedUrl;
+              } else {
+                const signed2 = await supabase.storage
+                  .from('project-files')
+                  .createSignedUrl(storagePath, 60 * 60 * 24 * 14);
+                if (!signed2.error && signed2.data?.signedUrl) {
+                  signedUrl = signed2.data.signedUrl;
+                }
+              }
+            } catch (err) {
+              console.error(`Failed to create signed URL for ${storagePath}:`, err);
+            }
+
+            if (signedUrl) {
+              skippedReceiptLinks.push({
+                filename,
+                url: signedUrl,
+                sizeBytes,
+                reason,
+              });
+              console.log(`Skipped attaching ${filename}; added download link instead (${reason}).`);
+            } else {
+              console.log(`Skipped attaching ${filename}; could not generate download link (${reason}).`);
+            }
+
+            continue;
+          }
+
           // Convert blob to base64 with proper line wrapping for SMTP (RFC 2045)
           const arrayBuffer = await fileData.arrayBuffer();
           const uint8Array = new Uint8Array(arrayBuffer);
@@ -539,23 +605,47 @@ const handler = async (req: Request): Promise<Response> => {
           const rawBase64 = btoa(binary);
           // Wrap base64 at 76 characters per line (SMTP requirement)
           const base64Data = rawBase64.match(/.{1,76}/g)?.join('\r\n') || rawBase64;
-          
+
           // Determine content type from file extension
-          const ext = storagePath.split('.').pop()?.toLowerCase() || 'jpg';
           const contentType = ext === 'png' ? 'image/png' : 'image/jpeg';
-          
+
           attachments.push({
-            filename: `receipt-${i + 1}.${ext}`,
+            filename,
             data: base64Data,
             contentType,
           });
-          
-          console.log(`Attached receipt: receipt-${i + 1}.${ext}`);
+
+          // Track raw size (not base64) for conservative limits.
+          if (sizeBytes > 0) totalAttachmentBytes += sizeBytes;
+
+          console.log(`Attached receipt: ${filename}`);
         } catch (err) {
           console.error(`Error processing receipt ${storagePath}:`, err);
         }
       }
     }
+
+    const receiptLinksSection = skippedReceiptLinks.length
+      ? `
+        <!-- Receipt Photos (links) -->
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background: #fff7e8; border-left: 4px solid #c8a45c; margin: 0 0 28px 0;">
+          <tr>
+            <td style="padding: 16px 20px;">
+              <p style="margin: 0 0 8px 0; font-size: 15px; color: #333;"><strong>Receipt Photos</strong></p>
+              <p style="margin: 0 0 12px 0; font-size: 13px; color: #666;">Some photos were too large to attach, so they’re provided as download links:</p>
+              <ul style="margin: 0; padding-left: 18px;">
+                ${skippedReceiptLinks
+                  .map(
+                    (r) =>
+                      `<li style="margin: 6px 0; font-size: 13px; color: #333;">${r.filename} (${Math.round(r.sizeBytes / 1024 / 1024)}MB) — <a href="${r.url}" target="_blank" style="color: #2b5a8a;">Download</a></li>`,
+                  )
+                  .join('')}
+              </ul>
+            </td>
+          </tr>
+        </table>
+      `
+      : '';
 
     // If plain text mode, send a simple text email for deliverability testing
     if (plainTextOnly) {
@@ -648,6 +738,8 @@ cebbuilding.com
               </td>
             </tr>
           </table>
+
+          ${receiptLinksSection}
           
           <!-- Payment Options -->
           <div style="text-align: center; padding: 24px 0; border-top: 1px solid #e8e6e1;">
