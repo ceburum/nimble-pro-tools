@@ -155,11 +155,10 @@ export function MaterialDialog({
             {!material && (
               <Button
                 type="button"
-                variant="outline"
-                className="w-full"
+                className="w-full gap-2"
                 onClick={() => setScannerOpen(true)}
               >
-                <ScanBarcode className="h-4 w-4 mr-2" />
+                <ScanBarcode className="h-4 w-4" />
                 Scan Barcode to Auto-Fill
               </Button>
             )}
