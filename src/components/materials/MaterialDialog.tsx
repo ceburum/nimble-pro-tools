@@ -17,7 +17,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { ScanBarcode } from 'lucide-react';
 import { Material, MaterialInput } from '@/hooks/useMaterials';
+import { BarcodeScannerDialog } from './BarcodeScannerDialog';
 
 interface MaterialDialogProps {
   open: boolean;
@@ -73,6 +75,17 @@ export function MaterialDialog({
   const [supplier, setSupplier] = useState('');
   const [sku, setSku] = useState('');
   const [saving, setSaving] = useState(false);
+  const [scannerOpen, setScannerOpen] = useState(false);
+
+  const resetForm = () => {
+    setName('');
+    setDescription('');
+    setUnit('each');
+    setUnitPrice('');
+    setCategory('');
+    setSupplier('');
+    setSku('');
+  };
 
   useEffect(() => {
     if (open) {
@@ -85,16 +98,28 @@ export function MaterialDialog({
         setSupplier(material.supplier || '');
         setSku(material.sku || '');
       } else {
-        setName('');
-        setDescription('');
-        setUnit('each');
-        setUnitPrice('');
-        setCategory('');
-        setSupplier('');
-        setSku('');
+        resetForm();
       }
     }
   }, [open, material]);
+
+  const handleScanResult = (data: {
+    barcode: string;
+    name?: string;
+    description?: string;
+    category?: string;
+    supplier?: string;
+  }) => {
+    // Auto-populate fields from scan
+    if (data.name) setName(data.name);
+    if (data.description) setDescription(data.description);
+    if (data.category && CATEGORY_OPTIONS.includes(data.category)) {
+      setCategory(data.category);
+    }
+    if (data.supplier) setSupplier(data.supplier);
+    // Store the barcode as SKU
+    setSku(data.barcode);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -119,22 +144,36 @@ export function MaterialDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>{material ? 'Edit Material' : 'Add Material'}</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="name">Name *</Label>
-            <Input
-              id="name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="e.g., 2x4x8 Stud"
-              required
-            />
-          </div>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{material ? 'Edit Material' : 'Add Material'}</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Scan Barcode Button - only show when adding new material */}
+            {!material && (
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                onClick={() => setScannerOpen(true)}
+              >
+                <ScanBarcode className="h-4 w-4 mr-2" />
+                Scan Barcode to Auto-Fill
+              </Button>
+            )}
+
+            <div className="space-y-2">
+              <Label htmlFor="name">Name *</Label>
+              <Input
+                id="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g., 2x4x8 Stud"
+                required
+              />
+            </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -222,9 +261,16 @@ export function MaterialDialog({
             <Button type="submit" disabled={saving || !name.trim()}>
               {saving ? 'Saving...' : material ? 'Update' : 'Add'}
             </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <BarcodeScannerDialog
+        open={scannerOpen}
+        onOpenChange={setScannerOpen}
+        onScan={handleScanResult}
+      />
+    </>
   );
 }
