@@ -343,7 +343,7 @@ export function useProjects() {
     }
   };
 
-  // Receipt management
+  // Receipt management - also adds receipt as a line item to the quote
   const addReceipt = async (
     projectId: string,
     file: File,
@@ -384,12 +384,38 @@ export function useProjects() {
         .from('project-files')
         .createSignedUrl(filePath, 3600);
 
-      // Update local state with signed URL
+      // Find the project to add the line item
+      const project = projects.find(p => p.id === projectId);
+      if (project) {
+        // Create a new line item from the receipt
+        const newLineItem: LineItem = {
+          id: `receipt-${newReceipt.id}`,
+          description: `Materials: ${description}`,
+          quantity: 1,
+          unitPrice: amount,
+        };
+
+        // Update project items in the database
+        const updatedItems = [...project.items, newLineItem];
+        await supabase
+          .from('projects')
+          .update({ items: JSON.parse(JSON.stringify(updatedItems)) })
+          .eq('id', projectId);
+      }
+
+      // Update local state with receipt and new line item
       setProjects(prev =>
         prev.map(p => {
           if (p.id === projectId) {
+            const newLineItem: LineItem = {
+              id: `receipt-${newReceipt.id}`,
+              description: `Materials: ${description}`,
+              quantity: 1,
+              unitPrice: amount,
+            };
             return {
               ...p,
+              items: [...p.items, newLineItem],
               receipts: [
                 ...p.receipts,
                 {
@@ -406,6 +432,11 @@ export function useProjects() {
           return p;
         })
       );
+
+      toast({
+        title: 'Receipt added',
+        description: 'Receipt saved and added to quote as a line item',
+      });
 
       return true;
     } catch (error) {
