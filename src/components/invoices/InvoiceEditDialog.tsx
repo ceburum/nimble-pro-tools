@@ -59,13 +59,26 @@ export function InvoiceEditDialog({ open, onOpenChange, invoice, clients, onSave
       );
       setStatus(invoice.status);
       
-      // Load existing receipt attachments
+      // Load existing receipt attachments (handle both old string format and new object format)
       if (invoice.receiptAttachments && invoice.receiptAttachments.length > 0) {
-        setReceipts(invoice.receiptAttachments.map(att => ({
-          storagePath: att.storagePath,
-          storeName: att.storeName || att.storagePath.split('/').pop()?.replace(/\.\w+$/, '') || 'Receipt',
-          amount: att.amount || 0,
-        })));
+        setReceipts(invoice.receiptAttachments.map(att => {
+          // Handle old format where att might be a string path
+          const attAny = att as any;
+          if (typeof attAny === 'string') {
+            return {
+              storagePath: attAny,
+              storeName: attAny.split('/').pop()?.replace(/\.\w+$/, '') || 'Receipt',
+              amount: 0,
+            };
+          }
+          // New object format
+          const storagePath = attAny?.storagePath || '';
+          return {
+            storagePath,
+            storeName: attAny?.storeName || (storagePath ? storagePath.split('/').pop()?.replace(/\.\w+$/, '') : '') || 'Receipt',
+            amount: attAny?.amount || 0,
+          };
+        }));
       } else {
         setReceipts([]);
       }
