@@ -20,6 +20,9 @@ import {
 } from '@/components/ui/select';
 import { Plus, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useMaterials, Material } from '@/hooks/useMaterials';
+import { MaterialPicker } from '@/components/materials/MaterialPicker';
+import { MaterialDialog } from '@/components/materials/MaterialDialog';
 
 interface QuoteDialogProps {
   open: boolean;
@@ -37,6 +40,7 @@ export function QuoteDialog({
   onSave,
 }: QuoteDialogProps) {
   const { toast } = useToast();
+  const { materials, addMaterial } = useMaterials();
   const [title, setTitle] = useState('');
   const [clientId, setClientId] = useState('');
   const [status, setStatus] = useState<Quote['status']>('draft');
@@ -47,7 +51,7 @@ export function QuoteDialog({
   const [items, setItems] = useState<LineItem[]>([
     { id: crypto.randomUUID(), description: '', quantity: 1, unitPrice: 0 }
   ]);
-
+  const [materialDialogOpen, setMaterialDialogOpen] = useState(false);
   // Reset form when dialog opens/closes or quote changes
   useEffect(() => {
     if (open) {
@@ -71,6 +75,16 @@ export function QuoteDialog({
 
   const handleAddItem = () => {
     setItems([...items, { id: crypto.randomUUID(), description: '', quantity: 1, unitPrice: 0 }]);
+  };
+
+  const handleAddMaterial = (material: Material, quantity: number) => {
+    const newItem: LineItem = {
+      id: crypto.randomUUID(),
+      description: material.name,
+      quantity,
+      unitPrice: material.unitPrice,
+    };
+    setItems([...items, newItem]);
   };
 
   const handleRemoveItem = (id: string) => {
@@ -117,6 +131,7 @@ export function QuoteDialog({
   };
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
@@ -179,12 +194,19 @@ export function QuoteDialog({
           </div>
 
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
               <Label>Line Items</Label>
-              <Button type="button" variant="outline" size="sm" onClick={handleAddItem}>
-                <Plus className="h-4 w-4 mr-1" />
-                Add Item
-              </Button>
+              <div className="flex gap-2">
+                <MaterialPicker
+                  materials={materials}
+                  onSelect={handleAddMaterial}
+                  onAddNew={() => setMaterialDialogOpen(true)}
+                />
+                <Button type="button" variant="outline" size="sm" onClick={handleAddItem}>
+                  <Plus className="h-4 w-4 mr-1" />
+                  Add Item
+                </Button>
+              </div>
             </div>
 
             <div className="space-y-3">
@@ -256,5 +278,12 @@ export function QuoteDialog({
         </form>
       </DialogContent>
     </Dialog>
+
+    <MaterialDialog
+      open={materialDialogOpen}
+      onOpenChange={setMaterialDialogOpen}
+      onSave={addMaterial}
+    />
+    </>
   );
 }
