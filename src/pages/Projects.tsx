@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ProjectCard } from '@/components/projects/ProjectCard';
 import { ProjectDialog } from '@/components/projects/ProjectDialog';
+import { InvoiceReceiptSelectionDialog } from '@/components/invoices/InvoiceReceiptSelectionDialog';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
@@ -20,6 +21,8 @@ export default function Projects() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [preSelectedClientId, setPreSelectedClientId] = useState<string | null>(null);
+  const [receiptSelectionOpen, setReceiptSelectionOpen] = useState(false);
+  const [projectForInvoice, setProjectForInvoice] = useState<Project | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
@@ -70,7 +73,18 @@ export default function Projects() {
     }
   };
 
-  const handleCreateInvoice = async (project: Project) => {
+  const handleCreateInvoice = (project: Project) => {
+    // If project has receipts, show selection dialog
+    if (project.receipts.length > 0) {
+      setProjectForInvoice(project);
+      setReceiptSelectionOpen(true);
+    } else {
+      // No receipts, create invoice directly
+      createInvoiceWithReceipts(project, []);
+    }
+  };
+
+  const createInvoiceWithReceipts = async (project: Project, receiptPaths: string[]) => {
     const invoiceNumber = `INV-${Date.now().toString().slice(-6)}`;
     
     const newInvoice = await addInvoice({
@@ -80,13 +94,20 @@ export default function Projects() {
       status: 'draft',
       dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
       notes: project.quoteNotes,
+      receiptAttachments: receiptPaths.length > 0 ? receiptPaths : undefined,
     });
     
     if (newInvoice) {
       handleUpdateProject({ ...project, status: 'invoiced', invoiceId: newInvoice.id });
-      toast({ title: 'Invoice created', description: `Invoice ${invoiceNumber} ready` });
+      toast({ 
+        title: 'Invoice created', 
+        description: receiptPaths.length > 0 
+          ? `Invoice ${invoiceNumber} ready with ${receiptPaths.length} receipt${receiptPaths.length > 1 ? 's' : ''} attached`
+          : `Invoice ${invoiceNumber} ready`
+      });
       navigate('/invoices');
     }
+    setProjectForInvoice(null);
   };
 
   // Group projects by status
@@ -216,6 +237,18 @@ export default function Projects() {
         clients={clients}
         onSave={handleCreateProject}
         defaultClientId={preSelectedClientId}
+      />
+
+      <InvoiceReceiptSelectionDialog
+        open={receiptSelectionOpen}
+        onOpenChange={setReceiptSelectionOpen}
+        receipts={projectForInvoice?.receipts || []}
+        projectTitle={projectForInvoice?.title || ''}
+        onConfirm={(selectedPaths) => {
+          if (projectForInvoice) {
+            createInvoiceWithReceipts(projectForInvoice, selectedPaths);
+          }
+        }}
       />
     </div>
   );

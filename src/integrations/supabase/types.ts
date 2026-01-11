@@ -91,6 +91,7 @@ export type Database = {
           paid_at: string | null
           payment_token: string | null
           quote_id: string | null
+          receipt_attachments: Json | null
           status: string
           user_id: string | null
         }
@@ -105,6 +106,7 @@ export type Database = {
           paid_at?: string | null
           payment_token?: string | null
           quote_id?: string | null
+          receipt_attachments?: Json | null
           status?: string
           user_id?: string | null
         }
@@ -119,6 +121,7 @@ export type Database = {
           paid_at?: string | null
           payment_token?: string | null
           quote_id?: string | null
+          receipt_attachments?: Json | null
           status?: string
           user_id?: string | null
         }

@@ -39,6 +39,7 @@ export interface Invoice {
   paidAt?: Date;
   notes?: string;
   paymentToken?: string;
+  receiptAttachments?: string[]; // Storage paths to receipt images
 }
 
 // Project photos and receipts
