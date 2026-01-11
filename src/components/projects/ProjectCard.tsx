@@ -9,7 +9,7 @@ import {
   FileText,
   DollarSign,
 } from 'lucide-react';
-import { Project, Client, ProjectPhoto, ProjectReceipt, MileageEntry, LineItem } from '@/types';
+import { Project, Client, ProjectPhoto, MileageEntry } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -32,6 +32,7 @@ interface ProjectCardProps {
   onUpdate: (project: Project) => void;
   onDelete: (id: string) => void;
   onCreateInvoice: (project: Project) => void;
+  onAddReceipt: (projectId: string, file: File, storeName: string, totalAmount: number) => Promise<boolean>;
 }
 
 const statusConfig = {
@@ -43,7 +44,14 @@ const statusConfig = {
   invoiced: { label: 'Invoiced', className: 'bg-amber-500/10 text-amber-600' },
 };
 
-export function ProjectCard({ project, client, onUpdate, onDelete, onCreateInvoice }: ProjectCardProps) {
+export function ProjectCard({
+  project,
+  client,
+  onUpdate,
+  onDelete,
+  onCreateInvoice,
+  onAddReceipt,
+}: ProjectCardProps) {
   const [photoDialogOpen, setPhotoDialogOpen] = useState(false);
   const [receiptDialogOpen, setReceiptDialogOpen] = useState(false);
   const [mileageOpen, setMileageOpen] = useState(false);
@@ -60,39 +68,19 @@ export function ProjectCard({ project, client, onUpdate, onDelete, onCreateInvoi
     // Use functional update pattern to ensure we get the latest project state
     const updatedProject: Project = {
       ...project,
-      photos: [...project.photos, ...photos]
+      photos: [...project.photos, ...photos],
     };
     console.log('Calling onUpdate with', updatedProject.photos.length, 'total photos');
     onUpdate(updatedProject);
     toast({ title: `${photos.length} photo${photos.length > 1 ? 's' : ''} added` });
   };
 
-  const handleAddReceipt = (receipt: ProjectReceipt, lineItems?: LineItem[]) => {
-    const updatedProject = { 
-      ...project, 
-      receipts: [...project.receipts, receipt],
-      // Add scanned line items to the quote if provided
-      items: lineItems && lineItems.length > 0 
-        ? [...project.items, ...lineItems] 
-        : project.items,
-    };
-    onUpdate(updatedProject);
-    
-    if (lineItems && lineItems.length > 0) {
-      toast({ 
-        title: 'Receipt added', 
-        description: `$${receipt.amount} saved with ${lineItems.length} items added to quote` 
-      });
-    } else {
-      toast({ title: 'Receipt added', description: `$${receipt.amount} saved` });
-    }
-  };
-
   const handleMileageUpdate = (entry: MileageEntry) => {
     const existingIndex = project.mileageEntries.findIndex((e) => e.id === entry.id);
-    const updatedEntries = existingIndex >= 0
-      ? project.mileageEntries.map((e) => (e.id === entry.id ? entry : e))
-      : [...project.mileageEntries, entry];
+    const updatedEntries =
+      existingIndex >= 0
+        ? project.mileageEntries.map((e) => (e.id === entry.id ? entry : e))
+        : [...project.mileageEntries, entry];
     onUpdate({ ...project, mileageEntries: updatedEntries });
   };
 
@@ -192,7 +180,7 @@ export function ProjectCard({ project, client, onUpdate, onDelete, onCreateInvoi
         open={receiptDialogOpen}
         onOpenChange={setReceiptDialogOpen}
         projectId={project.id}
-        onSave={handleAddReceipt}
+        onSave={(file, storeName, totalAmount) => onAddReceipt(project.id, file, storeName, totalAmount)}
       />
 
       <ProjectMileageTracker
@@ -205,3 +193,4 @@ export function ProjectCard({ project, client, onUpdate, onDelete, onCreateInvoi
     </>
   );
 }
+

@@ -14,7 +14,14 @@ import { useInvoices } from '@/hooks/useInvoices';
 import { useProjects } from '@/hooks/useProjects';
 
 export default function Projects() {
-  const { projects, loading: projectsLoading, addProject, updateProject, deleteProject } = useProjects();
+  const {
+    projects,
+    loading: projectsLoading,
+    addProject,
+    updateProject,
+    deleteProject,
+    addReceipt,
+  } = useProjects();
   const { clients, loading: clientsLoading } = useClients();
   const { addInvoice, loading: invoicesLoading } = useInvoices();
   const [searchQuery, setSearchQuery] = useState('');
@@ -219,6 +226,7 @@ export default function Projects() {
                     onUpdate={handleUpdateProject}
                     onDelete={handleDeleteProject}
                     onCreateInvoice={handleCreateInvoice}
+                    onAddReceipt={addReceipt}
                   />
                 ))}
               </div>
