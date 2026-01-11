@@ -529,14 +529,16 @@ const handler = async (req: Request): Promise<Response> => {
             continue;
           }
           
-          // Convert blob to base64
+          // Convert blob to base64 with proper line wrapping for SMTP (RFC 2045)
           const arrayBuffer = await fileData.arrayBuffer();
           const uint8Array = new Uint8Array(arrayBuffer);
           let binary = '';
           for (let j = 0; j < uint8Array.length; j++) {
             binary += String.fromCharCode(uint8Array[j]);
           }
-          const base64Data = btoa(binary);
+          const rawBase64 = btoa(binary);
+          // Wrap base64 at 76 characters per line (SMTP requirement)
+          const base64Data = rawBase64.match(/.{1,76}/g)?.join('\r\n') || rawBase64;
           
           // Determine content type from file extension
           const ext = storagePath.split('.').pop()?.toLowerCase() || 'jpg';
