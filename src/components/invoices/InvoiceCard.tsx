@@ -1,4 +1,4 @@
-import { Receipt, Calendar, MoreVertical, Mail, MessageSquare, CreditCard, Download, Paperclip } from 'lucide-react';
+import { Receipt, Calendar, MoreVertical, Mail, MessageSquare, CreditCard, Download, Paperclip, ImageDown } from 'lucide-react';
 import { Invoice, Client } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -11,6 +11,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import { downloadInvoice } from '@/lib/generateInvoicePdf';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface InvoiceCardProps {
   invoice: Invoice;
@@ -32,6 +34,42 @@ const statusConfig = {
 export function InvoiceCard({ invoice, client, onSendEmail, onSendText, onMarkPaid, onDelete, onClick }: InvoiceCardProps) {
   const total = invoice.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
   const status = statusConfig[invoice.status];
+
+  const handleDownloadReceipts = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!invoice.receiptAttachments || invoice.receiptAttachments.length === 0) {
+      toast.error('No receipts attached to this invoice');
+      return;
+    }
+
+    toast.info(`Downloading ${invoice.receiptAttachments.length} receipt(s)...`);
+
+    for (const storagePath of invoice.receiptAttachments) {
+      try {
+        const { data, error } = await supabase.storage
+          .from('project-files')
+          .download(storagePath);
+
+        if (error) throw error;
+
+        // Create download link
+        const url = URL.createObjectURL(data);
+        const filename = storagePath.split('/').pop() || 'receipt';
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      } catch (err) {
+        console.error('Failed to download receipt:', err);
+        toast.error(`Failed to download: ${storagePath.split('/').pop()}`);
+      }
+    }
+
+    toast.success('Receipts downloaded!');
+  };
 
   return (
     <div 
@@ -69,6 +107,12 @@ export function InvoiceCard({ invoice, client, onSendEmail, onSendText, onMarkPa
                 <Download className="h-4 w-4 mr-2" />
                 Download / Print
               </DropdownMenuItem>
+              {invoice.receiptAttachments && invoice.receiptAttachments.length > 0 && (
+                <DropdownMenuItem onClick={handleDownloadReceipts}>
+                  <ImageDown className="h-4 w-4 mr-2" />
+                  Download Receipts ({invoice.receiptAttachments.length})
+                </DropdownMenuItem>
+              )}
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => onSendEmail(invoice)}>
                 <Mail className="h-4 w-4 mr-2" />
