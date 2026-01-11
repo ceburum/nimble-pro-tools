@@ -44,17 +44,27 @@ export function InvoiceCard({ invoice, client, onSendEmail, onSendText, onMarkPa
 
     toast.info(`Downloading ${invoice.receiptAttachments.length} receipt(s)...`);
 
+    let successCount = 0;
     for (const attachment of invoice.receiptAttachments) {
       try {
+        // Handle both old string format and new object format
+        const attAny = attachment as any;
+        const storagePath = typeof attAny === 'string' ? attAny : attAny?.storagePath;
+        
+        if (!storagePath) {
+          console.error('No storage path for attachment:', attachment);
+          continue;
+        }
+
         const { data, error } = await supabase.storage
           .from('project-files')
-          .download(attachment.storagePath);
+          .download(storagePath);
 
         if (error) throw error;
 
         // Create download link
         const url = URL.createObjectURL(data);
-        const filename = attachment.storagePath.split('/').pop() || 'receipt';
+        const filename = storagePath.split('/').pop() || 'receipt.jpg';
         const link = document.createElement('a');
         link.href = url;
         link.download = filename;
@@ -62,13 +72,18 @@ export function InvoiceCard({ invoice, client, onSendEmail, onSendText, onMarkPa
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
+        successCount++;
       } catch (err) {
         console.error('Failed to download receipt:', err);
-        toast.error(`Failed to download: ${attachment.storagePath.split('/').pop()}`);
+        const attAny = attachment as any;
+        const storagePath = typeof attAny === 'string' ? attAny : attAny?.storagePath || 'unknown';
+        toast.error(`Failed to download: ${storagePath.split('/').pop()}`);
       }
     }
 
-    toast.success('Receipts downloaded!');
+    if (successCount > 0) {
+      toast.success(`${successCount} receipt(s) downloaded!`);
+    }
   };
 
   return (
