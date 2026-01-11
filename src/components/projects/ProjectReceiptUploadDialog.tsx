@@ -132,16 +132,16 @@ export function ProjectReceiptUploadDialog({ open, onOpenChange, projectId, onSa
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[500px] max-h-[90vh] flex flex-col">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-[500px] max-h-[90vh] flex flex-col overflow-hidden">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <Receipt className="h-5 w-5" />
             Add Receipt
           </DialogTitle>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 pr-4">
-          <div className="space-y-4">
+        <ScrollArea className="flex-1 min-h-0 max-h-[calc(90vh-100px)]">
+          <div className="space-y-4 pr-4">
             <div className="space-y-2">
               <Label>Receipt Photo</Label>
               {preview ? (
