@@ -9,7 +9,7 @@ import {
   FileText,
   DollarSign,
 } from 'lucide-react';
-import { Project, Client, ProjectPhoto, ProjectReceipt, MileageEntry } from '@/types';
+import { Project, Client, ProjectPhoto, ProjectReceipt, MileageEntry, LineItem } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -67,9 +67,25 @@ export function ProjectCard({ project, client, onUpdate, onDelete, onCreateInvoi
     toast({ title: `${photos.length} photo${photos.length > 1 ? 's' : ''} added` });
   };
 
-  const handleAddReceipt = (receipt: ProjectReceipt) => {
-    onUpdate({ ...project, receipts: [...project.receipts, receipt] });
-    toast({ title: 'Receipt added', description: `$${receipt.amount} saved` });
+  const handleAddReceipt = (receipt: ProjectReceipt, lineItems?: LineItem[]) => {
+    const updatedProject = { 
+      ...project, 
+      receipts: [...project.receipts, receipt],
+      // Add scanned line items to the quote if provided
+      items: lineItems && lineItems.length > 0 
+        ? [...project.items, ...lineItems] 
+        : project.items,
+    };
+    onUpdate(updatedProject);
+    
+    if (lineItems && lineItems.length > 0) {
+      toast({ 
+        title: 'Receipt added', 
+        description: `$${receipt.amount} saved with ${lineItems.length} items added to quote` 
+      });
+    } else {
+      toast({ title: 'Receipt added', description: `$${receipt.amount} saved` });
+    }
   };
 
   const handleMileageUpdate = (entry: MileageEntry) => {
