@@ -61,11 +61,10 @@ export function InvoiceEditDialog({ open, onOpenChange, invoice, clients, onSave
       
       // Load existing receipt attachments
       if (invoice.receiptAttachments && invoice.receiptAttachments.length > 0) {
-        // We only have storage paths, so we'll display them with placeholder info
-        setReceipts(invoice.receiptAttachments.map(path => ({
-          storagePath: path,
-          storeName: path.split('/').pop()?.replace(/\.\w+$/, '') || 'Receipt',
-          amount: 0, // We don't store amount separately, just the path
+        setReceipts(invoice.receiptAttachments.map(att => ({
+          storagePath: att.storagePath,
+          storeName: att.storeName || att.storagePath.split('/').pop()?.replace(/\.\w+$/, '') || 'Receipt',
+          amount: att.amount || 0,
         })));
       } else {
         setReceipts([]);
@@ -110,7 +109,11 @@ export function InvoiceEditDialog({ open, onOpenChange, invoice, clients, onSave
       status,
       dueDate: new Date(dueDate),
       notes: notes || undefined,
-      receiptAttachments: receipts.length > 0 ? receipts.map(r => r.storagePath) : undefined,
+      receiptAttachments: receipts.length > 0 ? receipts.map(r => ({
+        storagePath: r.storagePath,
+        storeName: r.storeName,
+        amount: r.amount,
+      })) : undefined,
     });
 
     onOpenChange(false);
