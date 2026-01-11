@@ -1,4 +1,4 @@
-import { Receipt, Calendar, MoreVertical, Mail, MessageSquare, CreditCard, Download } from 'lucide-react';
+import { Receipt, Calendar, MoreVertical, Mail, MessageSquare, CreditCard, Download, Paperclip } from 'lucide-react';
 import { Invoice, Client } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -116,9 +116,17 @@ export function InvoiceCard({ invoice, client, onSendEmail, onSendText, onMarkPa
       </div>
 
       <div className="flex items-center justify-between pt-4 border-t border-border">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Calendar className="h-4 w-4" />
-          <span>Due {invoice.dueDate.toLocaleDateString()}</span>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Calendar className="h-4 w-4" />
+            <span>Due {invoice.dueDate.toLocaleDateString()}</span>
+          </div>
+          {invoice.receiptAttachments && invoice.receiptAttachments.length > 0 && (
+            <div className="flex items-center gap-1 text-sm text-muted-foreground">
+              <Paperclip className="h-3 w-3" />
+              <span>{invoice.receiptAttachments.length}</span>
+            </div>
+          )}
         </div>
         <p className="text-xl font-bold text-card-foreground">
           ${total.toLocaleString('en-US', { minimumFractionDigits: 2 })}
