@@ -26,6 +26,12 @@ export interface Quote {
   notes?: string;
 }
 
+export interface InvoiceReceiptAttachment {
+  storagePath: string;
+  storeName: string;
+  amount: number;
+}
+
 export interface Invoice {
   id: string;
   quoteId?: string;
@@ -39,7 +45,7 @@ export interface Invoice {
   paidAt?: Date;
   notes?: string;
   paymentToken?: string;
-  receiptAttachments?: string[]; // Storage paths to receipt images
+  receiptAttachments?: InvoiceReceiptAttachment[]; // Receipt photos + amounts
 }
 
 // Project photos and receipts

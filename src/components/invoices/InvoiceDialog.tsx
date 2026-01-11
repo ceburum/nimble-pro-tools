@@ -93,7 +93,14 @@ export function InvoiceDialog({ open, onOpenChange, clients, onSave, defaultClie
       status: 'draft',
       dueDate: new Date(dueDate),
       notes: notes || undefined,
-      receiptAttachments: receipts.length > 0 ? receipts.map(r => r.storagePath) : undefined,
+      receiptAttachments:
+        receipts.length > 0
+          ? receipts.map((r) => ({
+              storagePath: r.storagePath,
+              storeName: r.storeName,
+              amount: r.amount,
+            }))
+          : undefined,
     });
 
     // Reset form
@@ -135,7 +142,7 @@ export function InvoiceDialog({ open, onOpenChange, clients, onSave, defaultClie
 
   const total = items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
   const receiptsTotal = receipts.reduce((sum, r) => sum + r.amount, 0);
-
+  const grandTotal = total + receiptsTotal;
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -224,8 +231,17 @@ export function InvoiceDialog({ open, onOpenChange, clients, onSave, defaultClie
 
               <div className="flex justify-end pt-2 border-t">
                 <div className="text-right">
-                  <span className="text-sm text-muted-foreground">Total: </span>
-                  <span className="text-xl font-bold">${total.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                  <span className="text-sm text-muted-foreground">
+                    {receiptsTotal > 0 ? 'Total (Items + Receipts): ' : 'Total: '}
+                  </span>
+                  <span className="text-xl font-bold">
+                    ${(receiptsTotal > 0 ? grandTotal : total).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                  </span>
+                  {receiptsTotal > 0 && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Items ${total.toLocaleString('en-US', { minimumFractionDigits: 2 })} • Receipts ${receiptsTotal.toFixed(2)}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
