@@ -12,7 +12,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface ScannedLineItem {
   description: string;
@@ -140,8 +139,8 @@ export function ProjectReceiptUploadDialog({ open, onOpenChange, projectId, onSa
           </DialogTitle>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 min-h-0 max-h-[calc(90vh-100px)]">
-          <div className="space-y-4 pr-4">
+        <div className="flex-1 overflow-y-auto max-h-[60vh] pr-2">
+          <div className="space-y-4">
             <div className="space-y-2">
               <Label>Receipt Photo</Label>
               {preview ? (
@@ -265,7 +264,7 @@ export function ProjectReceiptUploadDialog({ open, onOpenChange, projectId, onSa
               <Button onClick={handleSave} disabled={!description || !amount}>Save Receipt</Button>
             </div>
           </div>
-        </ScrollArea>
+        </div>
       </DialogContent>
     </Dialog>
   );
