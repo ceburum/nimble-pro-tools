@@ -9,6 +9,7 @@ import Index from "./pages/Index";
 import Clients from "./pages/Clients";
 import Projects from "./pages/Projects";
 import Invoices from "./pages/Invoices";
+import Materials from "./pages/Materials";
 import PayInvoice from "./pages/PayInvoice";
 import Auth from "./pages/Auth";
 import Install from "./pages/Install";
@@ -58,6 +59,14 @@ const App = () => (
             element={
               <ProtectedRoute>
                 <AppLayout><Invoices /></AppLayout>
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/materials" 
+            element={
+              <ProtectedRoute>
+                <AppLayout><Materials /></AppLayout>
               </ProtectedRoute>
             } 
           />
