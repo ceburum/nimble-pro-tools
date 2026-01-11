@@ -1,6 +1,8 @@
 import { useState, useRef } from 'react';
-import { Receipt, Upload, X } from 'lucide-react';
+import { Receipt, Upload, X, Scan, Loader2 } from 'lucide-react';
 import { ProjectReceipt } from '@/types';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 import {
   Dialog,
   DialogContent,
@@ -22,14 +24,56 @@ export function ProjectReceiptUploadDialog({ open, onOpenChange, projectId, onSa
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
   const [preview, setPreview] = useState<string | null>(null);
+  const [isScanning, setIsScanning] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => setPreview(reader.result as string);
+      reader.onloadend = () => {
+        const base64 = reader.result as string;
+        setPreview(base64);
+      };
       reader.readAsDataURL(file);
+    }
+  };
+
+  const handleScanReceipt = async () => {
+    if (!preview) {
+      toast.error('Please upload a receipt image first');
+      return;
+    }
+
+    setIsScanning(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('scan-receipt', {
+        body: { imageBase64: preview }
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      if (data.error) {
+        toast.error(data.error);
+        return;
+      }
+
+      // Auto-fill the fields with scanned data
+      if (data.store_name) {
+        setDescription(data.store_name);
+      }
+      if (data.total_amount) {
+        setAmount(data.total_amount.toString());
+      }
+
+      toast.success('Receipt scanned successfully!');
+    } catch (error) {
+      console.error('Scan error:', error);
+      toast.error('Failed to scan receipt. Please enter details manually.');
+    } finally {
+      setIsScanning(false);
     }
   };
 
@@ -53,6 +97,7 @@ export function ProjectReceiptUploadDialog({ open, onOpenChange, projectId, onSa
     setDescription('');
     setAmount('');
     setPreview(null);
+    setIsScanning(false);
     onOpenChange(false);
   };
 
@@ -68,43 +113,19 @@ export function ProjectReceiptUploadDialog({ open, onOpenChange, projectId, onSa
 
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
-            <Input
-              id="description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="e.g., Materials from Home Depot"
-              required
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="amount">Amount</Label>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
-              <Input
-                id="amount"
-                type="number"
-                step="0.01"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                placeholder="0.00"
-                className="pl-7"
-                required
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Receipt Photo (optional)</Label>
+            <Label>Receipt Photo</Label>
             {preview ? (
               <div className="relative">
-                <img src={preview} alt="Receipt preview" className="w-full h-32 object-cover rounded-lg" />
+                <img src={preview} alt="Receipt preview" className="w-full h-40 object-cover rounded-lg" />
                 <Button
                   variant="destructive"
                   size="icon"
                   className="absolute top-2 right-2"
-                  onClick={() => setPreview(null)}
+                  onClick={() => {
+                    setPreview(null);
+                    setDescription('');
+                    setAmount('');
+                  }}
                 >
                   <X className="h-4 w-4" />
                 </Button>
@@ -119,6 +140,55 @@ export function ProjectReceiptUploadDialog({ open, onOpenChange, projectId, onSa
               </div>
             )}
             <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+          </div>
+
+          {preview && (
+            <Button 
+              onClick={handleScanReceipt} 
+              disabled={isScanning}
+              variant="secondary"
+              className="w-full"
+            >
+              {isScanning ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Scanning...
+                </>
+              ) : (
+                <>
+                  <Scan className="h-4 w-4 mr-2" />
+                  Scan Receipt (Auto-fill)
+                </>
+              )}
+            </Button>
+          )}
+
+          <div className="space-y-2">
+            <Label htmlFor="description">Store / Description</Label>
+            <Input
+              id="description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="e.g., Home Depot"
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="amount">Total Amount</Label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+              <Input
+                id="amount"
+                type="number"
+                step="0.01"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                placeholder="0.00"
+                className="pl-7"
+                required
+              />
+            </div>
           </div>
 
           <div className="flex justify-end gap-2">
