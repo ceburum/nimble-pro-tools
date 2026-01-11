@@ -37,6 +37,7 @@ import {
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { Input } from '@/components/ui/input';
+import { LineItemInput } from '@/components/ui/line-item-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
@@ -403,27 +404,27 @@ export function ProjectDetailDialog({
                       {project.items.map((item) => (
                         <div key={item.id} className="flex gap-2 items-start p-3 bg-muted/50 rounded-lg">
                           <div className="flex-1">
-                            <Input
+                            <LineItemInput
                               value={item.description}
-                              onChange={(e) => handleUpdateLineItem(item.id, { description: e.target.value })}
+                              onChange={(val) => handleUpdateLineItem(item.id, { description: val })}
                               placeholder="Description"
                               className="mb-2"
                             />
                             <div className="flex gap-2">
                               <div className="w-20">
                                 <Label className="text-xs">Qty</Label>
-                                <Input
+                                <LineItemInput
                                   type="number"
                                   value={item.quantity}
-                                  onChange={(e) => handleUpdateLineItem(item.id, { quantity: parseFloat(e.target.value) || 0 })}
+                                  onChange={(val) => handleUpdateLineItem(item.id, { quantity: parseFloat(val) || 0 })}
                                 />
                               </div>
                               <div className="w-28">
                                 <Label className="text-xs">Price</Label>
-                                <Input
+                                <LineItemInput
                                   type="number"
                                   value={item.unitPrice}
-                                  onChange={(e) => handleUpdateLineItem(item.id, { unitPrice: parseFloat(e.target.value) || 0 })}
+                                  onChange={(val) => handleUpdateLineItem(item.id, { unitPrice: parseFloat(val) || 0 })}
                                 />
                               </div>
                               <div className="w-24 text-right pt-6">
