@@ -102,6 +102,7 @@ export default function Invoices() {
           businessName: 'CEB Building',
           diagnosticMode,
           plainTextOnly: plainTextMode,
+          receiptAttachments: invoice.receiptAttachments || [],
         },
       });
 
@@ -114,9 +115,10 @@ export default function Invoices() {
 
       await updateInvoice(invoice.id, { status: 'sent' });
 
+      const attachmentCount = data?.attachmentsIncluded || 0;
       toast({
         title: 'Invoice sent!',
-        description: `Invoice emailed to ${client.email}${plainTextMode ? ' (plain text)' : ''}${diagnosticMode ? ' - check diagnostics' : ''}`,
+        description: `Invoice emailed to ${client.email}${attachmentCount > 0 ? ` with ${attachmentCount} receipt${attachmentCount > 1 ? 's' : ''} attached` : ''}${plainTextMode ? ' (plain text)' : ''}${diagnosticMode ? ' - check diagnostics' : ''}`,
       });
     } catch (error: any) {
       console.error('Failed to send invoice:', error);

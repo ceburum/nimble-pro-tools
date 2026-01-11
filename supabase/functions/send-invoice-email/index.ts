@@ -54,6 +54,7 @@ const SendInvoiceRequestSchema = z.object({
   notes: z.string().max(2000).optional(),
   businessName: z.string().max(200).optional(),
   plainTextOnly: z.boolean().optional(),
+  receiptAttachments: z.array(z.string()).max(10).optional(),
 });
 
 interface InvoiceItem {
@@ -73,6 +74,7 @@ interface SendInvoiceRequest {
   notes?: string;
   businessName?: string;
   plainTextOnly?: boolean;
+  receiptAttachments?: string[];
 }
 
 const PAYMENT_METHODS = [
@@ -181,11 +183,12 @@ function getEmailWrapper(content: string): string {
   `;
 }
 
-// Simplified email sender - no logo attachment, minimal logging
+// Simplified email sender - with optional image attachments
 async function sendEmailViaZoho(
   to: string,
   subject: string,
   html: string,
+  attachments?: { filename: string; data: string; contentType: string }[],
 ): Promise<void> {
   const smtpUser = Deno.env.get("ZOHO_SMTP_USER");
   const smtpPassword = Deno.env.get("ZOHO_SMTP_PASSWORD");
@@ -262,6 +265,7 @@ async function sendEmailViaZoho(
       throw new Error(`DATA command rejected`);
     }
 
+    const mixedBoundary = `----=_Mixed_${Date.now()}`;
     const altBoundary = `----=_Alt_${Date.now()}`;
 
     const headers = [
@@ -273,25 +277,66 @@ async function sendEmailViaZoho(
       `Message-ID: <${Date.now()}.${Math.random().toString(36).substring(2)}@cebbuilding.com>`,
     ];
 
-    const emailContent = [
-      ...headers,
-      `Content-Type: multipart/alternative; boundary="${altBoundary}"`,
-      ``,
-      `--${altBoundary}`,
-      `Content-Type: text/plain; charset=utf-8`,
-      ``,
-      `Please view this email in an HTML-compatible email client.`,
-      ``,
-      `--${altBoundary}`,
-      `Content-Type: text/html; charset=utf-8`,
-      ``,
-      html,
-      ``,
-      `--${altBoundary}--`,
-      `.`,
-    ].join("\r\n");
+    let emailContent: string[];
+
+    if (attachments && attachments.length > 0) {
+      // Email with attachments - use multipart/mixed
+      emailContent = [
+        ...headers,
+        `Content-Type: multipart/mixed; boundary="${mixedBoundary}"`,
+        ``,
+        `--${mixedBoundary}`,
+        `Content-Type: multipart/alternative; boundary="${altBoundary}"`,
+        ``,
+        `--${altBoundary}`,
+        `Content-Type: text/plain; charset=utf-8`,
+        ``,
+        `Please view this email in an HTML-compatible email client.`,
+        ``,
+        `--${altBoundary}`,
+        `Content-Type: text/html; charset=utf-8`,
+        ``,
+        html,
+        ``,
+        `--${altBoundary}--`,
+      ];
+
+      // Add each attachment
+      for (const att of attachments) {
+        emailContent.push(
+          ``,
+          `--${mixedBoundary}`,
+          `Content-Type: ${att.contentType}; name="${att.filename}"`,
+          `Content-Disposition: attachment; filename="${att.filename}"`,
+          `Content-Transfer-Encoding: base64`,
+          ``,
+          att.data,
+        );
+      }
+
+      emailContent.push(``, `--${mixedBoundary}--`, `.`);
+    } else {
+      // Simple email without attachments
+      emailContent = [
+        ...headers,
+        `Content-Type: multipart/alternative; boundary="${altBoundary}"`,
+        ``,
+        `--${altBoundary}`,
+        `Content-Type: text/plain; charset=utf-8`,
+        ``,
+        `Please view this email in an HTML-compatible email client.`,
+        ``,
+        `--${altBoundary}`,
+        `Content-Type: text/html; charset=utf-8`,
+        ``,
+        html,
+        ``,
+        `--${altBoundary}--`,
+        `.`,
+      ];
+    }
     
-    await conn.write(encoder.encode(emailContent + "\r\n"));
+    await conn.write(encoder.encode(emailContent.join("\r\n") + "\r\n"));
     const sendResponse = await read();
     
     if (!sendResponse.startsWith("250")) {
@@ -450,6 +495,7 @@ const handler = async (req: Request): Promise<Response> => {
       notes,
       businessName = "CEB Building",
       plainTextOnly = false,
+      receiptAttachments = [],
     } = validationResult.data;
 
     const total = items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
@@ -460,6 +506,54 @@ const handler = async (req: Request): Promise<Response> => {
     // Build card payment URL using payment token for security
     const baseUrl = getAppBaseUrl();
     const cardPaymentUrl = paymentToken ? `${baseUrl}/pay/${paymentToken}` : null;
+
+    // Fetch receipt images from storage if any
+    const attachments: { filename: string; data: string; contentType: string }[] = [];
+    if (receiptAttachments.length > 0) {
+      console.log(`Fetching ${receiptAttachments.length} receipt attachments...`);
+      
+      const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+      const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+      
+      const supabase = createClient(supabaseUrl, supabaseServiceKey);
+      
+      for (let i = 0; i < receiptAttachments.length; i++) {
+        const storagePath = receiptAttachments[i];
+        try {
+          const { data: fileData, error } = await supabase.storage
+            .from('project-files')
+            .download(storagePath);
+          
+          if (error) {
+            console.error(`Failed to download receipt ${storagePath}:`, error.message);
+            continue;
+          }
+          
+          // Convert blob to base64
+          const arrayBuffer = await fileData.arrayBuffer();
+          const uint8Array = new Uint8Array(arrayBuffer);
+          let binary = '';
+          for (let j = 0; j < uint8Array.length; j++) {
+            binary += String.fromCharCode(uint8Array[j]);
+          }
+          const base64Data = btoa(binary);
+          
+          // Determine content type from file extension
+          const ext = storagePath.split('.').pop()?.toLowerCase() || 'jpg';
+          const contentType = ext === 'png' ? 'image/png' : 'image/jpeg';
+          
+          attachments.push({
+            filename: `receipt-${i + 1}.${ext}`,
+            data: base64Data,
+            contentType,
+          });
+          
+          console.log(`Attached receipt: receipt-${i + 1}.${ext}`);
+        } catch (err) {
+          console.error(`Error processing receipt ${storagePath}:`, err);
+        }
+      }
+    }
 
     // If plain text mode, send a simple text email for deliverability testing
     if (plainTextOnly) {
@@ -588,11 +682,13 @@ cebbuilding.com
       clientEmail,
       `Invoice ${invoiceNumber} from ${businessName}`,
       emailHtml,
+      attachments.length > 0 ? attachments : undefined,
     );
 
     return new Response(JSON.stringify({ 
       success: true,
       mode: "html",
+      attachmentsIncluded: attachments.length,
     }), {
       status: 200,
       headers: {
