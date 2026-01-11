@@ -44,17 +44,17 @@ export function InvoiceCard({ invoice, client, onSendEmail, onSendText, onMarkPa
 
     toast.info(`Downloading ${invoice.receiptAttachments.length} receipt(s)...`);
 
-    for (const storagePath of invoice.receiptAttachments) {
+    for (const attachment of invoice.receiptAttachments) {
       try {
         const { data, error } = await supabase.storage
           .from('project-files')
-          .download(storagePath);
+          .download(attachment.storagePath);
 
         if (error) throw error;
 
         // Create download link
         const url = URL.createObjectURL(data);
-        const filename = storagePath.split('/').pop() || 'receipt';
+        const filename = attachment.storagePath.split('/').pop() || 'receipt';
         const link = document.createElement('a');
         link.href = url;
         link.download = filename;
@@ -64,7 +64,7 @@ export function InvoiceCard({ invoice, client, onSendEmail, onSendText, onMarkPa
         URL.revokeObjectURL(url);
       } catch (err) {
         console.error('Failed to download receipt:', err);
-        toast.error(`Failed to download: ${storagePath.split('/').pop()}`);
+        toast.error(`Failed to download: ${attachment.storagePath.split('/').pop()}`);
       }
     }
 

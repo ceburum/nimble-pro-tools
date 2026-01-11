@@ -94,6 +94,16 @@ export default function Projects() {
   const createInvoiceWithReceipts = async (project: Project, receiptPaths: string[]) => {
     const invoiceNumber = `INV-${Date.now().toString().slice(-6)}`;
     
+    // Convert receipt paths to InvoiceReceiptAttachment format
+    const receiptAttachments = receiptPaths.map(path => {
+      const projectReceipt = project.receipts.find(r => r.dataUrl === path || (r as any).storagePath === path);
+      return {
+        storagePath: path,
+        storeName: projectReceipt?.description || path.split('/').pop()?.replace(/\.\w+$/, '') || 'Receipt',
+        amount: projectReceipt?.amount || 0,
+      };
+    });
+    
     const newInvoice = await addInvoice({
       clientId: project.clientId,
       invoiceNumber,
@@ -101,7 +111,7 @@ export default function Projects() {
       status: 'draft',
       dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
       notes: project.quoteNotes,
-      receiptAttachments: receiptPaths.length > 0 ? receiptPaths : undefined,
+      receiptAttachments: receiptAttachments.length > 0 ? receiptAttachments : undefined,
     });
     
     if (newInvoice) {

@@ -34,8 +34,8 @@ export function useInvoices() {
       : [];
 
     const rawAttachments = inv.receipt_attachments;
-    const receiptAttachments: string[] = Array.isArray(rawAttachments)
-      ? (rawAttachments as string[])
+    const receiptAttachments: InvoiceReceiptAttachment[] = Array.isArray(rawAttachments)
+      ? (rawAttachments as InvoiceReceiptAttachment[])
       : [];
 
     return {
@@ -49,7 +49,6 @@ export function useInvoices() {
       notes: inv.notes || undefined,
       paidAt: inv.paid_at ? new Date(inv.paid_at) : undefined,
       paymentToken: inv.payment_token || undefined,
-      userId: inv.user_id || undefined,
       receiptAttachments: receiptAttachments.length > 0 ? receiptAttachments : undefined,
     };
   };
@@ -104,7 +103,7 @@ export function useInvoices() {
           due_date: data.dueDate.toISOString(),
           notes: data.notes || null,
           user_id: user.id,
-          receipt_attachments: data.receiptAttachments || [],
+          receipt_attachments: (data.receiptAttachments || []) as any, // Cast to any for JSONB
         }])
         .select()
         .single();
