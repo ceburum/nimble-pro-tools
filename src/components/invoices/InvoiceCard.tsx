@@ -166,10 +166,15 @@ export function InvoiceCard({ invoice, client, onSendEmail, onSendText, onMarkPa
             <span>Due {invoice.dueDate.toLocaleDateString()}</span>
           </div>
           {invoice.receiptAttachments && invoice.receiptAttachments.length > 0 && (
-            <div className="flex items-center gap-1 text-sm text-muted-foreground">
-              <Paperclip className="h-3 w-3" />
-              <span>{invoice.receiptAttachments.length}</span>
-            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 px-2 gap-1 text-xs"
+              onClick={handleDownloadReceipts}
+            >
+              <ImageDown className="h-3.5 w-3.5" />
+              <span>Receipts ({invoice.receiptAttachments.length})</span>
+            </Button>
           )}
         </div>
         <p className="text-xl font-bold text-card-foreground">
