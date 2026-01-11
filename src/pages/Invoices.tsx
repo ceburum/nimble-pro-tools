@@ -102,7 +102,7 @@ export default function Invoices() {
           businessName: 'CEB Building',
           diagnosticMode,
           plainTextOnly: plainTextMode,
-          receiptAttachments: invoice.receiptAttachments || [],
+          receiptAttachments: [], // download receipts manually from the invoice menu if needed
         },
       });
 

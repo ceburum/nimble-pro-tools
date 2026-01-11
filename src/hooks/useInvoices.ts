@@ -2,22 +2,9 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { useToast } from './use-toast';
-import { LineItem } from '@/types';
+import type { LineItem, Invoice as AppInvoice, InvoiceReceiptAttachment } from '@/types';
 
-export interface Invoice {
-  id: string;
-  clientId: string;
-  invoiceNumber: string;
-  items: LineItem[];
-  status: 'draft' | 'sent' | 'paid' | 'overdue';
-  dueDate: Date;
-  createdAt: Date;
-  notes?: string;
-  paidAt?: Date;
-  paymentToken?: string;
-  userId?: string;
-  receiptAttachments?: string[];
-}
+export type Invoice = AppInvoice;
 
 interface DbInvoice {
   id: string;
