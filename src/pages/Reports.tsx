@@ -6,6 +6,7 @@ import { InvoiceAgingReport } from '@/components/reports/InvoiceAgingReport';
 import { IncomeByClientReport } from '@/components/reports/IncomeByClientReport';
 import { ProfitLossReport } from '@/components/reports/ProfitLossReport';
 import { MileageDeductionReport } from '@/components/reports/MileageDeductionReport';
+import { PartnerSuggestions } from '@/components/reports/PartnerSuggestions';
 import { Clock, Users, TrendingUp, Car } from 'lucide-react';
 
 export default function Reports() {
@@ -31,6 +32,8 @@ export default function Reports() {
   return (
     <div className="space-y-6">
       <PageHeader title="Reports" description="Financial insights and analytics" />
+
+      <PartnerSuggestions />
 
       <Tabs defaultValue="aging" className="w-full">
         <TabsList className="grid w-full max-w-2xl grid-cols-4">
