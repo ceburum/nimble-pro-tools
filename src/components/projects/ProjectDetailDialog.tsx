@@ -33,7 +33,10 @@ import {
   DollarSign,
   FileCheck,
   Plus,
+  Store,
 } from 'lucide-react';
+import { SupplierQuoteScanDialog } from './SupplierQuoteScanDialog';
+import { LineItem } from '@/types';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { Input } from '@/components/ui/input';
@@ -73,6 +76,7 @@ export function ProjectDetailDialog({
   const [selectedPhoto, setSelectedPhoto] = useState<ProjectPhoto | null>(null);
   const [editingQuote, setEditingQuote] = useState(false);
   const [isSendingQuote, setIsSendingQuote] = useState(false);
+  const [supplierScanOpen, setSupplierScanOpen] = useState(false);
   const { toast } = useToast();
 
   const status = statusConfig[project.status];
@@ -187,6 +191,16 @@ export function ProjectDetailDialog({
     onUpdate({
       ...project,
       items: project.items.filter((item) => item.id !== itemId),
+    });
+  };
+
+  const handleImportItems = (importedItems: LineItem[]) => {
+    const nonEmptyItems = project.items.filter(
+      item => item.description.trim() !== '' || item.unitPrice > 0
+    );
+    onUpdate({
+      ...project,
+      items: [...nonEmptyItems, ...importedItems],
     });
   };
 
@@ -386,12 +400,18 @@ export function ProjectDetailDialog({
               {/* Quote Tab */}
               <TabsContent value="quote" className="p-6 m-0">
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
                     <h3 className="text-sm font-medium">Line Items</h3>
-                    <Button size="sm" variant="outline" onClick={handleAddLineItem}>
-                      <Plus className="h-4 w-4 mr-1" />
-                      Add Item
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="outline" onClick={() => setSupplierScanOpen(true)}>
+                        <Store className="h-4 w-4 mr-1" />
+                        Import from Supplier
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={handleAddLineItem}>
+                        <Plus className="h-4 w-4 mr-1" />
+                        Add Item
+                      </Button>
+                    </div>
                   </div>
 
                   {project.items.length === 0 ? (
@@ -591,6 +611,12 @@ export function ProjectDetailDialog({
           )}
         </DialogContent>
       </Dialog>
+
+      <SupplierQuoteScanDialog
+        open={supplierScanOpen}
+        onOpenChange={setSupplierScanOpen}
+        onImport={handleImportItems}
+      />
     </>
   );
 }
