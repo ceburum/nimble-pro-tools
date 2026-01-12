@@ -778,8 +778,10 @@ export type Database = {
           invoice_prefix: string | null
           irs_mileage_rate: number | null
           license_number: string | null
+          mileage_pro_enabled: boolean | null
           partner_suggestions_dismissed: boolean | null
           payment_instructions: string | null
+          scheduling_pro_enabled: boolean | null
           tagline: string | null
           tax_pro_enabled: boolean | null
           tax_rate_estimate: number | null
@@ -798,8 +800,10 @@ export type Database = {
           invoice_prefix?: string | null
           irs_mileage_rate?: number | null
           license_number?: string | null
+          mileage_pro_enabled?: boolean | null
           partner_suggestions_dismissed?: boolean | null
           payment_instructions?: string | null
+          scheduling_pro_enabled?: boolean | null
           tagline?: string | null
           tax_pro_enabled?: boolean | null
           tax_rate_estimate?: number | null
@@ -818,8 +822,10 @@ export type Database = {
           invoice_prefix?: string | null
           irs_mileage_rate?: number | null
           license_number?: string | null
+          mileage_pro_enabled?: boolean | null
           partner_suggestions_dismissed?: boolean | null
           payment_instructions?: string | null
+          scheduling_pro_enabled?: boolean | null
           tagline?: string | null
           tax_pro_enabled?: boolean | null
           tax_rate_estimate?: number | null
