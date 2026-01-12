@@ -23,7 +23,7 @@ const navigation = [{
   href: '/projects',
   icon: FolderKanban
 }, {
-  name: 'Scheduling',
+  name: 'Scheduling Pro',
   href: '/scheduling',
   icon: CalendarDays
 }, {
@@ -31,7 +31,7 @@ const navigation = [{
   href: '/invoices',
   icon: Receipt
 }, {
-  name: 'Reports',
+  name: 'Financial Pro',
   href: '/reports',
   icon: BarChart3
 }, {

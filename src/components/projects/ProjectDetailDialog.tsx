@@ -34,8 +34,13 @@ import {
   FileCheck,
   Plus,
   Store,
+  CalendarDays,
 } from 'lucide-react';
 import { SupplierQuoteScanDialog } from './SupplierQuoteScanDialog';
+import { ScheduleDialog } from '@/components/scheduling/ScheduleDialog';
+import { AddToCalendarButton } from '@/components/scheduling/AddToCalendarButton';
+import { formatArrivalWindow } from '@/lib/calendarUtils';
+import { useProjects } from '@/hooks/useProjects';
 import { LineItem } from '@/types';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -77,7 +82,9 @@ export function ProjectDetailDialog({
   const [editingQuote, setEditingQuote] = useState(false);
   const [isSendingQuote, setIsSendingQuote] = useState(false);
   const [supplierScanOpen, setSupplierScanOpen] = useState(false);
+  const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
   const { toast } = useToast();
+  const { projects: allProjects } = useProjects();
 
   const status = statusConfig[project.status];
   const totalMiles = project.mileageEntries.reduce((sum, e) => sum + e.distance, 0);
@@ -225,9 +232,30 @@ export function ProjectDetailDialog({
         actions.push({ label: 'Mark Accepted', icon: <CheckCircle className="h-4 w-4 mr-2" />, onClick: () => handleStatusChange('accepted') });
         break;
       case 'accepted':
-        actions.push({ label: 'Start Work', icon: <Play className="h-4 w-4 mr-2" />, onClick: () => handleStatusChange('in_progress') });
+        // Schedule button - primary if not yet scheduled
+        if (!project.scheduledDate) {
+          actions.push({ 
+            label: 'Schedule', 
+            icon: <CalendarDays className="h-4 w-4 mr-2" />, 
+            onClick: () => setScheduleDialogOpen(true) 
+          });
+        }
+        actions.push({ 
+          label: 'Start Work', 
+          icon: <Play className="h-4 w-4 mr-2" />, 
+          onClick: () => handleStatusChange('in_progress'),
+          variant: project.scheduledDate ? 'default' : 'outline' as const
+        });
         break;
       case 'in_progress':
+        if (!project.scheduledDate) {
+          actions.push({ 
+            label: 'Schedule', 
+            icon: <CalendarDays className="h-4 w-4 mr-2" />, 
+            onClick: () => setScheduleDialogOpen(true),
+            variant: 'outline' as const
+          });
+        }
         actions.push({ label: 'Mark Complete', icon: <CheckCircle className="h-4 w-4 mr-2" />, onClick: () => handleStatusChange('completed') });
         break;
       case 'completed':
@@ -315,6 +343,48 @@ export function ProjectDetailDialog({
                     </div>
                   )}
 
+                  {/* Scheduling Info */}
+                  {project.scheduledDate && (
+                    <div>
+                      <h3 className="text-sm font-medium text-foreground mb-3">Scheduling</h3>
+                      <div className="bg-primary/5 rounded-lg p-4 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="font-medium">
+                              {format(new Date(project.scheduledDate), 'EEEE, MMMM d, yyyy')}
+                            </p>
+                            {project.arrivalWindowStart && project.arrivalWindowEnd && (
+                              <p className="text-sm text-muted-foreground">
+                                Arrival: {formatArrivalWindow(project.arrivalWindowStart, project.arrivalWindowEnd)}
+                              </p>
+                            )}
+                          </div>
+                          <AddToCalendarButton 
+                            event={{
+                              title: `${project.title} - CEB Building`,
+                              description: `Project: ${project.title}\n${project.description || ''}\n\nClient: ${client?.name || 'N/A'}`,
+                              location: client?.address || '',
+                              startDate: new Date(project.scheduledDate),
+                              startTime: project.arrivalWindowStart || '09:00',
+                              endTime: project.arrivalWindowEnd || '17:00',
+                            }}
+                          />
+                        </div>
+                        {project.scheduleNotes && (
+                          <p className="text-sm text-muted-foreground">{project.scheduleNotes}</p>
+                        )}
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          onClick={() => setScheduleDialogOpen(true)}
+                        >
+                          <CalendarDays className="h-4 w-4 mr-2" />
+                          Reschedule
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
                   <div>
                     <h3 className="text-sm font-medium text-foreground mb-3">Summary</h3>
                     <div className="grid grid-cols-4 gap-3">
@@ -361,6 +431,20 @@ export function ProjectDetailDialog({
                           <FileCheck className="h-4 w-4 text-success" />
                           <span className="text-muted-foreground">Accepted:</span>
                           <span>{format(new Date(project.acceptedAt), 'MMM d, yyyy')}</span>
+                        </div>
+                      )}
+                      {project.scheduledDate && (
+                        <div className="flex items-center gap-2">
+                          <CalendarDays className="h-4 w-4 text-primary" />
+                          <span className="text-muted-foreground">Scheduled:</span>
+                          <span>
+                            {format(new Date(project.scheduledDate), 'MMM d, yyyy')}
+                            {project.arrivalWindowStart && project.arrivalWindowEnd && (
+                              <span className="text-muted-foreground ml-1">
+                                ({formatArrivalWindow(project.arrivalWindowStart, project.arrivalWindowEnd)})
+                              </span>
+                            )}
+                          </span>
                         </div>
                       )}
                       {project.startedAt && (
@@ -616,6 +700,18 @@ export function ProjectDetailDialog({
         open={supplierScanOpen}
         onOpenChange={setSupplierScanOpen}
         onImport={handleImportItems}
+      />
+
+      <ScheduleDialog
+        open={scheduleDialogOpen}
+        onOpenChange={setScheduleDialogOpen}
+        project={project}
+        client={client}
+        allProjects={allProjects}
+        onSchedule={(updatedProject) => {
+          onUpdate(updatedProject);
+          setScheduleDialogOpen(false);
+        }}
       />
     </>
   );

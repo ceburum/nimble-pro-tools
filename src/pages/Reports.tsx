@@ -24,7 +24,7 @@ export default function Reports() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <PageHeader title="Reports" description="Financial insights and analytics" />
+        <PageHeader title="Financial Pro" description="Financial insights, tax reporting & reconciliation" />
         <div className="space-y-4">
           <Skeleton className="h-10 w-full max-w-md" />
           <div className="grid gap-4 md:grid-cols-3">
@@ -40,7 +40,7 @@ export default function Reports() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Reports" description="Financial insights and analytics" />
+      <PageHeader title="Financial Pro" description="Financial insights, tax reporting & reconciliation" />
 
       <PartnerSuggestions />
 
