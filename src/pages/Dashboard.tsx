@@ -8,6 +8,7 @@ import { TodaySchedule } from '@/components/dashboard/TodaySchedule';
 
 import { DashboardAvatar } from '@/components/dashboard/DashboardAvatar';
 import { BusinessProfileDialog } from '@/components/settings/BusinessProfileDialog';
+import { PartnerSuggestions } from '@/components/reports/PartnerSuggestions';
 import { Button } from '@/components/ui/button';
 import { mockClients, mockInvoices } from '@/lib/mockData';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
@@ -195,6 +196,9 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* Partner Suggestions - at bottom, out of the way */}
+      <PartnerSuggestions />
 
       <BusinessProfileDialog 
         open={showBusinessProfile} 
