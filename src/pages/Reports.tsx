@@ -1,16 +1,25 @@
+import { useState } from 'react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useReportsData } from '@/hooks/useReportsData';
+import { useReportsData, DateRange } from '@/hooks/useReportsData';
 import { InvoiceAgingReport } from '@/components/reports/InvoiceAgingReport';
 import { IncomeByClientReport } from '@/components/reports/IncomeByClientReport';
 import { ProfitLossReport } from '@/components/reports/ProfitLossReport';
 import { MileageDeductionReport } from '@/components/reports/MileageDeductionReport';
 import { PartnerSuggestions } from '@/components/reports/PartnerSuggestions';
-import { Clock, Users, TrendingUp, Car } from 'lucide-react';
+import { DateRangeFilter } from '@/components/reports/DateRangeFilter';
+import { StatementReconciliation } from '@/components/reports/StatementReconciliation';
+import { Clock, Users, TrendingUp, Car, FileCheck } from 'lucide-react';
+import { startOfYear, endOfYear } from 'date-fns';
 
 export default function Reports() {
-  const { loading, invoiceAging, incomeByClient, expensesByCategory, profitLoss, mileageDeduction } = useReportsData();
+  const [dateRange, setDateRange] = useState<DateRange>({
+    from: startOfYear(new Date()),
+    to: endOfYear(new Date()),
+  });
+
+  const { loading, invoiceAging, incomeByClient, expensesByCategory, profitLoss, mileageDeduction } = useReportsData(dateRange);
 
   if (loading) {
     return (
@@ -35,8 +44,10 @@ export default function Reports() {
 
       <PartnerSuggestions />
 
+      <DateRangeFilter dateRange={dateRange} onDateRangeChange={setDateRange} />
+
       <Tabs defaultValue="aging" className="w-full">
-        <TabsList className="grid w-full max-w-2xl grid-cols-4">
+        <TabsList className="grid w-full max-w-3xl grid-cols-5">
           <TabsTrigger value="aging" className="flex items-center gap-2">
             <Clock className="h-4 w-4" />
             <span className="hidden sm:inline">Invoice Aging</span>
@@ -57,6 +68,11 @@ export default function Reports() {
             <span className="hidden sm:inline">Mileage</span>
             <span className="sm:hidden">Miles</span>
           </TabsTrigger>
+          <TabsTrigger value="reconcile" className="flex items-center gap-2">
+            <FileCheck className="h-4 w-4" />
+            <span className="hidden sm:inline">Reconcile</span>
+            <span className="sm:hidden">Match</span>
+          </TabsTrigger>
         </TabsList>
 
         <div className="mt-6">
@@ -74,6 +90,10 @@ export default function Reports() {
 
           <TabsContent value="mileage">
             <MileageDeductionReport data={mileageDeduction} />
+          </TabsContent>
+
+          <TabsContent value="reconcile">
+            <StatementReconciliation />
           </TabsContent>
         </div>
       </Tabs>
