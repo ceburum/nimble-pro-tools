@@ -44,6 +44,33 @@ export type Database = {
         }
         Relationships: []
       }
+      expense_categories: {
+        Row: {
+          created_at: string
+          id: string
+          irs_code: string | null
+          is_default: boolean
+          name: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          irs_code?: string | null
+          is_default?: boolean
+          name: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          irs_code?: string | null
+          is_default?: boolean
+          name?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       invoice_reminders: {
         Row: {
           id: string
@@ -313,6 +340,7 @@ export type Database = {
       project_receipts: {
         Row: {
           amount: number
+          category_id: string | null
           created_at: string
           description: string
           id: string
@@ -322,6 +350,7 @@ export type Database = {
         }
         Insert: {
           amount?: number
+          category_id?: string | null
           created_at?: string
           description: string
           id?: string
@@ -331,6 +360,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          category_id?: string | null
           created_at?: string
           description?: string
           id?: string
@@ -339,6 +369,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "project_receipts_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "expense_categories"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "project_receipts_project_id_fkey"
             columns: ["project_id"]
@@ -423,11 +460,90 @@ export type Database = {
           },
         ]
       }
+      transactions: {
+        Row: {
+          amount: number
+          category_id: string | null
+          created_at: string
+          description: string
+          id: string
+          is_ignored: boolean
+          match_confidence: string | null
+          matched_invoice_id: string | null
+          matched_receipt_id: string | null
+          source: string
+          source_reference: string | null
+          transaction_date: string
+          transaction_type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          category_id?: string | null
+          created_at?: string
+          description: string
+          id?: string
+          is_ignored?: boolean
+          match_confidence?: string | null
+          matched_invoice_id?: string | null
+          matched_receipt_id?: string | null
+          source?: string
+          source_reference?: string | null
+          transaction_date: string
+          transaction_type?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          category_id?: string | null
+          created_at?: string
+          description?: string
+          id?: string
+          is_ignored?: boolean
+          match_confidence?: string | null
+          matched_invoice_id?: string | null
+          matched_receipt_id?: string | null
+          source?: string
+          source_reference?: string | null
+          transaction_date?: string
+          transaction_type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transactions_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "expense_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_matched_invoice_id_fkey"
+            columns: ["matched_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_matched_receipt_id_fkey"
+            columns: ["matched_receipt_id"]
+            isOneToOne: false
+            referencedRelation: "project_receipts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_settings: {
         Row: {
           created_at: string
           dashboard_logo_url: string | null
           id: string
+          irs_mileage_rate: number | null
+          partner_suggestions_dismissed: boolean | null
+          tax_rate_estimate: number | null
           updated_at: string
           user_id: string
         }
@@ -435,6 +551,9 @@ export type Database = {
           created_at?: string
           dashboard_logo_url?: string | null
           id?: string
+          irs_mileage_rate?: number | null
+          partner_suggestions_dismissed?: boolean | null
+          tax_rate_estimate?: number | null
           updated_at?: string
           user_id: string
         }
@@ -442,6 +561,9 @@ export type Database = {
           created_at?: string
           dashboard_logo_url?: string | null
           id?: string
+          irs_mileage_rate?: number | null
+          partner_suggestions_dismissed?: boolean | null
+          tax_rate_estimate?: number | null
           updated_at?: string
           user_id?: string
         }
