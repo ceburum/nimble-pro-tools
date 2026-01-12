@@ -102,12 +102,38 @@ const sendEmailReminder = async (
   return res.ok;
 };
 
+// Internal cron key for scheduled job validation
+const INTERNAL_CRON_KEY = Deno.env.get("INTERNAL_CRON_KEY");
+
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    // Validate this is a legitimate cron job call
+    // Accept if: has valid cron key header, or is called from Supabase scheduled function
+    const cronKey = req.headers.get("x-cron-key");
+    const userAgent = req.headers.get("user-agent") || "";
+    
+    // Allow Supabase scheduled functions (they include supabase in user-agent)
+    const isSupabaseScheduled = userAgent.toLowerCase().includes("supabase");
+    
+    // Allow requests with valid cron key (if configured)
+    const hasValidCronKey = INTERNAL_CRON_KEY && cronKey === INTERNAL_CRON_KEY;
+    
+    // For development/testing, also check for Authorization header
+    const authHeader = req.headers.get("Authorization");
+    const hasAuth = authHeader?.startsWith("Bearer ");
+
+    if (!isSupabaseScheduled && !hasValidCronKey && !hasAuth) {
+      console.warn("Unauthorized cron request attempt");
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     const now = new Date();
     const results: { invoice: string; reminder: string; success: boolean }[] = [];

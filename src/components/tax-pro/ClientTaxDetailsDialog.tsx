@@ -14,6 +14,9 @@ import { Switch } from '@/components/ui/switch';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Client1099Info } from '@/hooks/use1099Tracking';
 import { TaxDisclaimer } from './TaxDisclaimer';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import { Loader2 } from 'lucide-react';
 
 interface ClientTaxDetailsDialogProps {
   open: boolean;
@@ -34,11 +37,14 @@ export function ClientTaxDetailsDialog({
   client,
   onSave
 }: ClientTaxDetailsDialogProps) {
+  const { toast } = useToast();
   const [is1099Eligible, setIs1099Eligible] = useState(false);
   const [isSubcontractor, setIsSubcontractor] = useState(false);
   const [legalName, setLegalName] = useState('');
   const [tin, setTin] = useState('');
   const [tinType, setTinType] = useState<'ein' | 'ssn'>('ein');
+  const [maskedTin, setMaskedTin] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (client) {
@@ -47,17 +53,103 @@ export function ClientTaxDetailsDialog({
       setLegalName(client.legalName || '');
       setTin(''); // Never prefill TIN for security
       setTinType(client.tinType || 'ein');
+      
+      // Check if TIN exists (masked)
+      checkTinStatus(client.id);
     }
   }, [client]);
 
-  const handleSave = () => {
-    onSave({
-      is1099Eligible,
-      isSubcontractor,
-      legalName: legalName.trim() || null,
-      tinEncrypted: tin.trim() || null, // In production, encrypt before storing
-      tinType: tin.trim() ? tinType : null
-    });
+  const checkTinStatus = async (clientId: string) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const { data, error } = await supabase.functions.invoke('manage-tin', {
+        body: { action: 'check', clientId },
+      });
+
+      if (!error && data?.hasTin) {
+        setMaskedTin(data.masked);
+        setTinType(data.tinType || 'ein');
+      } else {
+        setMaskedTin(null);
+      }
+    } catch (err) {
+      console.error('Error checking TIN status:', err);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!client) return;
+    
+    setSaving(true);
+    
+    try {
+      // If TIN is provided, encrypt it server-side
+      if (tin.trim()) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          toast({
+            title: 'Authentication required',
+            description: 'Please log in to save tax details.',
+            variant: 'destructive',
+          });
+          setSaving(false);
+          return;
+        }
+
+        const { data, error } = await supabase.functions.invoke('manage-tin', {
+          body: {
+            action: 'encrypt',
+            clientId: client.id,
+            tin: tin.replace(/\D/g, ''), // Send only digits
+            tinType,
+          },
+        });
+
+        if (error) {
+          console.error('Error saving TIN:', error);
+          toast({
+            title: 'Error saving TIN',
+            description: 'Could not securely save the tax ID. Please try again.',
+            variant: 'destructive',
+          });
+          setSaving(false);
+          return;
+        }
+
+        // TIN saved via Edge Function, update other fields only
+        onSave({
+          is1099Eligible,
+          isSubcontractor,
+          legalName: legalName.trim() || null,
+          // Don't pass tinEncrypted - it was saved server-side
+          tinType: tinType,
+        });
+      } else {
+        // No TIN to save, just update other fields
+        onSave({
+          is1099Eligible,
+          isSubcontractor,
+          legalName: legalName.trim() || null,
+          tinType: null,
+        });
+      }
+
+      toast({
+        title: 'Tax details saved',
+        description: 'Client tax information has been updated securely.',
+      });
+    } catch (err) {
+      console.error('Error saving tax details:', err);
+      toast({
+        title: 'Error',
+        description: 'Failed to save tax details.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSaving(false);
+    }
   };
 
   const formatTin = (value: string, type: 'ein' | 'ssn') => {
@@ -154,7 +246,9 @@ export function ClientTaxDetailsDialog({
                   maxLength={tinType === 'ein' ? 10 : 11}
                 />
                 <p className="text-xs text-muted-foreground">
-                  {client.tinEncrypted ? 'A TIN is already on file. Enter a new value to update.' : 'Enter to save.'}
+                  {maskedTin 
+                    ? `Current TIN on file: ${maskedTin}. Enter a new value to update.` 
+                    : 'Enter to save securely.'}
                 </p>
               </div>
             </>
@@ -162,11 +256,18 @@ export function ClientTaxDetailsDialog({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
             Cancel
           </Button>
-          <Button onClick={handleSave}>
-            Save Details
+          <Button onClick={handleSave} disabled={saving}>
+            {saving ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              'Save Details'
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>

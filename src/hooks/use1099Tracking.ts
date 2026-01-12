@@ -55,9 +55,10 @@ export function use1099Tracking() {
     }
 
     try {
+      // Don't fetch tin_encrypted from client side - it's handled securely via Edge Function
       const { data, error } = await supabase
         .from('clients')
-        .select('id, name, email, address, is_1099_eligible, legal_name, tin_encrypted, tin_type, is_subcontractor')
+        .select('id, name, email, address, is_1099_eligible, legal_name, tin_type, is_subcontractor')
         .eq('user_id', user.id)
         .order('name');
 
@@ -65,7 +66,18 @@ export function use1099Tracking() {
         console.error('Error fetching clients for 1099:', error);
         setClients([]);
       } else {
-        setClients((data || []).map(mapDbToClient));
+        // Map clients without tin_encrypted (it's handled server-side now)
+        setClients((data || []).map((db: any) => ({
+          id: db.id,
+          name: db.name,
+          email: db.email,
+          address: db.address,
+          is1099Eligible: db.is_1099_eligible ?? false,
+          legalName: db.legal_name,
+          tinEncrypted: null, // Don't expose - check via Edge Function
+          tinType: db.tin_type as Client1099Info['tinType'],
+          isSubcontractor: db.is_subcontractor ?? false
+        })));
       }
     } catch (err) {
       console.error('Error:', err);
@@ -95,7 +107,7 @@ export function use1099Tracking() {
       const updateData: Record<string, unknown> = {};
       if (updates.is1099Eligible !== undefined) updateData.is_1099_eligible = updates.is1099Eligible;
       if (updates.legalName !== undefined) updateData.legal_name = updates.legalName;
-      if (updates.tinEncrypted !== undefined) updateData.tin_encrypted = updates.tinEncrypted;
+      // Don't update tin_encrypted via client - it's handled by manage-tin Edge Function
       if (updates.tinType !== undefined) updateData.tin_type = updates.tinType;
       if (updates.isSubcontractor !== undefined) updateData.is_subcontractor = updates.isSubcontractor;
 
