@@ -14,14 +14,69 @@ export type Database = {
   }
   public: {
     Tables: {
+      capital_assets: {
+        Row: {
+          asset_type: string
+          cost: number
+          created_at: string
+          depreciation_hint: string | null
+          description: string
+          id: string
+          notes: string | null
+          purchase_date: string
+          receipt_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          asset_type?: string
+          cost?: number
+          created_at?: string
+          depreciation_hint?: string | null
+          description: string
+          id?: string
+          notes?: string | null
+          purchase_date: string
+          receipt_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          asset_type?: string
+          cost?: number
+          created_at?: string
+          depreciation_hint?: string | null
+          description?: string
+          id?: string
+          notes?: string | null
+          purchase_date?: string
+          receipt_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "capital_assets_receipt_id_fkey"
+            columns: ["receipt_id"]
+            isOneToOne: false
+            referencedRelation: "project_receipts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clients: {
         Row: {
           address: string
           created_at: string
           email: string
           id: string
+          is_1099_eligible: boolean | null
+          is_subcontractor: boolean | null
+          legal_name: string | null
           name: string
           phone: string
+          tin_encrypted: string | null
+          tin_type: string | null
           user_id: string | null
         }
         Insert: {
@@ -29,8 +84,13 @@ export type Database = {
           created_at?: string
           email: string
           id?: string
+          is_1099_eligible?: boolean | null
+          is_subcontractor?: boolean | null
+          legal_name?: string | null
           name: string
           phone: string
+          tin_encrypted?: string | null
+          tin_type?: string | null
           user_id?: string | null
         }
         Update: {
@@ -38,8 +98,13 @@ export type Database = {
           created_at?: string
           email?: string
           id?: string
+          is_1099_eligible?: boolean | null
+          is_subcontractor?: boolean | null
+          legal_name?: string | null
           name?: string
           phone?: string
+          tin_encrypted?: string | null
+          tin_type?: string | null
           user_id?: string | null
         }
         Relationships: []
@@ -162,6 +227,24 @@ export type Database = {
           },
         ]
       }
+      irs_mileage_rates: {
+        Row: {
+          created_at: string | null
+          rate_per_mile: number
+          year: number
+        }
+        Insert: {
+          created_at?: string | null
+          rate_per_mile: number
+          year: number
+        }
+        Update: {
+          created_at?: string | null
+          rate_per_mile?: number
+          year?: number
+        }
+        Relationships: []
+      }
       materials: {
         Row: {
           category: string | null
@@ -206,6 +289,7 @@ export type Database = {
       }
       mileage_entries: {
         Row: {
+          client_id: string | null
           coordinates: Json | null
           created_at: string
           distance: number
@@ -213,12 +297,15 @@ export type Database = {
           end_time: string | null
           id: string
           is_tracking: boolean
+          project_id: string | null
           purpose: string | null
           start_location: string | null
           start_time: string | null
+          tax_year: number | null
           user_id: string
         }
         Insert: {
+          client_id?: string | null
           coordinates?: Json | null
           created_at?: string
           distance?: number
@@ -226,12 +313,15 @@ export type Database = {
           end_time?: string | null
           id?: string
           is_tracking?: boolean
+          project_id?: string | null
           purpose?: string | null
           start_location?: string | null
           start_time?: string | null
+          tax_year?: number | null
           user_id: string
         }
         Update: {
+          client_id?: string | null
           coordinates?: Json | null
           created_at?: string
           distance?: number
@@ -239,12 +329,29 @@ export type Database = {
           end_time?: string | null
           id?: string
           is_tracking?: boolean
+          project_id?: string | null
           purpose?: string | null
           start_location?: string | null
           start_time?: string | null
+          tax_year?: number | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "mileage_entries_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mileage_entries_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       project_mileage: {
         Row: {
@@ -344,9 +451,12 @@ export type Database = {
           created_at: string
           description: string
           id: string
+          is_capital_asset: boolean | null
           project_id: string
           storage_path: string
+          tax_notes: string | null
           user_id: string
+          vendor: string | null
         }
         Insert: {
           amount?: number
@@ -354,9 +464,12 @@ export type Database = {
           created_at?: string
           description: string
           id?: string
+          is_capital_asset?: boolean | null
           project_id: string
           storage_path: string
+          tax_notes?: string | null
           user_id: string
+          vendor?: string | null
         }
         Update: {
           amount?: number
@@ -364,9 +477,12 @@ export type Database = {
           created_at?: string
           description?: string
           id?: string
+          is_capital_asset?: boolean | null
           project_id?: string
           storage_path?: string
+          tax_notes?: string | null
           user_id?: string
+          vendor?: string | null
         }
         Relationships: [
           {
@@ -475,6 +591,57 @@ export type Database = {
           },
         ]
       }
+      subcontractor_payments: {
+        Row: {
+          amount: number
+          check_number: string | null
+          client_id: string
+          created_at: string
+          description: string | null
+          id: string
+          payment_date: string
+          project_id: string | null
+          user_id: string
+        }
+        Insert: {
+          amount?: number
+          check_number?: string | null
+          client_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          payment_date: string
+          project_id?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          check_number?: string | null
+          client_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          payment_date?: string
+          project_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subcontractor_payments_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subcontractor_payments_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       transactions: {
         Row: {
           amount: number
@@ -566,6 +733,7 @@ export type Database = {
           partner_suggestions_dismissed: boolean | null
           payment_instructions: string | null
           tagline: string | null
+          tax_pro_enabled: boolean | null
           tax_rate_estimate: number | null
           updated_at: string
           user_id: string
@@ -584,6 +752,7 @@ export type Database = {
           partner_suggestions_dismissed?: boolean | null
           payment_instructions?: string | null
           tagline?: string | null
+          tax_pro_enabled?: boolean | null
           tax_rate_estimate?: number | null
           updated_at?: string
           user_id: string
@@ -602,6 +771,7 @@ export type Database = {
           partner_suggestions_dismissed?: boolean | null
           payment_instructions?: string | null
           tagline?: string | null
+          tax_pro_enabled?: boolean | null
           tax_rate_estimate?: number | null
           updated_at?: string
           user_id?: string
