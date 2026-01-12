@@ -4,7 +4,7 @@ import { Users, Receipt, DollarSign, FolderKanban } from 'lucide-react';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { RecentActivity } from '@/components/dashboard/RecentActivity';
 import { OverdueAlerts } from '@/components/dashboard/OverdueAlerts';
-import { MileageCard } from '@/components/dashboard/MileageCard';
+
 import { DashboardAvatar } from '@/components/dashboard/DashboardAvatar';
 import { mockClients, mockInvoices } from '@/lib/mockData';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
@@ -117,7 +117,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <MileageCard />
+      
 
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard title="Total Clients" value={clients.length} icon={Users} variant="default" href="/clients" />

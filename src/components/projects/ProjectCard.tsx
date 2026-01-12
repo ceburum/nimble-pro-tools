@@ -3,13 +3,12 @@ import {
   FolderKanban,
   Camera,
   Receipt,
-  Navigation,
   MoreVertical,
   ImagePlus,
   FileText,
   DollarSign,
 } from 'lucide-react';
-import { Project, Client, ProjectPhoto, MileageEntry } from '@/types';
+import { Project, Client, ProjectPhoto } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -22,7 +21,6 @@ import {
 import { cn } from '@/lib/utils';
 import { ProjectPhotoUploadDialog } from './ProjectPhotoUploadDialog';
 import { ProjectReceiptUploadDialog } from './ProjectReceiptUploadDialog';
-import { ProjectMileageTracker } from './ProjectMileageTracker';
 import { ProjectDetailDialog } from './ProjectDetailDialog';
 import { useToast } from '@/hooks/use-toast';
 
@@ -54,18 +52,15 @@ export function ProjectCard({
 }: ProjectCardProps) {
   const [photoDialogOpen, setPhotoDialogOpen] = useState(false);
   const [receiptDialogOpen, setReceiptDialogOpen] = useState(false);
-  const [mileageOpen, setMileageOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const { toast } = useToast();
 
   const status = statusConfig[project.status];
-  const totalMiles = project.mileageEntries.reduce((sum, e) => sum + e.distance, 0);
   const totalExpenses = project.receipts.reduce((sum, r) => sum + r.amount, 0);
   const quoteTotal = project.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
 
   const handleAddPhotos = (photos: ProjectPhoto[]) => {
     console.log('handleAddPhotos called with', photos.length, 'photos for project', project.id);
-    // Use functional update pattern to ensure we get the latest project state
     const updatedProject: Project = {
       ...project,
       photos: [...project.photos, ...photos],
@@ -73,15 +68,6 @@ export function ProjectCard({
     console.log('Calling onUpdate with', updatedProject.photos.length, 'total photos');
     onUpdate(updatedProject);
     toast({ title: `${photos.length} photo${photos.length > 1 ? 's' : ''} added` });
-  };
-
-  const handleMileageUpdate = (entry: MileageEntry) => {
-    const existingIndex = project.mileageEntries.findIndex((e) => e.id === entry.id);
-    const updatedEntries =
-      existingIndex >= 0
-        ? project.mileageEntries.map((e) => (e.id === entry.id ? entry : e))
-        : [...project.mileageEntries, entry];
-    onUpdate({ ...project, mileageEntries: updatedEntries });
   };
 
   return (
@@ -137,13 +123,9 @@ export function ProjectCard({
             <Receipt className="h-4 w-4" />
             <span>${totalExpenses.toFixed(0)}</span>
           </div>
-          <div className="flex items-center gap-1">
-            <Navigation className="h-4 w-4" />
-            <span>{totalMiles.toFixed(1)} mi</span>
-          </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-2" onClick={(e) => e.stopPropagation()}>
+        <div className="grid grid-cols-2 gap-2" onClick={(e) => e.stopPropagation()}>
           <Button variant="outline" size="sm" className="gap-1" onClick={() => setPhotoDialogOpen(true)}>
             <ImagePlus className="h-4 w-4" />
             Photo
@@ -151,10 +133,6 @@ export function ProjectCard({
           <Button variant="outline" size="sm" className="gap-1" onClick={() => setReceiptDialogOpen(true)}>
             <FileText className="h-4 w-4" />
             Receipt
-          </Button>
-          <Button variant="outline" size="sm" className="gap-1" onClick={() => setMileageOpen(true)}>
-            <Navigation className="h-4 w-4" />
-            Mileage
           </Button>
         </div>
       </div>
@@ -181,14 +159,6 @@ export function ProjectCard({
         onOpenChange={setReceiptDialogOpen}
         projectId={project.id}
         onSave={(file, storeName, totalAmount) => onAddReceipt(project.id, file, storeName, totalAmount)}
-      />
-
-      <ProjectMileageTracker
-        open={mileageOpen}
-        onOpenChange={setMileageOpen}
-        projectId={project.id}
-        entries={project.mileageEntries}
-        onUpdate={handleMileageUpdate}
       />
     </>
   );

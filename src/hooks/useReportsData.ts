@@ -11,16 +11,7 @@ export interface DateRange {
   to: Date;
 }
 
-interface MileageEntry {
-  id: string;
-  distance: number;
-  start_time: string;
-  end_time: string | null;
-  purpose: string | null;
-}
-
 interface UserSettings {
-  irs_mileage_rate: number;
   tax_rate_estimate: number;
 }
 
@@ -28,9 +19,8 @@ export function useReportsData(dateRange?: DateRange) {
   const { invoices, loading: invoicesLoading } = useInvoices();
   const { projects, loading: projectsLoading } = useProjects();
   const { clients, loading: clientsLoading } = useClients();
-  const [mileageEntries, setMileageEntries] = useState<MileageEntry[]>([]);
-  const [userSettings, setUserSettings] = useState<UserSettings>({ irs_mileage_rate: 0.67, tax_rate_estimate: 0.25 });
-  const [mileageLoading, setMileageLoading] = useState(true);
+  const [userSettings, setUserSettings] = useState<UserSettings>({ tax_rate_estimate: 0.25 });
+  const [settingsLoading, setSettingsLoading] = useState(true);
 
   // Default to current year if no range provided
   const effectiveDateRange = dateRange || {
@@ -39,34 +29,29 @@ export function useReportsData(dateRange?: DateRange) {
   };
 
   useEffect(() => {
-    const fetchMileageAndSettings = async () => {
+    const fetchSettings = async () => {
       try {
-        const [mileageResult, settingsResult] = await Promise.all([
-          supabase.from('mileage_entries').select('*').order('start_time', { ascending: false }),
-          supabase.from('user_settings').select('irs_mileage_rate, tax_rate_estimate').single(),
-        ]);
+        const { data } = await supabase
+          .from('user_settings')
+          .select('tax_rate_estimate')
+          .single();
 
-        if (mileageResult.data) {
-          setMileageEntries(mileageResult.data as MileageEntry[]);
-        }
-
-        if (settingsResult.data) {
+        if (data) {
           setUserSettings({
-            irs_mileage_rate: Number(settingsResult.data.irs_mileage_rate) || 0.67,
-            tax_rate_estimate: Number(settingsResult.data.tax_rate_estimate) || 0.25,
+            tax_rate_estimate: Number(data.tax_rate_estimate) || 0.25,
           });
         }
       } catch (error) {
-        console.error('Error fetching mileage/settings:', error);
+        console.error('Error fetching settings:', error);
       } finally {
-        setMileageLoading(false);
+        setSettingsLoading(false);
       }
     };
 
-    fetchMileageAndSettings();
+    fetchSettings();
   }, []);
 
-  const loading = invoicesLoading || projectsLoading || clientsLoading || mileageLoading;
+  const loading = invoicesLoading || projectsLoading || clientsLoading || settingsLoading;
 
   // Invoice Aging Report
   const invoiceAging = useMemo(() => {
@@ -183,32 +168,12 @@ export function useReportsData(dateRange?: DateRange) {
     };
   }, [invoices, projects, effectiveDateRange]);
 
-  // Mileage Deduction
-  const mileageDeduction = useMemo(() => {
-    // Combine project mileage and standalone mileage entries
-    const projectMiles = projects.reduce(
-      (sum, project) => sum + project.mileageEntries.reduce((s, m) => s + m.distance, 0),
-      0
-    );
-
-    const standaloneMiles = mileageEntries.reduce((sum, m) => sum + Number(m.distance), 0);
-    const totalMiles = projectMiles + standaloneMiles;
-    const deduction = totalMiles * userSettings.irs_mileage_rate;
-
-    return {
-      totalMiles,
-      rate: userSettings.irs_mileage_rate,
-      deduction,
-    };
-  }, [projects, mileageEntries, userSettings]);
-
   return {
     loading,
     invoiceAging,
     incomeByClient,
     expensesByCategory,
     profitLoss,
-    mileageDeduction,
     userSettings,
   };
 }

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Project, ProjectPhoto, ProjectReceipt, MileageEntry, LineItem } from '@/types';
+import { Project, ProjectPhoto, ProjectReceipt, LineItem } from '@/types';
 
 interface DbProject {
   id: string;
@@ -41,26 +41,10 @@ interface DbProjectReceipt {
   created_at: string;
 }
 
-interface DbProjectMileage {
-  id: string;
-  user_id: string;
-  project_id: string | null;
-  start_location: string;
-  end_location: string;
-  distance: number;
-  start_time: string;
-  end_time: string | null;
-  is_tracking: boolean;
-  coordinates: { lat: number; lng: number }[] | null;
-  notes: string | null;
-  created_at: string;
-}
-
 const mapDbProjectToProject = (
   dbProject: DbProject,
   photos: DbProjectPhoto[],
-  receipts: DbProjectReceipt[],
-  mileage: DbProjectMileage[]
+  receipts: DbProjectReceipt[]
 ): Project => {
   return {
     id: dbProject.id,
@@ -81,7 +65,7 @@ const mapDbProjectToProject = (
       id: p.id,
       projectId: p.project_id,
       type: p.type as ProjectPhoto['type'],
-      dataUrl: p.storage_path, // Will be converted to public URL
+      dataUrl: p.storage_path,
       caption: p.caption || undefined,
       createdAt: new Date(p.created_at),
     })),
@@ -93,18 +77,7 @@ const mapDbProjectToProject = (
       amount: Number(r.amount),
       createdAt: new Date(r.created_at),
     })),
-    mileageEntries: mileage.map(m => ({
-      id: m.id,
-      projectId: m.project_id || undefined,
-      startLocation: m.start_location,
-      endLocation: m.end_location,
-      distance: Number(m.distance),
-      startTime: new Date(m.start_time),
-      endTime: m.end_time ? new Date(m.end_time) : undefined,
-      isTracking: m.is_tracking,
-      coordinates: m.coordinates || undefined,
-      notes: m.notes || undefined,
-    })),
+    mileageEntries: [],
   };
 };
 
@@ -133,26 +106,22 @@ export function useProjects() {
       const projectIds = projectsData.map(p => p.id);
 
       // Fetch related data in parallel
-      const [photosResult, receiptsResult, mileageResult] = await Promise.all([
+      const [photosResult, receiptsResult] = await Promise.all([
         supabase.from('project_photos').select('*').in('project_id', projectIds),
         supabase.from('project_receipts').select('*').in('project_id', projectIds),
-        supabase.from('project_mileage').select('*').in('project_id', projectIds),
       ]);
 
       const photos = (photosResult.data || []) as DbProjectPhoto[];
       const receipts = (receiptsResult.data || []) as DbProjectReceipt[];
-      const mileage = (mileageResult.data || []) as DbProjectMileage[];
 
       // Map to Project type
       const mappedProjects = projectsData.map(dbProject => {
         const projectPhotos = photos.filter(p => p.project_id === dbProject.id);
         const projectReceipts = receipts.filter(r => r.project_id === dbProject.id);
-        const projectMileage = mileage.filter(m => m.project_id === dbProject.id);
         return mapDbProjectToProject(
           dbProject as DbProject,
           projectPhotos,
-          projectReceipts,
-          projectMileage
+          projectReceipts
         );
       });
 
@@ -195,7 +164,7 @@ export function useProjects() {
 
       if (error) throw error;
 
-      const project = mapDbProjectToProject(newProject as DbProject, [], [], []);
+      const project = mapDbProjectToProject(newProject as DbProject, [], []);
       setProjects(prev => [project, ...prev]);
       return project;
     } catch (error) {
@@ -450,66 +419,6 @@ export function useProjects() {
     }
   };
 
-  // Mileage management
-  const addMileage = async (
-    projectId: string,
-    entry: Omit<MileageEntry, 'id'>
-  ): Promise<boolean> => {
-    try {
-      const { data: userData } = await supabase.auth.getUser();
-      if (!userData.user) throw new Error('Not authenticated');
-
-      const { data: newMileage, error } = await supabase
-        .from('project_mileage')
-        .insert({
-          user_id: userData.user.id,
-          project_id: projectId,
-          start_location: entry.startLocation,
-          end_location: entry.endLocation,
-          distance: entry.distance,
-          start_time: entry.startTime.toISOString(),
-          end_time: entry.endTime?.toISOString() || null,
-          is_tracking: entry.isTracking,
-          coordinates: entry.coordinates || null,
-          notes: entry.notes || null,
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      // Update local state
-      setProjects(prev =>
-        prev.map(p => {
-          if (p.id === projectId) {
-            return {
-              ...p,
-              mileageEntries: [
-                ...p.mileageEntries,
-                {
-                  id: newMileage.id,
-                  projectId,
-                  ...entry,
-                },
-              ],
-            };
-          }
-          return p;
-        })
-      );
-
-      return true;
-    } catch (error) {
-      console.error('Error adding mileage:', error);
-      toast({
-        title: 'Error saving mileage',
-        description: 'Please try again',
-        variant: 'destructive',
-      });
-      return false;
-    }
-  };
-
   return {
     projects,
     loading,
@@ -518,7 +427,6 @@ export function useProjects() {
     deleteProject,
     addPhoto,
     addReceipt,
-    addMileage,
     refetch: fetchProjects,
   };
 }
