@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Job, Client, JobPhoto, Receipt as ReceiptType, MileageEntry } from '@/types';
+import { Job, Client, JobPhoto, Receipt as ReceiptType } from '@/types';
 import {
   Dialog,
   DialogContent,
@@ -15,7 +15,6 @@ import {
   Briefcase,
   Camera,
   Receipt,
-  Navigation,
   User,
   MapPin,
   Phone,
@@ -33,7 +32,6 @@ import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { PhotoUploadDialog } from './PhotoUploadDialog';
 import { ReceiptUploadDialog } from './ReceiptUploadDialog';
-import { MileageTracker } from './MileageTracker';
 import { useToast } from '@/hooks/use-toast';
 
 interface JobDetailDialogProps {
@@ -61,12 +59,10 @@ export function JobDetailDialog({
 }: JobDetailDialogProps) {
   const [photoDialogOpen, setPhotoDialogOpen] = useState(false);
   const [receiptDialogOpen, setReceiptDialogOpen] = useState(false);
-  const [mileageOpen, setMileageOpen] = useState(false);
   const [selectedPhoto, setSelectedPhoto] = useState<JobPhoto | null>(null);
   const { toast } = useToast();
 
   const status = statusConfig[job.status];
-  const totalMiles = job.mileageEntries.reduce((sum, e) => sum + e.distance, 0);
   const totalReceipts = job.receipts.reduce((sum, r) => sum + r.amount, 0);
   const beforePhotos = job.photos.filter((p) => p.type === 'before');
   const afterPhotos = job.photos.filter((p) => p.type === 'after');
@@ -107,19 +103,6 @@ export function JobDetailDialog({
       receipts: job.receipts.filter((r) => r.id !== receiptId),
     });
     toast({ title: 'Receipt deleted' });
-  };
-
-  const handleMileageUpdate = (entry: MileageEntry) => {
-    const existingIndex = job.mileageEntries.findIndex((e) => e.id === entry.id);
-    const updatedEntries =
-      existingIndex >= 0
-        ? job.mileageEntries.map((e) => (e.id === entry.id ? entry : e))
-        : [...job.mileageEntries, entry];
-
-    onUpdate({
-      ...job,
-      mileageEntries: updatedEntries,
-    });
   };
 
   const handleStatusChange = (newStatus: Job['status']) => {
@@ -166,9 +149,6 @@ export function JobDetailDialog({
               </TabsTrigger>
               <TabsTrigger value="expenses">
                 Expenses ({job.receipts.length})
-              </TabsTrigger>
-              <TabsTrigger value="mileage">
-                Mileage ({job.mileageEntries.length})
               </TabsTrigger>
             </TabsList>
 
@@ -218,10 +198,10 @@ export function JobDetailDialog({
                     </div>
                   )}
 
-                  {/* Quick Stats */}
+                   {/* Quick Stats */}
                   <div>
                     <h3 className="text-sm font-medium text-foreground mb-3">Summary</h3>
-                    <div className="grid grid-cols-3 gap-4">
+                    <div className="grid grid-cols-2 gap-4">
                       <div className="bg-muted/50 rounded-lg p-4 text-center">
                         <Camera className="h-5 w-5 mx-auto text-muted-foreground mb-1" />
                         <p className="text-2xl font-bold text-foreground">{job.photos.length}</p>
@@ -231,11 +211,6 @@ export function JobDetailDialog({
                         <Receipt className="h-5 w-5 mx-auto text-muted-foreground mb-1" />
                         <p className="text-2xl font-bold text-foreground">${totalReceipts.toFixed(0)}</p>
                         <p className="text-xs text-muted-foreground">Expenses</p>
-                      </div>
-                      <div className="bg-muted/50 rounded-lg p-4 text-center">
-                        <Navigation className="h-5 w-5 mx-auto text-muted-foreground mb-1" />
-                        <p className="text-2xl font-bold text-foreground">{totalMiles.toFixed(1)}</p>
-                        <p className="text-xs text-muted-foreground">Miles</p>
                       </div>
                     </div>
                   </div>
@@ -447,53 +422,6 @@ export function JobDetailDialog({
                   )}
                 </div>
               </TabsContent>
-
-              <TabsContent value="mileage" className="p-6 m-0">
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <Button onClick={() => setMileageOpen(true)} className="gap-2">
-                      <Navigation className="h-4 w-4" />
-                      Track Mileage
-                    </Button>
-                    {job.mileageEntries.length > 0 && (
-                      <p className="text-sm text-muted-foreground">
-                        Total: <span className="font-semibold text-foreground">{totalMiles.toFixed(1)} miles</span>
-                      </p>
-                    )}
-                  </div>
-
-                  {job.mileageEntries.length === 0 ? (
-                    <div className="text-center py-8">
-                      <Navigation className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                      <p className="text-muted-foreground">No mileage tracked</p>
-                      <p className="text-sm text-muted-foreground">
-                        Track your travel distance for this job
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {job.mileageEntries.map((entry) => (
-                        <div
-                          key={entry.id}
-                          className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="p-2 rounded-lg bg-background">
-                              <Navigation className="h-4 w-4 text-muted-foreground" />
-                            </div>
-                            <div>
-                              <p className="font-medium text-sm">{entry.distance.toFixed(1)} miles</p>
-                              <p className="text-xs text-muted-foreground">
-                                {format(new Date(entry.startTime), 'MMM d, yyyy h:mm a')}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </TabsContent>
             </ScrollArea>
           </Tabs>
         </DialogContent>
@@ -513,15 +441,6 @@ export function JobDetailDialog({
         onOpenChange={setReceiptDialogOpen}
         jobId={job.id}
         onSave={handleAddReceipt}
-      />
-
-      {/* Mileage Tracker */}
-      <MileageTracker
-        open={mileageOpen}
-        onOpenChange={setMileageOpen}
-        jobId={job.id}
-        entries={job.mileageEntries}
-        onUpdate={handleMileageUpdate}
       />
 
       {/* Full-size photo viewer */}

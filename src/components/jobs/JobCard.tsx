@@ -3,14 +3,13 @@ import {
   Briefcase,
   Camera,
   Receipt,
-  Navigation,
   MoreVertical,
   Play,
   CheckCircle,
   ImagePlus,
   FileText,
 } from 'lucide-react';
-import { Job, Client, JobPhoto, Receipt as ReceiptType, MileageEntry } from '@/types';
+import { Job, Client, JobPhoto, Receipt as ReceiptType } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -23,7 +22,6 @@ import {
 import { cn } from '@/lib/utils';
 import { PhotoUploadDialog } from './PhotoUploadDialog';
 import { ReceiptUploadDialog } from './ReceiptUploadDialog';
-import { MileageTracker } from './MileageTracker';
 import { JobDetailDialog } from './JobDetailDialog';
 import { useToast } from '@/hooks/use-toast';
 
@@ -43,12 +41,10 @@ const statusConfig = {
 export function JobCard({ job, client, onUpdate, onDelete }: JobCardProps) {
   const [photoDialogOpen, setPhotoDialogOpen] = useState(false);
   const [receiptDialogOpen, setReceiptDialogOpen] = useState(false);
-  const [mileageOpen, setMileageOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const { toast } = useToast();
 
   const status = statusConfig[job.status];
-  const totalMiles = job.mileageEntries.reduce((sum, e) => sum + e.distance, 0);
   const totalReceipts = job.receipts.reduce((sum, r) => sum + r.amount, 0);
 
   const handleAddPhotos = (photos: JobPhoto[]) => {
@@ -68,19 +64,6 @@ export function JobCard({ job, client, onUpdate, onDelete }: JobCardProps) {
       receipts: [...job.receipts, receipt],
     });
     toast({ title: 'Receipt added', description: `$${receipt.amount} receipt saved` });
-  };
-
-  const handleMileageUpdate = (entry: MileageEntry) => {
-    const existingIndex = job.mileageEntries.findIndex((e) => e.id === entry.id);
-    const updatedEntries =
-      existingIndex >= 0
-        ? job.mileageEntries.map((e) => (e.id === entry.id ? entry : e))
-        : [...job.mileageEntries, entry];
-
-    onUpdate({
-      ...job,
-      mileageEntries: updatedEntries,
-    });
   };
 
   const handleStatusChange = (newStatus: Job['status']) => {
@@ -160,14 +143,10 @@ export function JobCard({ job, client, onUpdate, onDelete }: JobCardProps) {
             <Receipt className="h-4 w-4" />
             <span>${totalReceipts.toFixed(0)}</span>
           </div>
-          <div className="flex items-center gap-1">
-            <Navigation className="h-4 w-4" />
-            <span>{totalMiles.toFixed(1)} mi</span>
-          </div>
         </div>
 
         {/* Action buttons */}
-        <div className="grid grid-cols-3 gap-2" onClick={(e) => e.stopPropagation()}>
+        <div className="grid grid-cols-2 gap-2" onClick={(e) => e.stopPropagation()}>
           <Button
             variant="outline"
             size="sm"
@@ -185,15 +164,6 @@ export function JobCard({ job, client, onUpdate, onDelete }: JobCardProps) {
           >
             <FileText className="h-4 w-4" />
             Receipt
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-1"
-            onClick={() => setMileageOpen(true)}
-          >
-            <Navigation className="h-4 w-4" />
-            Mileage
           </Button>
         </div>
       </div>
@@ -219,14 +189,6 @@ export function JobCard({ job, client, onUpdate, onDelete }: JobCardProps) {
         onOpenChange={setReceiptDialogOpen}
         jobId={job.id}
         onSave={handleAddReceipt}
-      />
-
-      <MileageTracker
-        open={mileageOpen}
-        onOpenChange={setMileageOpen}
-        jobId={job.id}
-        entries={job.mileageEntries}
-        onUpdate={handleMileageUpdate}
       />
     </>
   );

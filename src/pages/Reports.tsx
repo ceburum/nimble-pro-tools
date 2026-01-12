@@ -6,11 +6,11 @@ import { useReportsData, DateRange } from '@/hooks/useReportsData';
 import { InvoiceAgingReport } from '@/components/reports/InvoiceAgingReport';
 import { IncomeByClientReport } from '@/components/reports/IncomeByClientReport';
 import { ProfitLossReport } from '@/components/reports/ProfitLossReport';
-import { MileageDeductionReport } from '@/components/reports/MileageDeductionReport';
+
 import { PartnerSuggestions } from '@/components/reports/PartnerSuggestions';
 import { DateRangeFilter } from '@/components/reports/DateRangeFilter';
 import { StatementReconciliation } from '@/components/reports/StatementReconciliation';
-import { Clock, Users, TrendingUp, Car, FileCheck } from 'lucide-react';
+import { Clock, Users, TrendingUp, FileCheck } from 'lucide-react';
 import { startOfYear, endOfYear } from 'date-fns';
 
 export default function Reports() {
@@ -19,7 +19,7 @@ export default function Reports() {
     to: endOfYear(new Date()),
   });
 
-  const { loading, invoiceAging, incomeByClient, expensesByCategory, profitLoss, mileageDeduction } = useReportsData(dateRange);
+  const { loading, invoiceAging, incomeByClient, expensesByCategory, profitLoss } = useReportsData(dateRange);
 
   if (loading) {
     return (
@@ -47,7 +47,7 @@ export default function Reports() {
       <DateRangeFilter dateRange={dateRange} onDateRangeChange={setDateRange} />
 
       <Tabs defaultValue="aging" className="w-full">
-        <TabsList className="grid w-full max-w-3xl grid-cols-5">
+        <TabsList className="grid w-full max-w-2xl grid-cols-4">
           <TabsTrigger value="aging" className="flex items-center gap-2">
             <Clock className="h-4 w-4" />
             <span className="hidden sm:inline">Invoice Aging</span>
@@ -62,11 +62,6 @@ export default function Reports() {
             <TrendingUp className="h-4 w-4" />
             <span className="hidden sm:inline">Profit & Loss</span>
             <span className="sm:hidden">P&L</span>
-          </TabsTrigger>
-          <TabsTrigger value="mileage" className="flex items-center gap-2">
-            <Car className="h-4 w-4" />
-            <span className="hidden sm:inline">Mileage</span>
-            <span className="sm:hidden">Miles</span>
           </TabsTrigger>
           <TabsTrigger value="reconcile" className="flex items-center gap-2">
             <FileCheck className="h-4 w-4" />
@@ -86,10 +81,6 @@ export default function Reports() {
 
           <TabsContent value="pnl">
             <ProfitLossReport data={profitLoss} expensesByCategory={expensesByCategory} />
-          </TabsContent>
-
-          <TabsContent value="mileage">
-            <MileageDeductionReport data={mileageDeduction} />
           </TabsContent>
 
           <TabsContent value="reconcile">
