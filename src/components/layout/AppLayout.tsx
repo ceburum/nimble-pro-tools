@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, FolderKanban, Receipt, BarChart3, Package, Menu, LogOut, Car } from 'lucide-react';
+import { LayoutDashboard, Users, FolderKanban, Receipt, BarChart3, Menu, LogOut, Car } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
@@ -30,10 +30,6 @@ const navigation = [{
   name: 'Reports',
   href: '/reports',
   icon: BarChart3
-}, {
-  name: 'Materials',
-  href: '/materials',
-  icon: Package
 }, {
   name: 'Mileage Pro',
   href: '/mileage',

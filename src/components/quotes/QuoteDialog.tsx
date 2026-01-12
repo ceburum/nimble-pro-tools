@@ -18,11 +18,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Store } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useMaterials, Material } from '@/hooks/useMaterials';
-import { MaterialPicker } from '@/components/materials/MaterialPicker';
-import { MaterialDialog } from '@/components/materials/MaterialDialog';
+import { SupplierQuoteScanDialog } from '@/components/projects/SupplierQuoteScanDialog';
 
 interface QuoteDialogProps {
   open: boolean;
@@ -40,7 +38,6 @@ export function QuoteDialog({
   onSave,
 }: QuoteDialogProps) {
   const { toast } = useToast();
-  const { materials, addMaterial } = useMaterials();
   const [title, setTitle] = useState('');
   const [clientId, setClientId] = useState('');
   const [status, setStatus] = useState<Quote['status']>('draft');
@@ -51,7 +48,8 @@ export function QuoteDialog({
   const [items, setItems] = useState<LineItem[]>([
     { id: crypto.randomUUID(), description: '', quantity: 1, unitPrice: 0 }
   ]);
-  const [materialDialogOpen, setMaterialDialogOpen] = useState(false);
+  const [supplierScanOpen, setSupplierScanOpen] = useState(false);
+
   // Reset form when dialog opens/closes or quote changes
   useEffect(() => {
     if (open) {
@@ -77,14 +75,10 @@ export function QuoteDialog({
     setItems([...items, { id: crypto.randomUUID(), description: '', quantity: 1, unitPrice: 0 }]);
   };
 
-  const handleAddMaterial = (material: Material, quantity: number) => {
-    const newItem: LineItem = {
-      id: crypto.randomUUID(),
-      description: material.name,
-      quantity,
-      unitPrice: material.unitPrice,
-    };
-    setItems([...items, newItem]);
+  const handleImportItems = (importedItems: LineItem[]) => {
+    // Remove empty placeholder items before importing
+    const nonEmptyItems = items.filter(item => item.description.trim() !== '' || item.unitPrice > 0);
+    setItems([...nonEmptyItems, ...importedItems]);
   };
 
   const handleRemoveItem = (id: string) => {
@@ -197,11 +191,10 @@ export function QuoteDialog({
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <Label>Line Items</Label>
               <div className="flex gap-2">
-                <MaterialPicker
-                  materials={materials}
-                  onSelect={handleAddMaterial}
-                  onAddNew={() => setMaterialDialogOpen(true)}
-                />
+                <Button type="button" variant="outline" size="sm" onClick={() => setSupplierScanOpen(true)}>
+                  <Store className="h-4 w-4 mr-1" />
+                  Import from Supplier
+                </Button>
                 <Button type="button" variant="outline" size="sm" onClick={handleAddItem}>
                   <Plus className="h-4 w-4 mr-1" />
                   Add Item
@@ -279,10 +272,10 @@ export function QuoteDialog({
       </DialogContent>
     </Dialog>
 
-    <MaterialDialog
-      open={materialDialogOpen}
-      onOpenChange={setMaterialDialogOpen}
-      onSave={addMaterial}
+    <SupplierQuoteScanDialog
+      open={supplierScanOpen}
+      onOpenChange={setSupplierScanOpen}
+      onImport={handleImportItems}
     />
     </>
   );
