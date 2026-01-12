@@ -35,3 +35,12 @@ verify_jwt = false
 
 [functions.ai-scan-check-subscription]
 verify_jwt = false
+
+[functions.create-invoice-payment]
+verify_jwt = false
+
+[functions.lookup-barcode]
+verify_jwt = false
+
+[functions.manage-tin]
+verify_jwt = false

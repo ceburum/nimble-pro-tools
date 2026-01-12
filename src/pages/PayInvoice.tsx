@@ -79,17 +79,15 @@ export default function PayInvoice() {
   const totalWithFee = total + convenienceFee;
 
   const handlePayWithCard = async () => {
-    if (!invoice) return;
+    if (!invoice || !paymentToken) return;
 
     setProcessing(true);
 
     try {
+      // Use payment token for secure validation - no client-controlled data
       const { data, error: invokeError } = await supabase.functions.invoke('create-invoice-payment', {
         body: {
-          invoiceNumber: invoice.invoiceNumber,
-          clientName: invoice.clientName,
-          clientEmail: invoice.clientEmail,
-          amount: total,
+          paymentToken,
           includeConvenienceFee: true,
         },
       });

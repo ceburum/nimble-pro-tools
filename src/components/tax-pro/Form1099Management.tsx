@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -10,10 +10,14 @@ import { ClientTaxDetailsDialog } from './ClientTaxDetailsDialog';
 import { TaxDisclaimer } from './TaxDisclaimer';
 import { AlertTriangle, CheckCircle2, FileText, Users } from 'lucide-react';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Form1099ManagementProps {
   selectedYear: number;
 }
+
+// Cache for masked TINs to avoid repeated API calls
+const maskedTinCache = new Map<string, string>();
 
 export function Form1099Management({ selectedYear }: Form1099ManagementProps) {
   const { 
@@ -21,12 +25,53 @@ export function Form1099Management({ selectedYear }: Form1099ManagementProps) {
     eligible1099Clients, 
     loading, 
     update1099Info, 
-    maskTin,
     refresh 
   } = use1099Tracking();
   const { getTotalByClient } = useSubcontractorPayments();
   const [selectedClient, setSelectedClient] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [maskedTins, setMaskedTins] = useState<Record<string, string>>({});
+
+  // Fetch masked TINs for eligible clients
+  useEffect(() => {
+    const fetchMaskedTins = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const clientsToCheck = eligible1099Clients.filter(c => !maskedTinCache.has(c.id));
+      
+      for (const client of clientsToCheck) {
+        try {
+          const { data, error } = await supabase.functions.invoke('manage-tin', {
+            body: { action: 'check', clientId: client.id },
+          });
+          
+          if (!error && data?.hasTin) {
+            maskedTinCache.set(client.id, data.masked);
+          } else {
+            maskedTinCache.set(client.id, '---');
+          }
+        } catch {
+          maskedTinCache.set(client.id, '---');
+        }
+      }
+
+      // Build new state from cache
+      const newMaskedTins: Record<string, string> = {};
+      eligible1099Clients.forEach(c => {
+        newMaskedTins[c.id] = maskedTinCache.get(c.id) || '---';
+      });
+      setMaskedTins(newMaskedTins);
+    };
+
+    if (eligible1099Clients.length > 0) {
+      fetchMaskedTins();
+    }
+  }, [eligible1099Clients]);
+
+  const getMaskedTin = (clientId: string): string => {
+    return maskedTins[clientId] || '---';
+  };
 
   const formatCurrency = (amount: number) =>
     new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
@@ -165,7 +210,7 @@ export function Form1099Management({ selectedYear }: Form1099ManagementProps) {
                         )}
                       </div>
                       <div className="text-sm text-muted-foreground mt-1">
-                        TIN: {maskTin(client.tinEncrypted)} • {client.email}
+                        TIN: {getMaskedTin(client.id)} • {client.email}
                       </div>
                       
                       {/* Progress toward threshold */}
