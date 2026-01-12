@@ -1,10 +1,15 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import { useInvoices } from './useInvoices';
 import { useProjects } from './useProjects';
 import { useClients } from './useClients';
 import { supabase } from '@/integrations/supabase/client';
-import { useState, useEffect } from 'react';
-import { format, differenceInDays, startOfMonth, endOfMonth, startOfQuarter, endOfQuarter, startOfYear, endOfYear } from 'date-fns';
+import { useEffect } from 'react';
+import { format, differenceInDays, startOfMonth, endOfMonth, startOfQuarter, endOfQuarter, startOfYear, endOfYear, isWithinInterval } from 'date-fns';
+
+export interface DateRange {
+  from: Date;
+  to: Date;
+}
 
 interface MileageEntry {
   id: string;
@@ -19,13 +24,19 @@ interface UserSettings {
   tax_rate_estimate: number;
 }
 
-export function useReportsData() {
+export function useReportsData(dateRange?: DateRange) {
   const { invoices, loading: invoicesLoading } = useInvoices();
   const { projects, loading: projectsLoading } = useProjects();
   const { clients, loading: clientsLoading } = useClients();
   const [mileageEntries, setMileageEntries] = useState<MileageEntry[]>([]);
   const [userSettings, setUserSettings] = useState<UserSettings>({ irs_mileage_rate: 0.67, tax_rate_estimate: 0.25 });
   const [mileageLoading, setMileageLoading] = useState(true);
+
+  // Default to current year if no range provided
+  const effectiveDateRange = dateRange || {
+    from: startOfYear(new Date()),
+    to: endOfYear(new Date()),
+  };
 
   useEffect(() => {
     const fetchMileageAndSettings = async () => {
@@ -94,12 +105,16 @@ export function useReportsData() {
     };
   }, [invoices]);
 
-  // Income by Client
+  // Income by Client (filtered by date range)
   const incomeByClient = useMemo(() => {
-    const paidInvoices = invoices.filter((inv) => inv.status === 'paid');
+    const filteredInvoices = invoices.filter((inv) => {
+      const invDate = inv.paidAt ? new Date(inv.paidAt) : new Date(inv.createdAt);
+      return isWithinInterval(invDate, { start: effectiveDateRange.from, end: effectiveDateRange.to });
+    });
+
     const clientMap = new Map<string, { name: string; totalPaid: number; totalInvoiced: number; outstanding: number }>();
 
-    invoices.forEach((inv) => {
+    filteredInvoices.forEach((inv) => {
       const client = clients.find((c) => c.id === inv.clientId);
       const clientName = client?.name || 'Unknown';
       const amount = inv.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
@@ -118,41 +133,55 @@ export function useReportsData() {
     });
 
     return Array.from(clientMap.values()).sort((a, b) => b.totalPaid - a.totalPaid);
-  }, [invoices, clients]);
+  }, [invoices, clients, effectiveDateRange]);
 
-  // Materials/Expenses by Category
+  // Materials/Expenses by Category (filtered by date range)
   const expensesByCategory = useMemo(() => {
     const categoryMap = new Map<string, number>();
 
     projects.forEach((project) => {
       project.receipts.forEach((receipt) => {
+        const receiptDate = new Date(receipt.createdAt);
+        if (!isWithinInterval(receiptDate, { start: effectiveDateRange.from, end: effectiveDateRange.to })) {
+          return;
+        }
         const category = 'Supplies'; // Default - will enhance when category_id is available
         categoryMap.set(category, (categoryMap.get(category) || 0) + receipt.amount);
       });
     });
 
     return Array.from(categoryMap.entries()).map(([name, total]) => ({ name, total }));
-  }, [projects]);
+  }, [projects, effectiveDateRange]);
 
-  // P&L Summary
+  // P&L Summary (filtered by date range)
   const profitLoss = useMemo(() => {
-    const paidInvoices = invoices.filter((inv) => inv.status === 'paid');
+    const paidInvoices = invoices.filter((inv) => {
+      if (inv.status !== 'paid') return false;
+      const paidDate = inv.paidAt ? new Date(inv.paidAt) : new Date(inv.createdAt);
+      return isWithinInterval(paidDate, { start: effectiveDateRange.from, end: effectiveDateRange.to });
+    });
+    
     const totalIncome = paidInvoices.reduce(
       (sum, inv) => sum + inv.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0),
       0
     );
 
-    const totalExpenses = projects.reduce(
-      (sum, project) => sum + project.receipts.reduce((s, r) => s + r.amount, 0),
-      0
-    );
+    const totalExpenses = projects.reduce((sum, project) => {
+      return sum + project.receipts.reduce((s, r) => {
+        const receiptDate = new Date(r.createdAt);
+        if (!isWithinInterval(receiptDate, { start: effectiveDateRange.from, end: effectiveDateRange.to })) {
+          return s;
+        }
+        return s + r.amount;
+      }, 0);
+    }, 0);
 
     return {
       totalIncome,
       totalExpenses,
       netProfit: totalIncome - totalExpenses,
     };
-  }, [invoices, projects]);
+  }, [invoices, projects, effectiveDateRange]);
 
   // Mileage Deduction
   const mileageDeduction = useMemo(() => {

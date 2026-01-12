@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { X, ExternalLink, Calculator, Shield } from 'lucide-react';
+import { X, ExternalLink, Calculator, Shield, Mail } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -22,6 +22,14 @@ const partners: Partner[] = [
     icon: <Calculator className="h-5 w-5 text-green-600" />,
     url: 'https://quickbooks.intuit.com/partners/',
     cta: 'Learn More',
+  },
+  {
+    id: 'zoho-mail',
+    name: 'Zoho Mail',
+    description: 'Professional business email with your domain. Easy setup, reliable delivery, and free tier available.',
+    icon: <Mail className="h-5 w-5 text-yellow-600" />,
+    url: 'https://www.zoho.com/mail/zohomail-pricing.html',
+    cta: 'Get Started',
   },
   {
     id: 'simply-business',
