@@ -71,10 +71,8 @@ export function StatementReconciliation() {
         const matched = autoMatch(parsed);
         setTransactions(matched);
         toast.success(`Parsed ${matched.length} transactions from CSV`);
-      } else if (file.name.endsWith('.pdf')) {
-        toast.info('PDF parsing coming soon - please use CSV for now');
       } else {
-        toast.error('Please upload a CSV or PDF file');
+        toast.error('Please upload a CSV file');
       }
     } catch (error) {
       console.error('Error processing file:', error);
