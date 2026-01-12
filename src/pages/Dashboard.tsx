@@ -5,6 +5,7 @@ import { StatCard } from '@/components/dashboard/StatCard';
 import { RecentActivity } from '@/components/dashboard/RecentActivity';
 import { OverdueAlerts } from '@/components/dashboard/OverdueAlerts';
 import { TodaySchedule } from '@/components/dashboard/TodaySchedule';
+import { SchedulingProUpgradeCard } from '@/components/dashboard/SchedulingProUpgradeCard';
 
 import { DashboardAvatar } from '@/components/dashboard/DashboardAvatar';
 import { BusinessProfileDialog } from '@/components/settings/BusinessProfileDialog';
@@ -14,6 +15,7 @@ import { mockClients, mockInvoices } from '@/lib/mockData';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useProjects } from '@/hooks/useProjects';
 import { useClients } from '@/hooks/useClients';
+import { useSchedulingPro } from '@/hooks/useSchedulingPro';
 import { Client, Invoice, Project } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -24,6 +26,7 @@ export default function Dashboard() {
   const [localInvoices] = useLocalStorage<Invoice[]>('ceb-invoices', mockInvoices);
   const { projects } = useProjects();
   const { clients: dbClients } = useClients();
+  const { isEnabled: schedulingProEnabled } = useSchedulingPro();
   
   // Use DB clients if available, otherwise fall back to local
   const clients = dbClients.length > 0 ? dbClients : localClients;
@@ -157,7 +160,11 @@ export default function Dashboard() {
       {overdueCount > 0 && <OverdueAlerts invoices={invoices} clients={clients} onSendReminder={handleSendReminder} />}
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <TodaySchedule projects={projects} clients={clients} />
+        {schedulingProEnabled ? (
+          <TodaySchedule projects={projects} clients={clients} />
+        ) : (
+          <SchedulingProUpgradeCard />
+        )}
         
         <div className="bg-card rounded-xl border border-border p-6 shadow-sm">
           <h3 className="text-lg font-semibold text-card-foreground mb-4">Quick Actions</h3>

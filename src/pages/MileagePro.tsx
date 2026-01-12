@@ -5,16 +5,19 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Settings, Play, Square, Car, DollarSign, MapPin } from 'lucide-react';
 import { useMileageTrips } from '@/hooks/useMileageTrips';
+import { useMileagePro } from '@/hooks/useMileagePro';
 import { MileageTripCard } from '@/components/mileage/MileageTripCard';
 import { MileageSettingsDialog } from '@/components/mileage/MileageSettingsDialog';
+import { ProUpgradePage } from '@/components/pro/ProUpgradePage';
 import { formatDistance } from '@/lib/mileageUtils';
 
 export default function MileagePro() {
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const { isEnabled, loading: featureLoading, enableMileagePro } = useMileagePro();
   const {
     trips,
     settings,
-    loading,
+    loading: tripsLoading,
     activeTrip,
     startTrip,
     stopTrip,
@@ -29,11 +32,38 @@ export default function MileagePro() {
   };
 
   const handleStopTrip = () => {
-    // In native app, this would use actual GPS distance
-    // For now, simulate a random distance
     const simulatedDistance = Math.random() * 20 + 1;
     stopTrip('Destination', simulatedDistance);
   };
+
+  // Show loading state
+  if (featureLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+      </div>
+    );
+  }
+
+  // Show upgrade page if not enabled
+  if (!isEnabled) {
+    return (
+      <ProUpgradePage
+        icon={<Car className="h-12 w-12 text-primary" />}
+        title="Mileage Pro"
+        description="Automatic mileage tracking for maximum tax deductions"
+        features={[
+          "One-tap trip tracking with GPS",
+          "Automatic IRS mileage rate calculations",
+          "Tax deduction summaries by year",
+          "Trip history with start/end locations",
+          "Link trips to projects and clients",
+          "Export-ready reports for tax filing",
+        ]}
+        onEnable={enableMileagePro}
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -157,7 +187,7 @@ export default function MileagePro() {
           <CardTitle>Recent Trips</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {loading ? (
+          {tripsLoading ? (
             <>
               <Skeleton className="h-24 w-full" />
               <Skeleton className="h-24 w-full" />

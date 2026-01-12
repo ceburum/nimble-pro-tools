@@ -1,23 +1,26 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Calendar as CalendarIcon, CalendarCheck, CalendarClock, CalendarDays } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { CalendarView } from '@/components/scheduling/CalendarView';
 import { DayDetailDialog } from '@/components/scheduling/DayDetailDialog';
 import { ScheduleDialog } from '@/components/scheduling/ScheduleDialog';
 import { ProjectDetailDialog } from '@/components/projects/ProjectDetailDialog';
+import { ProUpgradePage } from '@/components/pro/ProUpgradePage';
 import { useProjects } from '@/hooks/useProjects';
 import { useClients } from '@/hooks/useClients';
 import { useInvoices } from '@/hooks/useInvoices';
+import { useSchedulingPro } from '@/hooks/useSchedulingPro';
 import { Project } from '@/types';
 import { StatCard } from '@/components/dashboard/StatCard';
-import { Calendar, CalendarCheck, CalendarClock, CalendarDays } from 'lucide-react';
-import { isToday, startOfToday, addDays, startOfWeek, endOfWeek, isWithinInterval } from 'date-fns';
+import { isToday, startOfToday, startOfWeek, endOfWeek, isWithinInterval } from 'date-fns';
 
 export default function SchedulingPro() {
   const navigate = useNavigate();
-  const { projects, loading, updateProject } = useProjects();
+  const { projects, loading: projectsLoading, updateProject } = useProjects();
   const { clients } = useClients();
   const { addInvoice } = useInvoices();
+  const { isEnabled, loading: featureLoading, enableSchedulingPro } = useSchedulingPro();
 
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedDayProjects, setSelectedDayProjects] = useState<Project[]>([]);
@@ -81,15 +84,35 @@ export default function SchedulingPro() {
   };
 
   const handleCreateInvoice = (project: Project) => {
-    // Navigate to invoices with pre-filled data
     navigate('/invoices', { state: { openNewInvoice: true, prefillProject: project } });
   };
 
-  if (loading) {
+  // Show loading state
+  if (featureLoading || projectsLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
       </div>
+    );
+  }
+
+  // Show upgrade page if not enabled
+  if (!isEnabled) {
+    return (
+      <ProUpgradePage
+        icon={<CalendarIcon className="h-12 w-12 text-primary" />}
+        title="Scheduling Pro"
+        description="Professional calendar management for your contracting business"
+        features={[
+          "Visual calendar with drag-and-drop scheduling",
+          "Arrival time windows for client expectations",
+          "Branded email notifications to clients",
+          "Add to Calendar integration (Google, Apple, Outlook)",
+          "Conflict detection for overlapping jobs",
+          "Today's schedule dashboard widget",
+        ]}
+        onEnable={enableSchedulingPro}
+      />
     );
   }
 
@@ -107,7 +130,7 @@ export default function SchedulingPro() {
         <StatCard
           title="Today's Jobs"
           value={stats.todayCount}
-          icon={Calendar}
+          icon={CalendarIcon}
           variant={stats.todayCount > 0 ? 'primary' : 'default'}
         />
         <StatCard
