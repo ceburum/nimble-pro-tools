@@ -450,6 +450,66 @@ export function useProjects() {
     }
   };
 
+  // Update receipt category and other fields
+  const updateReceipt = async (
+    receiptId: string,
+    updates: {
+      description?: string;
+      amount?: number;
+      vendor?: string;
+      categoryId?: string | null;
+      isCapitalAsset?: boolean;
+      taxNotes?: string;
+    }
+  ): Promise<boolean> => {
+    try {
+      const dbUpdates: Record<string, unknown> = {};
+      if (updates.description !== undefined) dbUpdates.description = updates.description;
+      if (updates.amount !== undefined) dbUpdates.amount = updates.amount;
+      if (updates.vendor !== undefined) dbUpdates.vendor = updates.vendor || null;
+      if (updates.categoryId !== undefined) dbUpdates.category_id = updates.categoryId;
+      if (updates.isCapitalAsset !== undefined) dbUpdates.is_capital_asset = updates.isCapitalAsset;
+      if (updates.taxNotes !== undefined) dbUpdates.tax_notes = updates.taxNotes || null;
+
+      const { error } = await supabase
+        .from('project_receipts')
+        .update(dbUpdates)
+        .eq('id', receiptId);
+
+      if (error) throw error;
+
+      // Update local state
+      setProjects(prev =>
+        prev.map(p => ({
+          ...p,
+          receipts: p.receipts.map(r =>
+            r.id === receiptId
+              ? {
+                  ...r,
+                  description: updates.description ?? r.description,
+                  amount: updates.amount ?? r.amount,
+                  vendor: updates.vendor ?? r.vendor,
+                  categoryId: updates.categoryId !== undefined ? (updates.categoryId ?? undefined) : r.categoryId,
+                  isCapitalAsset: updates.isCapitalAsset ?? r.isCapitalAsset,
+                  taxNotes: updates.taxNotes ?? r.taxNotes,
+                }
+              : r
+          ),
+        }))
+      );
+
+      return true;
+    } catch (error) {
+      console.error('Error updating receipt:', error);
+      toast({
+        title: 'Error updating receipt',
+        description: 'Please try again',
+        variant: 'destructive',
+      });
+      return false;
+    }
+  };
+
   return {
     projects,
     loading,
@@ -458,6 +518,7 @@ export function useProjects() {
     deleteProject,
     addPhoto,
     addReceipt,
+    updateReceipt,
     refetch: fetchProjects,
   };
 }

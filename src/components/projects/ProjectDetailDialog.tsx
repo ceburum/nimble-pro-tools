@@ -41,10 +41,12 @@ import { ScheduleDialog } from '@/components/scheduling/ScheduleDialog';
 import { AddToCalendarButton } from '@/components/scheduling/AddToCalendarButton';
 import { formatArrivalWindow } from '@/lib/calendarUtils';
 import { useProjects } from '@/hooks/useProjects';
+import { useExpenseCategories } from '@/hooks/useExpenseCategories';
 import { LineItem } from '@/types';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { LineItemInput } from '@/components/ui/line-item-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -84,7 +86,8 @@ export function ProjectDetailDialog({
   const [supplierScanOpen, setSupplierScanOpen] = useState(false);
   const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
   const { toast } = useToast();
-  const { projects: allProjects } = useProjects();
+  const { projects: allProjects, updateReceipt } = useProjects();
+  const { categories } = useExpenseCategories();
 
   const status = statusConfig[project.status];
   const totalMiles = project.mileageEntries.reduce((sum, e) => sum + e.distance, 0);
@@ -179,6 +182,23 @@ export function ProjectDetailDialog({
     });
     toast({ title: 'Receipt deleted' });
   };
+
+  const handleReceiptCategoryChange = async (receiptId: string, categoryId: string) => {
+    const success = await updateReceipt(receiptId, { categoryId: categoryId || null });
+    if (success) {
+      // Update local project state as well
+      onUpdate({
+        ...project,
+        receipts: project.receipts.map(r =>
+          r.id === receiptId ? { ...r, categoryId: categoryId || undefined } : r
+        ),
+      });
+      toast({ title: 'Category updated' });
+    }
+  };
+
+  // Get IRS categories for the picker
+  const irsCategories = categories.filter(c => c.irsCode);
 
   const handleAddLineItem = () => {
     onUpdate({
@@ -636,32 +656,70 @@ export function ProjectDetailDialog({
                     </div>
                   ) : (
                     <div className="space-y-2">
-                      {project.receipts.map((receipt) => (
-                        <div key={receipt.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg group">
-                          <div className="flex items-center gap-3">
-                            <div className="p-2 rounded-lg bg-background">
-                              <Receipt className="h-4 w-4 text-muted-foreground" />
+                      {project.receipts.map((receipt) => {
+                        const category = categories.find(c => c.id === receipt.categoryId);
+                        return (
+                          <div key={receipt.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg group">
+                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                              <div className="p-2 rounded-lg bg-background">
+                                <Receipt className="h-4 w-4 text-muted-foreground" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium text-sm truncate">{receipt.description}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {format(new Date(receipt.createdAt), 'MMM d, yyyy')}
+                                  {receipt.vendor && ` • ${receipt.vendor}`}
+                                </p>
+                              </div>
                             </div>
-                            <div>
-                              <p className="font-medium text-sm">{receipt.description}</p>
-                              <p className="text-xs text-muted-foreground">
-                                {format(new Date(receipt.createdAt), 'MMM d, yyyy')}
-                              </p>
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              <Select
+                                value={receipt.categoryId || 'uncategorized'}
+                                onValueChange={(value) => handleReceiptCategoryChange(receipt.id, value === 'uncategorized' ? '' : value)}
+                              >
+                                <SelectTrigger className="w-36 h-8 text-xs">
+                                  <SelectValue>
+                                    {category ? (
+                                      <span className="flex items-center gap-1">
+                                        <Badge variant="outline" className="text-[10px] px-1 py-0">
+                                          {category.irsCode}
+                                        </Badge>
+                                        <span className="truncate">{category.name}</span>
+                                      </span>
+                                    ) : (
+                                      <span className="text-amber-600">Uncategorized</span>
+                                    )}
+                                  </SelectValue>
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="uncategorized">
+                                    <span className="text-amber-600">Uncategorized</span>
+                                  </SelectItem>
+                                  {irsCategories.map((cat) => (
+                                    <SelectItem key={cat.id} value={cat.id}>
+                                      <span className="flex items-center gap-1">
+                                        <Badge variant="outline" className="text-[10px] px-1 py-0">
+                                          {cat.irsCode}
+                                        </Badge>
+                                        {cat.name}
+                                      </span>
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <span className="font-semibold text-sm w-20 text-right">${receipt.amount.toFixed(2)}</span>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 opacity-0 group-hover:opacity-100"
+                                onClick={() => handleDeleteReceipt(receipt.id)}
+                              >
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
                             </div>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-semibold">${receipt.amount.toFixed(2)}</span>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 opacity-0 group-hover:opacity-100"
-                              onClick={() => handleDeleteReceipt(receipt.id)}
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </div>
