@@ -10,7 +10,6 @@ import Clients from "./pages/Clients";
 import Projects from "./pages/Projects";
 import Invoices from "./pages/Invoices";
 import Reports from "./pages/Reports";
-import Materials from "./pages/Materials";
 import MileagePro from "./pages/MileagePro";
 import PayInvoice from "./pages/PayInvoice";
 import Auth from "./pages/Auth";
@@ -72,15 +71,7 @@ const App = () => (
               </ProtectedRoute>
             } 
           />
-          <Route 
-            path="/materials" 
-            element={
-              <ProtectedRoute>
-                <AppLayout><Materials /></AppLayout>
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
+          <Route
             path="/mileage" 
             element={
               <ProtectedRoute>

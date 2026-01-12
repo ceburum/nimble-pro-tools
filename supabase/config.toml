@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.scan-receipt]
 verify_jwt = false
+
+[functions.scan-supplier-quote]
+verify_jwt = false
