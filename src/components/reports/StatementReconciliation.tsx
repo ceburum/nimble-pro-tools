@@ -4,15 +4,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Upload, FileText, CheckCircle, AlertCircle, Link2, Loader2, X, RefreshCw } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { Label } from '@/components/ui/label';
+import { Upload, FileText, CheckCircle, AlertCircle, Link2, X, Save, Tag } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useInvoices } from '@/hooks/useInvoices';
 import { useProjects } from '@/hooks/useProjects';
+import { useExpenseCategories } from '@/hooks/useExpenseCategories';
+import { useBankExpenses } from '@/hooks/useBankExpenses';
 import { toast } from 'sonner';
-import { format, parseISO, isWithinInterval, subDays, addDays } from 'date-fns';
 
 interface ParsedTransaction {
   id: string;
@@ -23,21 +24,30 @@ interface ParsedTransaction {
 }
 
 interface MatchedTransaction extends ParsedTransaction {
-  matchType: 'invoice' | 'receipt' | 'none';
+  matchType: 'invoice' | 'receipt' | 'categorized' | 'none';
   matchId?: string;
   matchLabel?: string;
   confidence: 'high' | 'medium' | 'low' | 'none';
+  categoryId?: string;
+  categoryName?: string;
+  isSaved?: boolean;
 }
 
 export function StatementReconciliation() {
   const { user } = useAuth();
   const { invoices } = useInvoices();
   const { projects } = useProjects();
+  const { categories } = useExpenseCategories();
+  const { addExpense } = useBankExpenses();
+  
   const [isUploading, setIsUploading] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [transactions, setTransactions] = useState<MatchedTransaction[]>([]);
   const [matchDialogOpen, setMatchDialogOpen] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<MatchedTransaction | null>(null);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
+  const [expenseVendor, setExpenseVendor] = useState('');
 
   // Collect all receipts from projects
   const allReceipts = projects.flatMap((p) =>
@@ -55,10 +65,6 @@ export function StatementReconciliation() {
     setIsProcessing(true);
 
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-
-      // For CSV files, parse locally
       if (file.name.endsWith('.csv')) {
         const text = await file.text();
         const parsed = parseCSV(text);
@@ -66,8 +72,6 @@ export function StatementReconciliation() {
         setTransactions(matched);
         toast.success(`Parsed ${matched.length} transactions from CSV`);
       } else if (file.name.endsWith('.pdf')) {
-        // For PDFs, we'd use an edge function with AI parsing
-        // For now, show a placeholder
         toast.info('PDF parsing coming soon - please use CSV for now');
       } else {
         toast.error('Please upload a CSV or PDF file');
@@ -85,21 +89,18 @@ export function StatementReconciliation() {
     const lines = text.trim().split('\n');
     if (lines.length < 2) return [];
 
-    // Try to detect header format
     const header = lines[0].toLowerCase();
     const hasHeader = header.includes('date') || header.includes('amount') || header.includes('description');
     const startIndex = hasHeader ? 1 : 0;
 
     return lines.slice(startIndex).map((line, idx) => {
       const parts = line.split(',').map((p) => p.trim().replace(/"/g, ''));
-      // Common formats: Date, Description, Amount or Date, Description, Debit, Credit
       const date = parts[0] || '';
       const description = parts[1] || '';
       let amount = 0;
       let type: 'credit' | 'debit' = 'debit';
 
       if (parts.length >= 4) {
-        // Debit/Credit columns
         const debit = parseFloat(parts[2]) || 0;
         const credit = parseFloat(parts[3]) || 0;
         amount = credit > 0 ? credit : debit;
@@ -121,12 +122,11 @@ export function StatementReconciliation() {
 
   const autoMatch = (parsed: ParsedTransaction[]): MatchedTransaction[] => {
     return parsed.map((tx) => {
-      // Try to match credits to paid invoices
       if (tx.type === 'credit') {
         const matchingInvoice = invoices.find((inv) => {
           if (inv.status !== 'paid') return false;
           const total = inv.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
-          const amountClose = Math.abs(total - tx.amount) <= total * 0.05; // 5% tolerance
+          const amountClose = Math.abs(total - tx.amount) <= total * 0.05;
           return amountClose;
         });
 
@@ -141,7 +141,6 @@ export function StatementReconciliation() {
         }
       }
 
-      // Try to match debits to receipts
       if (tx.type === 'debit') {
         const matchingReceipt = allReceipts.find((r) => {
           const amountClose = Math.abs(r.amount - tx.amount) <= r.amount * 0.05;
@@ -191,8 +190,97 @@ export function StatementReconciliation() {
     toast.success('Transaction matched');
   };
 
+  const handleCategorizeExpense = () => {
+    if (!selectedTransaction || !selectedCategoryId) return;
+
+    const category = categories.find(c => c.id === selectedCategoryId);
+    if (!category) return;
+
+    setTransactions((prev) =>
+      prev.map((tx) =>
+        tx.id === selectedTransaction.id
+          ? { 
+              ...tx, 
+              matchType: 'categorized' as const, 
+              categoryId: selectedCategoryId,
+              categoryName: category.name,
+              matchLabel: `Expense: ${category.name}`,
+              confidence: 'high' 
+            }
+          : tx
+      )
+    );
+
+    setMatchDialogOpen(false);
+    setSelectedCategoryId('');
+    setExpenseVendor('');
+    toast.success('Expense categorized');
+  };
+
   const handleIgnore = (txId: string) => {
     setTransactions((prev) => prev.filter((tx) => tx.id !== txId));
+  };
+
+  const handleSaveReconciliation = async () => {
+    if (!user) {
+      toast.error('Please log in to save');
+      return;
+    }
+
+    setIsSaving(true);
+    let savedCount = 0;
+
+    try {
+      // Save categorized expenses to bank_expenses table
+      for (const tx of transactions) {
+        if (tx.matchType === 'categorized' && tx.categoryId && !tx.isSaved) {
+          // Parse the date from the transaction
+          let expenseDate = new Date();
+          try {
+            const dateParts = tx.date.split(/[\/\-]/);
+            if (dateParts.length >= 3) {
+              // Try MM/DD/YYYY or YYYY-MM-DD format
+              if (dateParts[0].length === 4) {
+                expenseDate = new Date(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1, parseInt(dateParts[2]));
+              } else {
+                expenseDate = new Date(parseInt(dateParts[2]), parseInt(dateParts[0]) - 1, parseInt(dateParts[1]));
+              }
+            }
+          } catch {
+            // Use current date if parsing fails
+          }
+
+          const result = await addExpense({
+            amount: tx.amount,
+            description: tx.description,
+            expenseDate,
+            vendor: expenseVendor || undefined,
+            categoryId: tx.categoryId,
+            bankStatementRef: tx.id,
+            isReconciled: true,
+          });
+
+          if (result) {
+            savedCount++;
+            // Mark as saved in local state
+            setTransactions(prev => 
+              prev.map(t => t.id === tx.id ? { ...t, isSaved: true } : t)
+            );
+          }
+        }
+      }
+
+      if (savedCount > 0) {
+        toast.success(`Saved ${savedCount} expense${savedCount !== 1 ? 's' : ''} to your records`);
+      } else {
+        toast.info('No new expenses to save');
+      }
+    } catch (error) {
+      console.error('Error saving reconciliation:', error);
+      toast.error('Failed to save some expenses');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const getConfidenceBadge = (confidence: string) => {
@@ -210,6 +298,8 @@ export function StatementReconciliation() {
 
   const matchedCount = transactions.filter((t) => t.matchType !== 'none').length;
   const unmatchedCount = transactions.length - matchedCount;
+  const categorizedCount = transactions.filter((t) => t.matchType === 'categorized').length;
+  const unsavedCount = transactions.filter((t) => t.matchType === 'categorized' && !t.isSaved).length;
 
   return (
     <div className="space-y-6">
@@ -246,14 +336,14 @@ export function StatementReconciliation() {
       {transactions.length > 0 && (
         <>
           {/* Summary */}
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-4">
             <Card>
               <CardContent className="p-4 flex items-center gap-3">
                 <div className="p-2 rounded-full bg-primary/10">
                   <FileText className="h-5 w-5 text-primary" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Total Transactions</p>
+                  <p className="text-sm text-muted-foreground">Total</p>
                   <p className="text-xl font-semibold">{transactions.length}</p>
                 </div>
               </CardContent>
@@ -271,6 +361,17 @@ export function StatementReconciliation() {
             </Card>
             <Card>
               <CardContent className="p-4 flex items-center gap-3">
+                <div className="p-2 rounded-full bg-accent/30">
+                  <Tag className="h-5 w-5 text-accent-foreground" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Categorized</p>
+                  <p className="text-xl font-semibold">{categorizedCount}</p>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4 flex items-center gap-3">
                 <div className="p-2 rounded-full bg-warning/10">
                   <AlertCircle className="h-5 w-5 text-warning" />
                 </div>
@@ -281,6 +382,16 @@ export function StatementReconciliation() {
               </CardContent>
             </Card>
           </div>
+
+          {/* Save Button */}
+          {unsavedCount > 0 && (
+            <div className="flex justify-end">
+              <Button onClick={handleSaveReconciliation} disabled={isSaving}>
+                <Save className="h-4 w-4 mr-2" />
+                {isSaving ? 'Saving...' : `Save ${unsavedCount} Categorized Expense${unsavedCount !== 1 ? 's' : ''}`}
+              </Button>
+            </div>
+          )}
 
           {/* Transactions Table */}
           <Card>
@@ -302,7 +413,7 @@ export function StatementReconciliation() {
                 </TableHeader>
                 <TableBody>
                   {transactions.map((tx) => (
-                    <TableRow key={tx.id}>
+                    <TableRow key={tx.id} className={tx.isSaved ? 'bg-success/5' : ''}>
                       <TableCell className="font-mono text-sm">{tx.date}</TableCell>
                       <TableCell className="max-w-[200px] truncate">{tx.description}</TableCell>
                       <TableCell>
@@ -314,7 +425,10 @@ export function StatementReconciliation() {
                         {tx.type === 'credit' ? '+' : '-'}${tx.amount.toFixed(2)}
                       </TableCell>
                       <TableCell>
-                        {tx.matchLabel || <span className="text-muted-foreground">—</span>}
+                        <div className="flex items-center gap-1">
+                          {tx.matchLabel || <span className="text-muted-foreground">—</span>}
+                          {tx.isSaved && <Badge variant="outline" className="ml-1 text-xs">Saved</Badge>}
+                        </div>
                       </TableCell>
                       <TableCell>{getConfidenceBadge(tx.confidence)}</TableCell>
                       <TableCell className="text-right">
@@ -349,11 +463,11 @@ export function StatementReconciliation() {
 
       {/* Manual Match Dialog */}
       <Dialog open={matchDialogOpen} onOpenChange={setMatchDialogOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Match Transaction</DialogTitle>
             <DialogDescription>
-              Select an invoice or receipt to match with this transaction
+              Select an invoice, receipt, or categorize this expense
             </DialogDescription>
           </DialogHeader>
           
@@ -368,7 +482,7 @@ export function StatementReconciliation() {
 
               {selectedTransaction.type === 'credit' && (
                 <div>
-                  <p className="text-sm font-medium mb-2">Match to Invoice</p>
+                  <Label className="text-sm font-medium mb-2 block">Match to Invoice</Label>
                   <Select onValueChange={(id) => handleManualMatch('invoice', id)}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select an invoice" />
@@ -387,21 +501,59 @@ export function StatementReconciliation() {
               )}
 
               {selectedTransaction.type === 'debit' && (
-                <div>
-                  <p className="text-sm font-medium mb-2">Match to Receipt</p>
-                  <Select onValueChange={(id) => handleManualMatch('receipt', id)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a receipt" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {allReceipts.map((rec) => (
-                        <SelectItem key={rec.id} value={rec.id}>
-                          {rec.description} - ${rec.amount.toFixed(2)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                <>
+                  <div>
+                    <Label className="text-sm font-medium mb-2 block">Match to Receipt</Label>
+                    <Select onValueChange={(id) => handleManualMatch('receipt', id)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a receipt" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {allReceipts.map((rec) => (
+                          <SelectItem key={rec.id} value={rec.id}>
+                            {rec.description} - ${rec.amount.toFixed(2)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="border-t pt-4">
+                    <Label className="text-sm font-medium mb-2 block flex items-center gap-2">
+                      <Tag className="h-4 w-4" />
+                      Or Categorize as New Expense
+                    </Label>
+                    <div className="space-y-3">
+                      <Select value={selectedCategoryId} onValueChange={setSelectedCategoryId}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select IRS category" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {categories.map((cat) => (
+                            <SelectItem key={cat.id} value={cat.id}>
+                              {cat.name} {cat.irsCode ? `(${cat.irsCode})` : ''}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+
+                      <Input
+                        placeholder="Vendor name (optional)"
+                        value={expenseVendor}
+                        onChange={(e) => setExpenseVendor(e.target.value)}
+                      />
+
+                      <Button 
+                        onClick={handleCategorizeExpense} 
+                        disabled={!selectedCategoryId}
+                        className="w-full"
+                      >
+                        <Tag className="h-4 w-4 mr-2" />
+                        Categorize Expense
+                      </Button>
+                    </div>
+                  </div>
+                </>
               )}
             </div>
           )}

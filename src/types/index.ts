@@ -65,6 +65,10 @@ export interface ProjectReceipt {
   description: string;
   amount: number;
   createdAt: Date;
+  vendor?: string;
+  categoryId?: string;
+  isCapitalAsset?: boolean;
+  taxNotes?: string;
 }
 
 // Mileage tracking

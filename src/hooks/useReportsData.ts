@@ -1,10 +1,10 @@
-import { useMemo, useState, useCallback } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useInvoices } from './useInvoices';
 import { useProjects } from './useProjects';
 import { useClients } from './useClients';
+import { useCategorizedExpenses } from './useCategorizedExpenses';
 import { supabase } from '@/integrations/supabase/client';
-import { useEffect } from 'react';
-import { format, differenceInDays, startOfMonth, endOfMonth, startOfQuarter, endOfQuarter, startOfYear, endOfYear, isWithinInterval } from 'date-fns';
+import { differenceInDays, startOfYear, endOfYear, isWithinInterval } from 'date-fns';
 
 export interface DateRange {
   from: Date;
@@ -28,13 +28,20 @@ export function useReportsData(dateRange?: DateRange) {
     to: endOfYear(new Date()),
   };
 
+  // Use the shared categorized expenses hook
+  const { 
+    byCategory: categorizedByCategory, 
+    totalExpenses: categorizedTotalExpenses,
+    loading: expensesLoading 
+  } = useCategorizedExpenses(effectiveDateRange);
+
   useEffect(() => {
     const fetchSettings = async () => {
       try {
         const { data } = await supabase
           .from('user_settings')
           .select('tax_rate_estimate')
-          .single();
+          .maybeSingle();
 
         if (data) {
           setUserSettings({
@@ -51,7 +58,7 @@ export function useReportsData(dateRange?: DateRange) {
     fetchSettings();
   }, []);
 
-  const loading = invoicesLoading || projectsLoading || clientsLoading || settingsLoading;
+  const loading = invoicesLoading || projectsLoading || clientsLoading || settingsLoading || expensesLoading;
 
   // Invoice Aging Report
   const invoiceAging = useMemo(() => {
@@ -120,23 +127,14 @@ export function useReportsData(dateRange?: DateRange) {
     return Array.from(clientMap.values()).sort((a, b) => b.totalPaid - a.totalPaid);
   }, [invoices, clients, effectiveDateRange]);
 
-  // Materials/Expenses by Category (filtered by date range)
+  // Expenses by Category - now using the categorized expenses hook
   const expensesByCategory = useMemo(() => {
-    const categoryMap = new Map<string, number>();
-
-    projects.forEach((project) => {
-      project.receipts.forEach((receipt) => {
-        const receiptDate = new Date(receipt.createdAt);
-        if (!isWithinInterval(receiptDate, { start: effectiveDateRange.from, end: effectiveDateRange.to })) {
-          return;
-        }
-        const category = 'Supplies'; // Default - will enhance when category_id is available
-        categoryMap.set(category, (categoryMap.get(category) || 0) + receipt.amount);
-      });
-    });
-
-    return Array.from(categoryMap.entries()).map(([name, total]) => ({ name, total }));
-  }, [projects, effectiveDateRange]);
+    return categorizedByCategory.map(cat => ({
+      name: cat.categoryName,
+      total: cat.total,
+      irsCode: cat.irsCode,
+    }));
+  }, [categorizedByCategory]);
 
   // P&L Summary (filtered by date range)
   const profitLoss = useMemo(() => {
@@ -151,22 +149,15 @@ export function useReportsData(dateRange?: DateRange) {
       0
     );
 
-    const totalExpenses = projects.reduce((sum, project) => {
-      return sum + project.receipts.reduce((s, r) => {
-        const receiptDate = new Date(r.createdAt);
-        if (!isWithinInterval(receiptDate, { start: effectiveDateRange.from, end: effectiveDateRange.to })) {
-          return s;
-        }
-        return s + r.amount;
-      }, 0);
-    }, 0);
+    // Use categorized total expenses from the shared hook
+    const totalExpenses = categorizedTotalExpenses;
 
     return {
       totalIncome,
       totalExpenses,
       netProfit: totalIncome - totalExpenses,
     };
-  }, [invoices, projects, effectiveDateRange]);
+  }, [invoices, categorizedTotalExpenses, effectiveDateRange]);
 
   return {
     loading,

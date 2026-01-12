@@ -14,6 +14,53 @@ export type Database = {
   }
   public: {
     Tables: {
+      bank_expenses: {
+        Row: {
+          amount: number
+          bank_statement_ref: string | null
+          category_id: string | null
+          created_at: string
+          description: string
+          expense_date: string
+          id: string
+          is_reconciled: boolean
+          user_id: string
+          vendor: string | null
+        }
+        Insert: {
+          amount?: number
+          bank_statement_ref?: string | null
+          category_id?: string | null
+          created_at?: string
+          description: string
+          expense_date: string
+          id?: string
+          is_reconciled?: boolean
+          user_id: string
+          vendor?: string | null
+        }
+        Update: {
+          amount?: number
+          bank_statement_ref?: string | null
+          category_id?: string | null
+          created_at?: string
+          description?: string
+          expense_date?: string
+          id?: string
+          is_reconciled?: boolean
+          user_id?: string
+          vendor?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bank_expenses_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "expense_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       capital_assets: {
         Row: {
           asset_type: string
@@ -726,6 +773,7 @@ export type Database = {
           company_phone: string | null
           created_at: string
           dashboard_logo_url: string | null
+          financial_pro_enabled: boolean | null
           id: string
           invoice_prefix: string | null
           irs_mileage_rate: number | null
@@ -745,6 +793,7 @@ export type Database = {
           company_phone?: string | null
           created_at?: string
           dashboard_logo_url?: string | null
+          financial_pro_enabled?: boolean | null
           id?: string
           invoice_prefix?: string | null
           irs_mileage_rate?: number | null
@@ -764,6 +813,7 @@ export type Database = {
           company_phone?: string | null
           created_at?: string
           dashboard_logo_url?: string | null
+          financial_pro_enabled?: boolean | null
           id?: string
           invoice_prefix?: string | null
           irs_mileage_rate?: number | null
