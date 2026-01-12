@@ -9,6 +9,7 @@ import Index from "./pages/Index";
 import Clients from "./pages/Clients";
 import Projects from "./pages/Projects";
 import Invoices from "./pages/Invoices";
+import Reports from "./pages/Reports";
 import Materials from "./pages/Materials";
 import PayInvoice from "./pages/PayInvoice";
 import Auth from "./pages/Auth";
@@ -59,6 +60,14 @@ const App = () => (
             element={
               <ProtectedRoute>
                 <AppLayout><Invoices /></AppLayout>
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/reports" 
+            element={
+              <ProtectedRoute>
+                <AppLayout><Reports /></AppLayout>
               </ProtectedRoute>
             } 
           />
