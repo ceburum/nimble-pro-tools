@@ -388,6 +388,8 @@ export type Database = {
       projects: {
         Row: {
           accepted_at: string | null
+          arrival_window_end: string | null
+          arrival_window_start: string | null
           client_id: string
           completed_at: string | null
           created_at: string
@@ -398,6 +400,9 @@ export type Database = {
           quote_notes: string | null
           response_token: string | null
           response_token_used_at: string | null
+          schedule_notes: string | null
+          schedule_notification_sent_at: string | null
+          scheduled_date: string | null
           sent_at: string | null
           started_at: string | null
           status: string
@@ -407,6 +412,8 @@ export type Database = {
         }
         Insert: {
           accepted_at?: string | null
+          arrival_window_end?: string | null
+          arrival_window_start?: string | null
           client_id: string
           completed_at?: string | null
           created_at?: string
@@ -417,6 +424,9 @@ export type Database = {
           quote_notes?: string | null
           response_token?: string | null
           response_token_used_at?: string | null
+          schedule_notes?: string | null
+          schedule_notification_sent_at?: string | null
+          scheduled_date?: string | null
           sent_at?: string | null
           started_at?: string | null
           status?: string
@@ -426,6 +436,8 @@ export type Database = {
         }
         Update: {
           accepted_at?: string | null
+          arrival_window_end?: string | null
+          arrival_window_start?: string | null
           client_id?: string
           completed_at?: string | null
           created_at?: string
@@ -436,6 +448,9 @@ export type Database = {
           quote_notes?: string | null
           response_token?: string | null
           response_token_used_at?: string | null
+          schedule_notes?: string | null
+          schedule_notification_sent_at?: string | null
+          scheduled_date?: string | null
           sent_at?: string | null
           started_at?: string | null
           status?: string

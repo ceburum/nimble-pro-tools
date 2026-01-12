@@ -11,6 +11,7 @@ import Projects from "./pages/Projects";
 import Invoices from "./pages/Invoices";
 import Reports from "./pages/Reports";
 import MileagePro from "./pages/MileagePro";
+import SchedulingPro from "./pages/SchedulingPro";
 import PayInvoice from "./pages/PayInvoice";
 import Auth from "./pages/Auth";
 import Install from "./pages/Install";
@@ -76,6 +77,14 @@ const App = () => (
             element={
               <ProtectedRoute>
                 <AppLayout><MileagePro /></AppLayout>
+              </ProtectedRoute>
+            } 
+          />
+          <Route
+            path="/scheduling" 
+            element={
+              <ProtectedRoute>
+                <AppLayout><SchedulingPro /></AppLayout>
               </ProtectedRoute>
             } 
           />

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, FolderKanban, Receipt, BarChart3, Menu, LogOut, Car } from 'lucide-react';
+import { LayoutDashboard, Users, FolderKanban, Receipt, BarChart3, Menu, LogOut, Car, CalendarDays } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
@@ -22,6 +22,10 @@ const navigation = [{
   name: 'Projects',
   href: '/projects',
   icon: FolderKanban
+}, {
+  name: 'Scheduling',
+  href: '/scheduling',
+  icon: CalendarDays
 }, {
   name: 'Invoices',
   href: '/invoices',

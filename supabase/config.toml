@@ -23,3 +23,6 @@ verify_jwt = false
 
 [functions.scan-supplier-quote]
 verify_jwt = false
+
+[functions.send-schedule-notification]
+verify_jwt = false
