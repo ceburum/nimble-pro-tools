@@ -4,20 +4,29 @@ import { Users, Receipt, DollarSign, FolderKanban, Settings } from 'lucide-react
 import { StatCard } from '@/components/dashboard/StatCard';
 import { RecentActivity } from '@/components/dashboard/RecentActivity';
 import { OverdueAlerts } from '@/components/dashboard/OverdueAlerts';
+import { TodaySchedule } from '@/components/dashboard/TodaySchedule';
 
 import { DashboardAvatar } from '@/components/dashboard/DashboardAvatar';
 import { BusinessProfileDialog } from '@/components/settings/BusinessProfileDialog';
 import { Button } from '@/components/ui/button';
 import { mockClients, mockInvoices } from '@/lib/mockData';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { useProjects } from '@/hooks/useProjects';
+import { useClients } from '@/hooks/useClients';
 import { Client, Invoice, Project } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const [clients] = useLocalStorage<Client[]>('ceb-clients', mockClients);
-  const [projects] = useLocalStorage<Project[]>('ceb-projects', []);
+  const [localClients] = useLocalStorage<Client[]>('ceb-clients', mockClients);
+  const [localInvoices] = useLocalStorage<Invoice[]>('ceb-invoices', mockInvoices);
+  const { projects } = useProjects();
+  const { clients: dbClients } = useClients();
+  
+  // Use DB clients if available, otherwise fall back to local
+  const clients = dbClients.length > 0 ? dbClients : localClients;
+  const invoices = localInvoices;
   const [invoices] = useLocalStorage<Invoice[]>('ceb-invoices', mockInvoices);
   
   // Dashboard avatar state
@@ -148,7 +157,7 @@ export default function Dashboard() {
       {overdueCount > 0 && <OverdueAlerts invoices={invoices} clients={clients} onSendReminder={handleSendReminder} />}
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <RecentActivity />
+        <TodaySchedule projects={projects} clients={clients} />
         
         <div className="bg-card rounded-xl border border-border p-6 shadow-sm">
           <h3 className="text-lg font-semibold text-card-foreground mb-4">Quick Actions</h3>

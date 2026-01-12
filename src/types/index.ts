@@ -99,6 +99,12 @@ export interface Project {
   mileageEntries: MileageEntry[];
   // Invoice reference
   invoiceId?: string;
+  // Scheduling fields
+  scheduledDate?: Date;
+  arrivalWindowStart?: string; // "08:00" format
+  arrivalWindowEnd?: string;   // "10:00" format
+  scheduleNotes?: string;
+  scheduleNotificationSentAt?: Date;
   // Timestamps
   createdAt: Date;
   sentAt?: Date;

@@ -19,6 +19,12 @@ interface DbProject {
   accepted_at: string | null;
   started_at: string | null;
   completed_at: string | null;
+  // Scheduling fields
+  scheduled_date: string | null;
+  arrival_window_start: string | null;
+  arrival_window_end: string | null;
+  schedule_notes: string | null;
+  schedule_notification_sent_at: string | null;
 }
 
 interface DbProjectPhoto {
@@ -56,6 +62,15 @@ const mapDbProjectToProject = (
     validUntil: dbProject.valid_until ? new Date(dbProject.valid_until) : undefined,
     quoteNotes: dbProject.quote_notes || undefined,
     invoiceId: dbProject.invoice_id || undefined,
+    // Scheduling fields
+    scheduledDate: dbProject.scheduled_date ? new Date(dbProject.scheduled_date) : undefined,
+    arrivalWindowStart: dbProject.arrival_window_start || undefined,
+    arrivalWindowEnd: dbProject.arrival_window_end || undefined,
+    scheduleNotes: dbProject.schedule_notes || undefined,
+    scheduleNotificationSentAt: dbProject.schedule_notification_sent_at 
+      ? new Date(dbProject.schedule_notification_sent_at) 
+      : undefined,
+    // Timestamps
     createdAt: new Date(dbProject.created_at),
     sentAt: dbProject.sent_at ? new Date(dbProject.sent_at) : undefined,
     acceptedAt: dbProject.accepted_at ? new Date(dbProject.accepted_at) : undefined,
@@ -195,6 +210,14 @@ export function useProjects() {
           accepted_at: updatedProject.acceptedAt?.toISOString() || null,
           started_at: updatedProject.startedAt?.toISOString() || null,
           completed_at: updatedProject.completedAt?.toISOString() || null,
+          // Scheduling fields
+          scheduled_date: updatedProject.scheduledDate 
+            ? updatedProject.scheduledDate.toISOString().split('T')[0] 
+            : null,
+          arrival_window_start: updatedProject.arrivalWindowStart || null,
+          arrival_window_end: updatedProject.arrivalWindowEnd || null,
+          schedule_notes: updatedProject.scheduleNotes || null,
+          schedule_notification_sent_at: updatedProject.scheduleNotificationSentAt?.toISOString() || null,
         } as any)
         .eq('id', updatedProject.id);
 
