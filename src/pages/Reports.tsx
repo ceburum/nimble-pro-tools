@@ -9,7 +9,6 @@ import { useFinancialPro } from '@/hooks/useFinancialPro';
 import { InvoiceAgingReport } from '@/components/reports/InvoiceAgingReport';
 import { IncomeByClientReport } from '@/components/reports/IncomeByClientReport';
 import { ProfitLossReport } from '@/components/reports/ProfitLossReport';
-import { PartnerSuggestions } from '@/components/reports/PartnerSuggestions';
 import { DateRangeFilter } from '@/components/reports/DateRangeFilter';
 import { StatementReconciliation } from '@/components/reports/StatementReconciliation';
 import { Clock, Users, TrendingUp, FileCheck, Lock, BarChart3, FileText, Calculator } from 'lucide-react';
@@ -110,8 +109,6 @@ export default function Reports() {
   return (
     <div className="space-y-6">
       <PageHeader title="Financial Pro" description="Financial insights, tax reporting & reconciliation" />
-
-      <PartnerSuggestions />
 
       <DateRangeFilter dateRange={dateRange} onDateRangeChange={setDateRange} />
 
