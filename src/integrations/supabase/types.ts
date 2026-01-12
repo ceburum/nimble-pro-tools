@@ -538,31 +538,55 @@ export type Database = {
       }
       user_settings: {
         Row: {
+          company_address: string | null
+          company_email: string | null
+          company_name: string | null
+          company_phone: string | null
           created_at: string
           dashboard_logo_url: string | null
           id: string
+          invoice_prefix: string | null
           irs_mileage_rate: number | null
+          license_number: string | null
           partner_suggestions_dismissed: boolean | null
+          payment_instructions: string | null
+          tagline: string | null
           tax_rate_estimate: number | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          company_address?: string | null
+          company_email?: string | null
+          company_name?: string | null
+          company_phone?: string | null
           created_at?: string
           dashboard_logo_url?: string | null
           id?: string
+          invoice_prefix?: string | null
           irs_mileage_rate?: number | null
+          license_number?: string | null
           partner_suggestions_dismissed?: boolean | null
+          payment_instructions?: string | null
+          tagline?: string | null
           tax_rate_estimate?: number | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          company_address?: string | null
+          company_email?: string | null
+          company_name?: string | null
+          company_phone?: string | null
           created_at?: string
           dashboard_logo_url?: string | null
           id?: string
+          invoice_prefix?: string | null
           irs_mileage_rate?: number | null
+          license_number?: string | null
           partner_suggestions_dismissed?: boolean | null
+          payment_instructions?: string | null
+          tagline?: string | null
           tax_rate_estimate?: number | null
           updated_at?: string
           user_id?: string

@@ -23,8 +23,34 @@ const PAYMENT_METHODS = {
   },
 };
 
-export function generateInvoiceHtml(invoice: Invoice, client: Client | undefined): string {
+// Business profile for invoice customization
+export interface InvoiceBusinessProfile {
+  companyName?: string;
+  companyAddress?: string;
+  companyPhone?: string;
+  companyEmail?: string;
+  licenseNumber?: string;
+  tagline?: string;
+  paymentInstructions?: string;
+  logoUrl?: string | null;
+}
+
+export function generateInvoiceHtml(
+  invoice: Invoice, 
+  client: Client | undefined, 
+  businessProfile?: InvoiceBusinessProfile
+): string {
   const total = invoice.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
+  
+  // Use business profile or defaults
+  const companyName = businessProfile?.companyName || 'CEB Building';
+  const companyPhone = businessProfile?.companyPhone || '';
+  const companyEmail = businessProfile?.companyEmail || '';
+  const companyAddress = businessProfile?.companyAddress || '';
+  const licenseNumber = businessProfile?.licenseNumber || '';
+  const tagline = businessProfile?.tagline || '';
+  const paymentInstructions = businessProfile?.paymentInstructions || '';
+  const logoUrl = businessProfile?.logoUrl || 'https://pvgxkznweoedkvebjjpc.supabase.co/storage/v1/object/public/assets/ceb-logo.png';
   
   const itemsHtml = invoice.items.map(item => `
     <tr>
@@ -210,8 +236,11 @@ export function generateInvoiceHtml(invoice: Invoice, client: Client | undefined
       <div class="invoice-container">
         <div class="header">
           <div style="display: flex; align-items: center; gap: 12px;">
-            <img src="https://pvgxkznweoedkvebjjpc.supabase.co/storage/v1/object/public/assets/ceb-logo.png" alt="CEB Building" style="height: 50px; width: 50px; border-radius: 50%; object-fit: cover;" onerror="this.style.display='none'">
-            <div class="company-name">CEB Building</div>
+            <img src="${escapeHtml(logoUrl)}" alt="${escapeHtml(companyName)}" style="height: 50px; width: 50px; border-radius: 50%; object-fit: cover;" onerror="this.style.display='none'">
+            <div>
+              <div class="company-name">${escapeHtml(companyName)}</div>
+              ${tagline ? `<div style="font-size: 11px; color: #6b7280;">${escapeHtml(tagline)}</div>` : ''}
+            </div>
           </div>
           <div style="text-align: right;">
             <div class="invoice-title">INVOICE</div>
@@ -228,6 +257,16 @@ export function generateInvoiceHtml(invoice: Invoice, client: Client | undefined
             <p>${escapeHtml(client?.address || '')}</p>
           </div>
           <div class="info-block" style="text-align: right;">
+            <h3>From</h3>
+            ${companyPhone ? `<p>${escapeHtml(companyPhone)}</p>` : ''}
+            ${companyEmail ? `<p>${escapeHtml(companyEmail)}</p>` : ''}
+            ${companyAddress ? `<p>${escapeHtml(companyAddress)}</p>` : ''}
+            ${licenseNumber ? `<p style="font-size: 10px; color: #9ca3af;">Lic# ${escapeHtml(licenseNumber)}</p>` : ''}
+          </div>
+        </div>
+
+        <div class="info-section" style="margin-bottom: 12px;">
+          <div class="info-block">
             <h3>Invoice Details</h3>
             <p><strong>Date:</strong> ${new Date(invoice.createdAt).toLocaleDateString()}</p>
             <p><strong>Due Date:</strong> ${new Date(invoice.dueDate).toLocaleDateString()}</p>
@@ -271,11 +310,16 @@ export function generateInvoiceHtml(invoice: Invoice, client: Client | undefined
               Pay $${total.toFixed(2)} with CashApp
             </a>
           </div>
+          ${paymentInstructions ? `
+            <p style="margin-top: 12px; color: #78350f; font-size: 11px; border-top: 1px solid #fcd34d; padding-top: 10px;">
+              ${escapeHtml(paymentInstructions)}
+            </p>
+          ` : ''}
         </div>
 
         <div class="footer">
           <p>Thank you for your business!</p>
-          <p>Questions? Contact us anytime.</p>
+          ${companyPhone || companyEmail ? `<p>Questions? Contact us${companyPhone ? ` at ${escapeHtml(companyPhone)}` : ''}${companyEmail ? ` or ${escapeHtml(companyEmail)}` : ''}</p>` : '<p>Questions? Contact us anytime.</p>'}
         </div>
       </div>
     </body>
@@ -283,8 +327,12 @@ export function generateInvoiceHtml(invoice: Invoice, client: Client | undefined
   `;
 }
 
-export function downloadInvoice(invoice: Invoice, client: Client | undefined): void {
-  const html = generateInvoiceHtml(invoice, client);
+export function downloadInvoice(
+  invoice: Invoice, 
+  client: Client | undefined, 
+  businessProfile?: InvoiceBusinessProfile
+): void {
+  const html = generateInvoiceHtml(invoice, client, businessProfile);
   const blob = new Blob([html], { type: 'text/html' });
   const url = URL.createObjectURL(blob);
   

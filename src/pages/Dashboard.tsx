@@ -1,16 +1,19 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import { Users, Receipt, DollarSign, FolderKanban } from 'lucide-react';
+import { Users, Receipt, DollarSign, FolderKanban, Settings } from 'lucide-react';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { RecentActivity } from '@/components/dashboard/RecentActivity';
 import { OverdueAlerts } from '@/components/dashboard/OverdueAlerts';
 
 import { DashboardAvatar } from '@/components/dashboard/DashboardAvatar';
+import { BusinessProfileDialog } from '@/components/settings/BusinessProfileDialog';
+import { Button } from '@/components/ui/button';
 import { mockClients, mockInvoices } from '@/lib/mockData';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { Client, Invoice, Project } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const [clients] = useLocalStorage<Client[]>('ceb-clients', mockClients);
@@ -20,6 +23,7 @@ export default function Dashboard() {
   // Dashboard avatar state
   const [dashboardLogoUrl, setDashboardLogoUrl] = useState<string | null>(null);
   const [isLoadingAvatar, setIsLoadingAvatar] = useState(true);
+  const [showBusinessProfile, setShowBusinessProfile] = useState(false);
 
   // Fetch dashboard logo on mount
   useEffect(() => {
@@ -49,12 +53,14 @@ export default function Dashboard() {
 
     fetchDashboardLogo();
   }, []);
+
   const totalRevenue = invoices.filter(inv => inv.status === 'paid').reduce((sum, inv) => sum + inv.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0), 0);
   const pendingAmount = invoices.filter(inv => inv.status === 'sent' || inv.status === 'overdue').reduce((sum, inv) => sum + inv.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0), 0);
   const overdueCount = invoices.filter(inv => {
     if (inv.status === 'paid') return false;
     return new Date(inv.dueDate) < new Date();
   }).length;
+
   const handleSendReminder = async (invoice: Invoice, method: 'email' | 'text') => {
     const client = clients.find(c => c.id === invoice.clientId);
     if (!client) {
@@ -74,11 +80,10 @@ export default function Dashboard() {
       });
       return;
     }
+
     const total = invoice.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
     try {
-      const {
-        error
-      } = await supabase.functions.invoke('send-overdue-reminder', {
+      const { error } = await supabase.functions.invoke('send-overdue-reminder', {
         body: {
           invoiceId: invoice.id,
           invoiceNumber: invoice.invoiceNumber,
@@ -104,29 +109,40 @@ export default function Dashboard() {
       });
     }
   };
-  return <div className="space-y-8">
-      <div className="flex items-center gap-4">
-        <DashboardAvatar 
-          imageUrl={dashboardLogoUrl} 
-          onImageChange={setDashboardLogoUrl}
-          isLoading={isLoadingAvatar}
-        />
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
-          <p className="text-muted-foreground mt-1">Welcome back! Here's your business overview.</p>
-        </div>
-      </div>
 
-      
+  return (
+    <div className="space-y-8">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <DashboardAvatar 
+            imageUrl={dashboardLogoUrl} 
+            onImageChange={setDashboardLogoUrl}
+            isLoading={isLoadingAvatar}
+          />
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
+            <p className="text-muted-foreground mt-1">Welcome back! Here's your business overview.</p>
+          </div>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setShowBusinessProfile(true)}
+          className="gap-2"
+        >
+          <Settings className="h-4 w-4" />
+          <span className="hidden sm:inline">Business Settings</span>
+        </Button>
+      </div>
 
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard title="Total Clients" value={clients.length} icon={Users} variant="default" href="/clients" />
         <StatCard title="Active Projects" value={projects.filter(p => p.status === 'draft' || p.status === 'sent' || p.status === 'accepted' || p.status === 'in_progress').length} icon={FolderKanban} variant="primary" href="/projects" />
         <StatCard title="Pending Invoices" value={`$${pendingAmount.toLocaleString()}`} icon={Receipt} variant={overdueCount > 0 ? "danger" : "warning"} href="/invoices" />
         <StatCard title="Total Revenue" value={`$${totalRevenue.toLocaleString()}`} icon={DollarSign} variant="success" trend={{
-        value: 12,
-        isPositive: true
-      }} href="/invoices" />
+          value: 12,
+          isPositive: true
+        }} href="/invoices" />
       </div>
 
       {overdueCount > 0 && <OverdueAlerts invoices={invoices} clients={clients} onSendReminder={handleSendReminder} />}
@@ -151,11 +167,10 @@ export default function Dashboard() {
                 <p className="text-sm text-muted-foreground">Create quote/job</p>
               </div>
             </Link>
-            <button onClick={() => navigate('/invoices', {
-            state: {
-              openNewInvoice: true
-            }
-          })} className="flex items-center gap-3 p-4 rounded-lg border border-border hover:border-primary/50 hover:bg-primary/5 transition-all duration-200 w-full text-left">
+            <button 
+              onClick={() => navigate('/invoices', { state: { openNewInvoice: true } })} 
+              className="flex items-center gap-3 p-4 rounded-lg border border-border hover:border-primary/50 hover:bg-primary/5 transition-all duration-200 w-full text-left"
+            >
               <Receipt className="text-accent w-[35px] h-[35px]" />
               <div>
                 <p className="text-card-foreground text-sm font-bold">New Invoice</p>
@@ -172,5 +187,11 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
-    </div>;
+
+      <BusinessProfileDialog 
+        open={showBusinessProfile} 
+        onOpenChange={setShowBusinessProfile} 
+      />
+    </div>
+  );
 }
