@@ -20,8 +20,10 @@ import { toast } from 'sonner';
 export default function TaxPro() {
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = useState(currentYear);
+  const [searchParams, setSearchParams] = useSearchParams();
   const { isEnabled, loading, enableTaxPro } = useTaxPro();
 
+  const currentTab = searchParams.get('tab') || 'overview';
   const years = Array.from({ length: 6 }, (_, i) => currentYear - i);
 
   const handleEnableTaxPro = async () => {
@@ -110,7 +112,7 @@ export default function TaxPro() {
         }
       />
 
-      <Tabs defaultValue="overview" className="space-y-6">
+      <Tabs value={currentTab} onValueChange={(value) => setSearchParams({ tab: value })} className="space-y-6">
         <TabsList className="grid w-full grid-cols-3 sm:grid-cols-6 lg:w-auto lg:inline-grid">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="categorize">Categorize</TabsTrigger>
