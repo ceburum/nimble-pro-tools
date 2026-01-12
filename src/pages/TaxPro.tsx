@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -11,6 +12,7 @@ import { TaxMileageSummary } from '@/components/tax-pro/TaxMileageSummary';
 import { TaxExportDialog } from '@/components/tax-pro/TaxExportDialog';
 import { TaxDisclaimer } from '@/components/tax-pro/TaxDisclaimer';
 import { ScheduleCBreakdown } from '@/components/tax-pro/ScheduleCBreakdown';
+import { UncategorizedExpensesList } from '@/components/tax-pro/UncategorizedExpensesList';
 import { useTaxPro } from '@/hooks/useTaxPro';
 import { Calculator, Lock } from 'lucide-react';
 import { toast } from 'sonner';
@@ -109,8 +111,9 @@ export default function TaxPro() {
       />
 
       <Tabs defaultValue="overview" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3 sm:grid-cols-5 lg:w-auto lg:inline-grid">
+        <TabsList className="grid w-full grid-cols-3 sm:grid-cols-6 lg:w-auto lg:inline-grid">
           <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="categorize">Categorize</TabsTrigger>
           <TabsTrigger value="schedule-c">Schedule C</TabsTrigger>
           <TabsTrigger value="1099">1099s</TabsTrigger>
           <TabsTrigger value="assets">Assets</TabsTrigger>
@@ -119,6 +122,10 @@ export default function TaxPro() {
 
         <TabsContent value="overview">
           <TaxProOverview selectedYear={selectedYear} />
+        </TabsContent>
+
+        <TabsContent value="categorize">
+          <UncategorizedExpensesList selectedYear={selectedYear} />
         </TabsContent>
 
         <TabsContent value="schedule-c">

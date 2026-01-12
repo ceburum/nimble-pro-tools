@@ -87,16 +87,10 @@ export function TaxProOverview({ selectedYear }: TaxProOverviewProps) {
           <AlertDescription className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <span className="text-amber-800">
               You have {uncategorizedExpenses.length} expense{uncategorizedExpenses.length !== 1 ? 's' : ''} without IRS categories ({formatCurrency(totalUncategorized)}).
-              {hasFinancialPro 
-                ? ' Categorize them in Statement Reconciliation or add categories to project receipts.'
-                : ' Add categories to receipts in your Projects for better tax organization.'}
+              Assign IRS Schedule C categories for accurate tax reporting.
             </span>
             <Button asChild variant="outline" size="sm" className="border-amber-300 text-amber-700 hover:bg-amber-100">
-              {hasFinancialPro ? (
-                <Link to="/reports">Go to Reports</Link>
-              ) : (
-                <Link to="/projects">View Projects</Link>
-              )}
+              <Link to="/tax-pro?tab=categorize">Categorize Now</Link>
             </Button>
           </AlertDescription>
         </Alert>
