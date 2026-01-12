@@ -767,6 +767,10 @@ export type Database = {
       }
       user_settings: {
         Row: {
+          ai_scans_period: string | null
+          ai_scans_subscription_customer_id: string | null
+          ai_scans_subscription_status: string | null
+          ai_scans_used: number
           company_address: string | null
           company_email: string | null
           company_name: string | null
@@ -789,6 +793,10 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          ai_scans_period?: string | null
+          ai_scans_subscription_customer_id?: string | null
+          ai_scans_subscription_status?: string | null
+          ai_scans_used?: number
           company_address?: string | null
           company_email?: string | null
           company_name?: string | null
@@ -811,6 +819,10 @@ export type Database = {
           user_id: string
         }
         Update: {
+          ai_scans_period?: string | null
+          ai_scans_subscription_customer_id?: string | null
+          ai_scans_subscription_status?: string | null
+          ai_scans_used?: number
           company_address?: string | null
           company_email?: string | null
           company_name?: string | null

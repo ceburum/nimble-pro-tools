@@ -26,3 +26,12 @@ verify_jwt = false
 
 [functions.send-schedule-notification]
 verify_jwt = false
+
+[functions.ai-scan-create-checkout]
+verify_jwt = false
+
+[functions.ai-scan-customer-portal]
+verify_jwt = false
+
+[functions.ai-scan-check-subscription]
+verify_jwt = false
