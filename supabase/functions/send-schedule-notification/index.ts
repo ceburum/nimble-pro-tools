@@ -117,110 +117,160 @@ async function sendEmailViaSMTP(
   htmlBody: string,
   icsAttachment?: string
 ): Promise<void> {
-  const SMTP_USER = Deno.env.get('ZOHO_SMTP_USER');
-  const SMTP_PASSWORD = Deno.env.get('ZOHO_SMTP_PASSWORD');
+  const smtpUser = Deno.env.get('ZOHO_SMTP_USER');
+  const smtpPassword = Deno.env.get('ZOHO_SMTP_PASSWORD');
   
-  if (!SMTP_USER || !SMTP_PASSWORD) {
+  if (!smtpUser || !smtpPassword) {
     throw new Error('SMTP credentials not configured');
   }
 
-  const boundary = `----=_Part_${Date.now()}`;
-  
-  let emailBody = `From: "CEB Building" <${SMTP_USER}>
-To: ${to}
-Subject: ${subject}
-MIME-Version: 1.0
-Content-Type: multipart/mixed; boundary="${boundary}"
-
---${boundary}
-Content-Type: text/html; charset=utf-8
-Content-Transfer-Encoding: 7bit
-
-${htmlBody}`;
-
-  if (icsAttachment) {
-    const icsBase64 = btoa(icsAttachment);
-    emailBody += `
-
---${boundary}
-Content-Type: text/calendar; charset=utf-8; name="event.ics"
-Content-Disposition: attachment; filename="event.ics"
-Content-Transfer-Encoding: base64
-
-${icsBase64}`;
-  }
-
-  emailBody += `
---${boundary}--`;
-
-  const conn = await Deno.connect({ hostname: 'smtp.zoho.com', port: 587 });
   const encoder = new TextEncoder();
   const decoder = new TextDecoder();
 
-  async function readResponse(): Promise<string> {
-    const buffer = new Uint8Array(4096);
-    let response = '';
-    let lastRead = 0;
-    
-    do {
-      lastRead = await conn.read(buffer) || 0;
-      response += decoder.decode(buffer.subarray(0, lastRead));
-      await new Promise(r => setTimeout(r, 50));
-    } while (lastRead === 4096);
-    
-    return response.trim();
-  }
+  // Use port 465 with direct TLS (same as working send-invoice-email)
+  const conn = await Deno.connectTls({
+    hostname: 'smtp.zoho.com',
+    port: 465,
+  });
 
-  async function sendCommand(cmd: string): Promise<string> {
-    await conn.write(encoder.encode(cmd + '\r\n'));
-    return await readResponse();
-  }
+  // Read SMTP response, handling multi-line responses
+  const read = async (): Promise<string> => {
+    let fullResponse = '';
+    const buf = new Uint8Array(4096);
+    
+    while (true) {
+      const n = await conn.read(buf);
+      if (!n) break;
+      fullResponse += decoder.decode(buf.subarray(0, n));
+      
+      const lines = fullResponse.trim().split('\r\n');
+      const lastLine = lines[lines.length - 1];
+      if (/^\d{3} /.test(lastLine) || /^\d{3}$/.test(lastLine)) {
+        break;
+      }
+    }
+    
+    return fullResponse.trim();
+  };
+
+  const write = async (data: string): Promise<void> => {
+    await conn.write(encoder.encode(data + '\r\n'));
+  };
 
   try {
-    await readResponse();
-    await sendCommand('EHLO cebbuilding.com');
-    await sendCommand('STARTTLS');
-
-    const tlsConn = await Deno.startTls(conn, { hostname: 'smtp.zoho.com' });
+    await read(); // greeting
+    await write('EHLO smtp.zoho.com');
+    await read();
     
-    async function readTlsResponse(): Promise<string> {
-      const buffer = new Uint8Array(4096);
-      let response = '';
-      let lastRead = 0;
-      
-      do {
-        lastRead = await tlsConn.read(buffer) || 0;
-        response += decoder.decode(buffer.subarray(0, lastRead));
-        await new Promise(r => setTimeout(r, 50));
-      } while (lastRead === 4096);
-      
-      return response.trim();
+    await write('AUTH LOGIN');
+    await read();
+    
+    await write(btoa(smtpUser));
+    await read();
+    
+    await write(btoa(smtpPassword));
+    const authResponse = await read();
+    
+    if (authResponse.startsWith('4') || authResponse.startsWith('5')) {
+      throw new Error('SMTP Auth failed');
     }
 
-    async function sendTlsCommand(cmd: string): Promise<string> {
-      await tlsConn.write(encoder.encode(cmd + '\r\n'));
-      return await readTlsResponse();
+    await write(`MAIL FROM:<${smtpUser}>`);
+    const mailFromResponse = await read();
+    if (!mailFromResponse.startsWith('250')) {
+      throw new Error('MAIL FROM rejected');
     }
 
-    await sendTlsCommand('EHLO cebbuilding.com');
-
-    const authString = btoa(`\0${SMTP_USER}\0${SMTP_PASSWORD}`);
-    const authResponse = await sendTlsCommand(`AUTH PLAIN ${authString}`);
-    if (!authResponse.startsWith('235')) {
-      throw new Error(`Auth failed: ${authResponse}`);
+    await write(`RCPT TO:<${to}>`);
+    const rcptResponse = await read();
+    if (!rcptResponse.startsWith('250')) {
+      throw new Error('RCPT TO rejected');
     }
 
-    await sendTlsCommand(`MAIL FROM:<${SMTP_USER}>`);
-    await sendTlsCommand(`RCPT TO:<${to}>`);
-    await sendTlsCommand('DATA');
-    await tlsConn.write(encoder.encode(emailBody + '\r\n.\r\n'));
-    await readTlsResponse();
-    await sendTlsCommand('QUIT');
+    await write('DATA');
+    const dataResponse = await read();
+    if (!dataResponse.startsWith('354')) {
+      throw new Error('DATA command rejected');
+    }
 
-    tlsConn.close();
-  } catch (error) {
-    console.error('SMTP Error:', error);
-    throw error;
+    const mixedBoundary = `----=_Mixed_${Date.now()}`;
+    const altBoundary = `----=_Alt_${Date.now()}`;
+
+    let emailContent: string[];
+
+    if (icsAttachment) {
+      // Email with ICS attachment - use multipart/mixed
+      emailContent = [
+        `From: CEB Building <${smtpUser}>`,
+        `To: ${to}`,
+        `Subject: ${subject}`,
+        `MIME-Version: 1.0`,
+        `Date: ${new Date().toUTCString()}`,
+        `Message-ID: <${Date.now()}.${Math.random().toString(36).substring(2)}@cebbuilding.com>`,
+        `Content-Type: multipart/mixed; boundary="${mixedBoundary}"`,
+        ``,
+        `--${mixedBoundary}`,
+        `Content-Type: multipart/alternative; boundary="${altBoundary}"`,
+        ``,
+        `--${altBoundary}`,
+        `Content-Type: text/plain; charset=utf-8`,
+        ``,
+        `Your project has been scheduled. Please view this email in an HTML-compatible email client for full details.`,
+        ``,
+        `--${altBoundary}`,
+        `Content-Type: text/html; charset=utf-8`,
+        ``,
+        htmlBody,
+        ``,
+        `--${altBoundary}--`,
+        ``,
+        `--${mixedBoundary}`,
+        `Content-Type: text/calendar; charset=utf-8; name="event.ics"`,
+        `Content-Disposition: attachment; filename="event.ics"`,
+        `Content-Transfer-Encoding: base64`,
+        ``,
+        btoa(icsAttachment),
+        ``,
+        `--${mixedBoundary}--`,
+        `.`,
+      ];
+    } else {
+      // Simple email without attachments
+      emailContent = [
+        `From: CEB Building <${smtpUser}>`,
+        `To: ${to}`,
+        `Subject: ${subject}`,
+        `MIME-Version: 1.0`,
+        `Date: ${new Date().toUTCString()}`,
+        `Message-ID: <${Date.now()}.${Math.random().toString(36).substring(2)}@cebbuilding.com>`,
+        `Content-Type: multipart/alternative; boundary="${altBoundary}"`,
+        ``,
+        `--${altBoundary}`,
+        `Content-Type: text/plain; charset=utf-8`,
+        ``,
+        `Your project has been scheduled. Please view this email in an HTML-compatible email client for full details.`,
+        ``,
+        `--${altBoundary}`,
+        `Content-Type: text/html; charset=utf-8`,
+        ``,
+        htmlBody,
+        ``,
+        `--${altBoundary}--`,
+        `.`,
+      ];
+    }
+    
+    await conn.write(encoder.encode(emailContent.join('\r\n') + '\r\n'));
+    const sendResponse = await read();
+    
+    if (!sendResponse.startsWith('250')) {
+      throw new Error('Message rejected after DATA');
+    }
+
+    await write('QUIT');
+    try { await read(); } catch { /* ignore quit response */ }
+  } finally {
+    conn.close();
   }
 }
 
