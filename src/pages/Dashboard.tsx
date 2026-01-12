@@ -27,7 +27,6 @@ export default function Dashboard() {
   // Use DB clients if available, otherwise fall back to local
   const clients = dbClients.length > 0 ? dbClients : localClients;
   const invoices = localInvoices;
-  const [invoices] = useLocalStorage<Invoice[]>('ceb-invoices', mockInvoices);
   
   // Dashboard avatar state
   const [dashboardLogoUrl, setDashboardLogoUrl] = useState<string | null>(null);
