@@ -1,10 +1,14 @@
 import { useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, FolderKanban, Receipt, BarChart3, Menu, LogOut, Car, CalendarDays, Calculator } from 'lucide-react';
+import { LayoutDashboard, Users, FolderKanban, Receipt, BarChart3, Menu, LogOut, Car, CalendarDays, Calculator, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserLogo } from '@/hooks/useUserLogo';
+import { useSchedulingPro } from '@/hooks/useSchedulingPro';
+import { useFinancialPro } from '@/hooks/useFinancialPro';
+import { useMileagePro } from '@/hooks/useMileagePro';
+import { useTaxPro } from '@/hooks/useTaxPro';
 import cebLogo from '@/assets/ceb-logo.png';
 
 interface AppLayoutProps {
@@ -36,9 +40,21 @@ export function AppLayout({
     signOut
   } = useAuth();
   const { logoUrl } = useUserLogo();
+  const { isEnabled: schedulingEnabled } = useSchedulingPro();
+  const { isEnabled: financialEnabled } = useFinancialPro();
+  const { isEnabled: mileageEnabled } = useMileagePro();
+  const { isEnabled: taxEnabled } = useTaxPro();
   
   // Use custom logo if set, otherwise fall back to default
   const displayLogo = logoUrl || cebLogo;
+  
+  // Map of Pro feature enabled states
+  const proEnabledMap: Record<string, boolean> = {
+    '/scheduling': schedulingEnabled,
+    '/reports': financialEnabled,
+    '/mileage': mileageEnabled,
+    '/tax-pro': taxEnabled,
+  };
   const handleSignOut = async () => {
     await signOut();
     navigate('/auth', {
@@ -90,6 +106,7 @@ export function AppLayout({
           {/* Pro Features */}
           {proNavigation.map(item => {
             const isActive = location.pathname === item.href;
+            const isUnlocked = proEnabledMap[item.href];
             return (
               <NavLink 
                 key={item.name} 
@@ -101,7 +118,10 @@ export function AppLayout({
                 )}
               >
                 <item.icon className="h-5 w-5" />
-                {item.name}
+                <span className="flex-1">{item.name}</span>
+                {!isUnlocked && (
+                  <Lock className="h-3.5 w-3.5 text-sidebar-foreground/40" />
+                )}
               </NavLink>
             );
           })}
