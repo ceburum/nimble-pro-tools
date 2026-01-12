@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, FolderKanban, Receipt, BarChart3, Menu, LogOut, Car, CalendarDays } from 'lucide-react';
+import { LayoutDashboard, Users, FolderKanban, Receipt, BarChart3, Menu, LogOut, Car, CalendarDays, Calculator } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
@@ -38,6 +38,10 @@ const navigation = [{
   name: 'Mileage Pro',
   href: '/mileage',
   icon: Car
+}, {
+  name: 'Tax Pro',
+  href: '/tax-pro',
+  icon: Calculator
 }];
 export function AppLayout({
   children
