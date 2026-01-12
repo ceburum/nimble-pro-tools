@@ -85,26 +85,25 @@ export function TaxExportDialog({ selectedYear }: TaxExportDialogProps) {
     // Expenses Section
     if (includeExpenses) {
       sections.push('=== EXPENSES BY CATEGORY ===');
-      sections.push('Category,Description,Date,Amount,Vendor');
+      sections.push('Category,Description,Date,Amount,Project');
       
       const allReceipts = projects.flatMap(p => p.receipts.map(r => ({ ...r, projectTitle: p.title })));
       const yearReceipts = allReceipts.filter(r => new Date(r.createdAt).getFullYear() === selectedYear);
       
-      // Group by category
-      const byCategory: Record<string, typeof yearReceipts> = {};
+      // Group by project (since category_id isn't in the frontend type yet)
+      const byProject: Record<string, typeof yearReceipts> = {};
       yearReceipts.forEach(r => {
-        const cat = categories.find(c => c.id === r.categoryId);
-        const catName = cat?.name || 'Uncategorized';
-        if (!byCategory[catName]) byCategory[catName] = [];
-        byCategory[catName].push(r);
+        const projectName = r.projectTitle || 'General';
+        if (!byProject[projectName]) byProject[projectName] = [];
+        byProject[projectName].push(r);
       });
       
-      Object.entries(byCategory).forEach(([cat, receipts]) => {
+      Object.entries(byProject).forEach(([project, receipts]) => {
         receipts.forEach(r => {
-          sections.push(`"${cat}","${r.description}","${format(r.createdAt, 'yyyy-MM-dd')}","${r.amount.toFixed(2)}","${r.vendor || ''}"`);
+          sections.push(`"${project}","${r.description}","${format(r.createdAt, 'yyyy-MM-dd')}","${r.amount.toFixed(2)}","${r.projectTitle || ''}"`);
         });
-        const catTotal = receipts.reduce((sum, r) => sum + r.amount, 0);
-        sections.push(`"${cat} SUBTOTAL","","","${catTotal.toFixed(2)}",""`);
+        const projectTotal = receipts.reduce((sum, r) => sum + r.amount, 0);
+        sections.push(`"${project} SUBTOTAL","","","${projectTotal.toFixed(2)}",""`);
       });
       
       const totalExpenses = yearReceipts.reduce((sum, r) => sum + r.amount, 0);
