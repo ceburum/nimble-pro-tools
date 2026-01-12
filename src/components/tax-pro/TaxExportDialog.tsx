@@ -1,7 +1,5 @@
 import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
 import {
   Dialog,
   DialogContent,
@@ -14,15 +12,14 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { TaxDisclaimer } from './TaxDisclaimer';
 import { useInvoices } from '@/hooks/useInvoices';
-import { useProjects } from '@/hooks/useProjects';
 import { useCapitalAssets } from '@/hooks/useCapitalAssets';
 import { use1099Tracking } from '@/hooks/use1099Tracking';
 import { useSubcontractorPayments } from '@/hooks/useSubcontractorPayments';
 import { useMileageTrips } from '@/hooks/useMileageTrips';
 import { useIrsMileageRates } from '@/hooks/useIrsMileageRates';
 import { useClients } from '@/hooks/useClients';
-import { useExpenseCategories } from '@/hooks/useExpenseCategories';
-import { Download, FileText, FileSpreadsheet } from 'lucide-react';
+import { useCategorizedExpenses } from '@/hooks/useCategorizedExpenses';
+import { Download, FileSpreadsheet } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 
@@ -40,17 +37,15 @@ export function TaxExportDialog({ selectedYear }: TaxExportDialogProps) {
   const [include1099, setInclude1099] = useState(true);
 
   const { invoices } = useInvoices();
-  const { projects } = useProjects();
   const { assets } = useCapitalAssets();
   const { eligible1099Clients } = use1099Tracking();
   const { getTotalByClient } = useSubcontractorPayments();
   const { trips } = useMileageTrips();
   const { getRateForYear } = useIrsMileageRates();
   const { clients } = useClients();
-  const { categories } = useExpenseCategories();
-
-  const formatCurrency = (amount: number) =>
-    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(amount);
+  
+  // Use categorized expenses for Schedule C format
+  const { expenses, byIrsCode, totalCategorized, totalUncategorized } = useCategorizedExpenses(undefined, selectedYear);
 
   const generateCSV = () => {
     const sections: string[] = [];
@@ -82,32 +77,35 @@ export function TaxExportDialog({ selectedYear }: TaxExportDialogProps) {
       sections.push('');
     }
 
-    // Expenses Section
+    // Expenses Section - Now grouped by IRS Schedule C category
     if (includeExpenses) {
-      sections.push('=== EXPENSES BY CATEGORY ===');
-      sections.push('Category,Description,Date,Amount,Project');
+      sections.push('=== EXPENSES BY SCHEDULE C CATEGORY ===');
+      sections.push('IRS Line,Category,Description,Date,Amount,Vendor');
       
-      const allReceipts = projects.flatMap(p => p.receipts.map(r => ({ ...r, projectTitle: p.title })));
-      const yearReceipts = allReceipts.filter(r => new Date(r.createdAt).getFullYear() === selectedYear);
-      
-      // Group by project (since category_id isn't in the frontend type yet)
-      const byProject: Record<string, typeof yearReceipts> = {};
-      yearReceipts.forEach(r => {
-        const projectName = r.projectTitle || 'General';
-        if (!byProject[projectName]) byProject[projectName] = [];
-        byProject[projectName].push(r);
-      });
-      
-      Object.entries(byProject).forEach(([project, receipts]) => {
-        receipts.forEach(r => {
-          sections.push(`"${project}","${r.description}","${format(r.createdAt, 'yyyy-MM-dd')}","${r.amount.toFixed(2)}","${r.projectTitle || ''}"`);
+      // Output expenses grouped by IRS code
+      byIrsCode.forEach((data) => {
+        // Get all expenses for this IRS code
+        const categoryExpenses = expenses.filter(e => e.irsCode === data.irsCode);
+        
+        categoryExpenses.forEach(exp => {
+          sections.push(`"${data.irsCode}","${data.lineName}","${exp.description}","${format(exp.date, 'yyyy-MM-dd')}","${exp.amount.toFixed(2)}","${exp.vendor || ''}"`);
         });
-        const projectTotal = receipts.reduce((sum, r) => sum + r.amount, 0);
-        sections.push(`"${project} SUBTOTAL","","","${projectTotal.toFixed(2)}",""`);
+        
+        sections.push(`"${data.irsCode} SUBTOTAL","${data.lineName}","","","${data.total.toFixed(2)}",""`);
       });
       
-      const totalExpenses = yearReceipts.reduce((sum, r) => sum + r.amount, 0);
-      sections.push(`"TOTAL EXPENSES","","","${totalExpenses.toFixed(2)}",""`);
+      // Add uncategorized expenses
+      const uncategorizedExpenses = expenses.filter(e => !e.categoryId);
+      if (uncategorizedExpenses.length > 0) {
+        sections.push('"---","UNCATEGORIZED EXPENSES","","","",""');
+        uncategorizedExpenses.forEach(exp => {
+          sections.push(`"","Uncategorized","${exp.description}","${format(exp.date, 'yyyy-MM-dd')}","${exp.amount.toFixed(2)}","${exp.vendor || ''}"`);
+        });
+        sections.push(`"UNCATEGORIZED SUBTOTAL","","","","${totalUncategorized.toFixed(2)}",""`);
+      }
+      
+      sections.push(`"TOTAL CATEGORIZED EXPENSES","","","","${totalCategorized.toFixed(2)}",""`);
+      sections.push(`"TOTAL ALL EXPENSES","","","","${(totalCategorized + totalUncategorized).toFixed(2)}",""`);
       sections.push('');
     }
 
@@ -226,7 +224,7 @@ export function TaxExportDialog({ selectedYear }: TaxExportDialogProps) {
                     checked={includeExpenses}
                     onCheckedChange={(c) => setIncludeExpenses(!!c)}
                   />
-                  <Label htmlFor="expenses" className="font-normal">Expenses by Category</Label>
+                  <Label htmlFor="expenses" className="font-normal">Expenses by Schedule C Category</Label>
                 </div>
 
                 <div className="flex items-center space-x-2">

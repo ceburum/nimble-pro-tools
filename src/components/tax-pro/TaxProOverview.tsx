@@ -1,13 +1,17 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { DollarSign, Car, Package, Users, FileText, TrendingUp } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { DollarSign, Car, Package, Users, FileText, TrendingUp, AlertCircle } from 'lucide-react';
 import { TaxDisclaimer } from './TaxDisclaimer';
 import { useCapitalAssets } from '@/hooks/useCapitalAssets';
 import { use1099Tracking } from '@/hooks/use1099Tracking';
 import { useIrsMileageRates } from '@/hooks/useIrsMileageRates';
 import { useMileageTrips } from '@/hooks/useMileageTrips';
 import { useInvoices } from '@/hooks/useInvoices';
-import { useProjects } from '@/hooks/useProjects';
+import { useCategorizedExpenses } from '@/hooks/useCategorizedExpenses';
+import { useFinancialPro } from '@/hooks/useFinancialPro';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Link } from 'react-router-dom';
 
 interface TaxProOverviewProps {
   selectedYear: number;
@@ -19,9 +23,18 @@ export function TaxProOverview({ selectedYear }: TaxProOverviewProps) {
   const { getRateForYear } = useIrsMileageRates();
   const { trips, loading: mileageLoading } = useMileageTrips();
   const { invoices, loading: invoicesLoading } = useInvoices();
-  const { projects, loading: projectsLoading } = useProjects();
+  const { isEnabled: hasFinancialPro } = useFinancialPro();
+  
+  // Use categorized expenses for accurate tax reporting
+  const { 
+    totalCategorized, 
+    totalUncategorized, 
+    uncategorizedExpenses,
+    byIrsCode,
+    loading: expensesLoading 
+  } = useCategorizedExpenses(undefined, selectedYear);
 
-  const loading = assetsLoading || clientsLoading || mileageLoading || invoicesLoading || projectsLoading;
+  const loading = assetsLoading || clientsLoading || mileageLoading || invoicesLoading || expensesLoading;
 
   // Calculate year-specific data
   const yearTrips = trips.filter(t => t.startTime && new Date(t.startTime).getFullYear() === selectedYear);
@@ -34,10 +47,8 @@ export function TaxProOverview({ selectedYear }: TaxProOverviewProps) {
     sum + inv.items.reduce((itemSum, item) => itemSum + (item.quantity * item.unitPrice), 0), 0
   );
 
-  // Get receipts from projects
-  const allReceipts = projects.flatMap(p => p.receipts);
-  const yearReceipts = allReceipts.filter(r => new Date(r.createdAt).getFullYear() === selectedYear);
-  const totalExpenses = yearReceipts.reduce((sum, r) => sum + r.amount, 0);
+  // Total expenses now includes categorized + uncategorized
+  const totalExpenses = totalCategorized + totalUncategorized;
 
   const clients1099 = getClientsNear1099Threshold(selectedYear);
   const clientsMeetingThreshold = clients1099.filter(c => c.meetsThreshold).length;
@@ -69,6 +80,28 @@ export function TaxProOverview({ selectedYear }: TaxProOverviewProps) {
     <div className="space-y-6">
       <TaxDisclaimer variant="card" />
 
+      {/* Uncategorized Expense Prompt */}
+      {uncategorizedExpenses.length > 0 && (
+        <Alert className="border-amber-200 bg-amber-50">
+          <AlertCircle className="h-4 w-4 text-amber-600" />
+          <AlertDescription className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <span className="text-amber-800">
+              You have {uncategorizedExpenses.length} expense{uncategorizedExpenses.length !== 1 ? 's' : ''} without IRS categories ({formatCurrency(totalUncategorized)}).
+              {hasFinancialPro 
+                ? ' Categorize them in Statement Reconciliation or add categories to project receipts.'
+                : ' Add categories to receipts in your Projects for better tax organization.'}
+            </span>
+            <Button asChild variant="outline" size="sm" className="border-amber-300 text-amber-700 hover:bg-amber-100">
+              {hasFinancialPro ? (
+                <Link to="/reports">Go to Reports</Link>
+              ) : (
+                <Link to="/projects">View Projects</Link>
+              )}
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {/* Total Income */}
         <Card>
@@ -93,7 +126,8 @@ export function TaxProOverview({ selectedYear }: TaxProOverviewProps) {
           <CardContent>
             <div className="text-2xl font-bold text-red-600">{formatCurrency(totalExpenses)}</div>
             <p className="text-xs text-muted-foreground">
-              From {yearReceipts.length} receipt{yearReceipts.length !== 1 ? 's' : ''}
+              {byIrsCode.length} categor{byIrsCode.length !== 1 ? 'ies' : 'y'}
+              {totalUncategorized > 0 && ` + ${formatCurrency(totalUncategorized)} uncategorized`}
             </p>
           </CardContent>
         </Card>
