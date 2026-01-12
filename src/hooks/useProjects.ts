@@ -45,6 +45,10 @@ interface DbProjectReceipt {
   description: string;
   amount: number;
   created_at: string;
+  vendor: string | null;
+  category_id: string | null;
+  is_capital_asset: boolean | null;
+  tax_notes: string | null;
 }
 
 const mapDbProjectToProject = (
@@ -91,6 +95,10 @@ const mapDbProjectToProject = (
       description: r.description,
       amount: Number(r.amount),
       createdAt: new Date(r.created_at),
+      vendor: r.vendor || undefined,
+      categoryId: r.category_id || undefined,
+      isCapitalAsset: r.is_capital_asset || undefined,
+      taxNotes: r.tax_notes || undefined,
     })),
     mileageEntries: [],
   };
