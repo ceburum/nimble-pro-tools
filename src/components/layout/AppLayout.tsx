@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, FolderKanban, Receipt, BarChart3, Menu, LogOut, Car, CalendarDays, Calculator, Lock, Scissors } from 'lucide-react';
+import { LayoutDashboard, Users, FolderKanban, Receipt, BarChart3, Menu, LogOut, Car, CalendarDays, Calculator, Lock, Scissors, StickyNote } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
@@ -21,6 +21,7 @@ const coreNavigation = [
   { name: 'Clients', href: '/clients', icon: Users },
   { name: 'Projects', href: '/projects', icon: FolderKanban },
   { name: 'Invoices', href: '/invoices', icon: Receipt },
+  { name: 'Notepad', href: '/notepad', icon: StickyNote },
 ];
 
 // Pro add-ons

@@ -16,6 +16,7 @@ import MileagePro from "./pages/MileagePro";
 import SchedulingPro from "./pages/SchedulingPro";
 import TaxPro from "./pages/TaxPro";
 import ServiceMenu from "./pages/ServiceMenu";
+import Notepad from "./pages/Notepad";
 import PayInvoice from "./pages/PayInvoice";
 import Auth from "./pages/Auth";
 import Install from "./pages/Install";
@@ -111,6 +112,14 @@ const App = () => {
                 element={
                   <ProtectedRoute>
                     <AppLayout><ServiceMenu /></AppLayout>
+                  </ProtectedRoute>
+                } 
+              />
+              <Route
+                path="/notepad" 
+                element={
+                  <ProtectedRoute>
+                    <AppLayout><Notepad /></AppLayout>
                   </ProtectedRoute>
                 } 
               />

@@ -7,6 +7,7 @@ import {
   ImagePlus,
   FileText,
   DollarSign,
+  StickyNote,
 } from 'lucide-react';
 import { Project, Client, ProjectPhoto } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -23,6 +24,8 @@ import { ProjectPhotoUploadDialog } from './ProjectPhotoUploadDialog';
 import { ProjectReceiptUploadDialog } from './ProjectReceiptUploadDialog';
 import { ProjectDetailDialog } from './ProjectDetailDialog';
 import { useToast } from '@/hooks/use-toast';
+import { useProjects } from '@/hooks/useProjects';
+import { useProjectNotes } from '@/hooks/useProjectNotes';
 
 interface ProjectCardProps {
   project: Project;
@@ -30,7 +33,6 @@ interface ProjectCardProps {
   onUpdate: (project: Project) => void;
   onDelete: (id: string) => void;
   onCreateInvoice: (project: Project) => void;
-  onAddReceipt: (projectId: string, file: File, storeName: string, totalAmount: number) => Promise<boolean>;
 }
 
 const statusConfig = {
@@ -48,26 +50,48 @@ export function ProjectCard({
   onUpdate,
   onDelete,
   onCreateInvoice,
-  onAddReceipt,
 }: ProjectCardProps) {
   const [photoDialogOpen, setPhotoDialogOpen] = useState(false);
   const [receiptDialogOpen, setReceiptDialogOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [isSavingPhoto, setIsSavingPhoto] = useState(false);
   const { toast } = useToast();
+  const { addPhoto, addReceipt } = useProjects();
+  const { notes } = useProjectNotes(project.id);
 
   const status = statusConfig[project.status];
   const totalExpenses = project.receipts.reduce((sum, r) => sum + r.amount, 0);
   const quoteTotal = project.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
 
-  const handleAddPhotos = (photos: ProjectPhoto[]) => {
-    console.log('handleAddPhotos called with', photos.length, 'photos for project', project.id);
-    const updatedProject: Project = {
-      ...project,
-      photos: [...project.photos, ...photos],
-    };
-    console.log('Calling onUpdate with', updatedProject.photos.length, 'total photos');
-    onUpdate(updatedProject);
-    toast({ title: `${photos.length} photo${photos.length > 1 ? 's' : ''} added` });
+  // Handle photos using the centralized useProjects hook
+  const handleSavePhotos = async (photos: ProjectPhoto[]) => {
+    setIsSavingPhoto(true);
+    try {
+      for (const photo of photos) {
+        // Convert dataUrl to File for storage upload
+        const response = await fetch(photo.dataUrl);
+        const blob = await response.blob();
+        const file = new File([blob], `photo-${Date.now()}.jpg`, { type: 'image/jpeg' });
+        
+        const success = await addPhoto(project.id, file, photo.type, photo.caption);
+        if (!success) {
+          toast({ title: 'Error saving photo', variant: 'destructive' });
+          return;
+        }
+      }
+      toast({ title: 'Photos saved', description: `Added ${photos.length} photo(s)` });
+    } catch (error) {
+      console.error('Error saving photos:', error);
+      toast({ title: 'Error saving photos', variant: 'destructive' });
+    } finally {
+      setIsSavingPhoto(false);
+    }
+  };
+
+  // Handle receipts using the centralized useProjects hook
+  const handleSaveReceipt = async (file: File, storeName: string, totalAmount: number): Promise<boolean> => {
+    const success = await addReceipt(project.id, file, storeName, totalAmount);
+    return success;
   };
 
   return (
@@ -123,6 +147,12 @@ export function ProjectCard({
             <Receipt className="h-4 w-4" />
             <span>${totalExpenses.toFixed(0)}</span>
           </div>
+          {notes.length > 0 && (
+            <div className="flex items-center gap-1">
+              <StickyNote className="h-4 w-4" />
+              <span>{notes.length}</span>
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-2 gap-2" onClick={(e) => e.stopPropagation()}>
@@ -151,16 +181,15 @@ export function ProjectCard({
         open={photoDialogOpen}
         onOpenChange={setPhotoDialogOpen}
         projectId={project.id}
-        onSave={handleAddPhotos}
+        onSave={handleSavePhotos}
       />
 
       <ProjectReceiptUploadDialog
         open={receiptDialogOpen}
         onOpenChange={setReceiptDialogOpen}
         projectId={project.id}
-        onSave={(file, storeName, totalAmount) => onAddReceipt(project.id, file, storeName, totalAmount)}
+        onSave={handleSaveReceipt}
       />
     </>
   );
 }
-
