@@ -35,16 +35,6 @@ export function useFeatureFlags() {
     return updated;
   }, []);
 
-  // Enable cloud backup
-  const enableCloudBackup = useCallback(() => {
-    return updateFlag('cloud_backup_enabled', true);
-  }, [updateFlag]);
-
-  // Disable cloud backup
-  const disableCloudBackup = useCallback(() => {
-    return updateFlag('cloud_backup_enabled', false);
-  }, [updateFlag]);
-
   // Enable a pro feature
   const enableProFeature = useCallback((feature: 'tax' | 'scheduling' | 'mileage' | 'financial') => {
     const key = `${feature}_pro_enabled` as keyof FeatureFlags;
@@ -67,17 +57,15 @@ export function useFeatureFlags() {
     loading,
     updateFlag,
     updateFlags,
-    enableCloudBackup,
-    disableCloudBackup,
     enableProFeature,
     disableProFeature,
     toggleDevMode,
     // Convenience getters
-    isCloudBackupEnabled: flags.cloud_backup_enabled,
     isTaxProEnabled: flags.tax_pro_enabled,
     isSchedulingProEnabled: flags.scheduling_pro_enabled,
     isMileageProEnabled: flags.mileage_pro_enabled,
     isFinancialProEnabled: flags.financial_pro_enabled,
+    isServiceMenuEnabled: flags.service_menu_enabled,
     isDevModeEnabled: flags.dev_mode_enabled,
     hasMigrationCompleted: flags.migration_completed,
   };

@@ -1,10 +1,7 @@
-// Feature flags stored locally, control cloud sync and pro features
+// Feature flags stored locally, control pro features and dev mode
 
 export interface FeatureFlags {
-  // Core sync control
-  cloud_backup_enabled: boolean;
-  
-  // Pro feature flags
+  // Pro feature flags (local state, synced with user_settings)
   tax_pro_enabled: boolean;
   scheduling_pro_enabled: boolean;
   mileage_pro_enabled: boolean;
@@ -13,7 +10,7 @@ export interface FeatureFlags {
   // Add-on feature flags
   service_menu_enabled: boolean;
   
-  // Developer mode (admin only)
+  // Developer mode (admin only - unlocks all features for testing)
   dev_mode_enabled: boolean;
   
   // Migration flags
@@ -24,9 +21,8 @@ export interface FeatureFlags {
 
 const FEATURE_FLAGS_KEY = 'nimble_feature_flags';
 
-// Default values - local-only mode by default
+// Default values
 export const DEFAULT_FEATURE_FLAGS: FeatureFlags = {
-  cloud_backup_enabled: false,
   tax_pro_enabled: false,
   scheduling_pro_enabled: false,
   mileage_pro_enabled: false,
@@ -71,10 +67,6 @@ export function setFeatureFlag<K extends keyof FeatureFlags>(
   return setFeatureFlags({ [key]: value });
 }
 
-export function isCloudSyncEnabled(): boolean {
-  return getFeatureFlags().cloud_backup_enabled;
-}
-
 export function isProFeatureEnabled(feature: 'tax' | 'scheduling' | 'mileage' | 'financial'): boolean {
   const flags = getFeatureFlags();
   switch (feature) {
@@ -91,12 +83,8 @@ export function isProFeatureEnabled(feature: 'tax' | 'scheduling' | 'mileage' | 
   }
 }
 
-export function enableCloudBackup(): FeatureFlags {
-  return setFeatureFlag('cloud_backup_enabled', true);
-}
-
-export function disableCloudBackup(): FeatureFlags {
-  return setFeatureFlag('cloud_backup_enabled', false);
+export function isDevModeEnabled(): boolean {
+  return getFeatureFlags().dev_mode_enabled;
 }
 
 export function markMigrationStarted(): FeatureFlags {

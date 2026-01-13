@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PageHeader } from '@/components/layout/PageHeader';
-import { ProUpgradePage } from '@/components/pro/ProUpgradePage';
+import { FeatureNotice } from '@/components/ui/feature-notice';
 import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 import {
   Dialog,
@@ -39,24 +39,6 @@ export default function ServiceMenu() {
       setEnabling(false);
     }
   };
-
-  if (!isEnabled) {
-    return (
-      <ProUpgradePage
-        icon={<Scissors className="h-8 w-8 text-primary" />}
-        title="Service Menu"
-        description="Perfect for salons, barbershops, massage therapists, and other service-based businesses."
-        features={[
-          'Create and manage your service offerings',
-          'Set prices and optional durations',
-          'Quick appointment creation from services',
-          'Automatic invoice line items',
-        ]}
-        onEnable={handleEnableServiceMenu}
-        loading={enabling}
-      />
-    );
-  }
 
   const handleOpenDialog = (service?: Service) => {
     if (service) {
@@ -122,118 +104,143 @@ export default function ServiceMenu() {
         title="Service Menu"
         description="Manage your service offerings"
         action={
-          <Button className="gap-2" onClick={() => handleOpenDialog()}>
-            <Plus className="h-4 w-4" />
-            Add Service
-          </Button>
+          isEnabled ? (
+            <Button className="gap-2" onClick={() => handleOpenDialog()}>
+              <Plus className="h-4 w-4" />
+              Add Service
+            </Button>
+          ) : undefined
         }
       />
 
-      {services.length === 0 ? (
-        <div className="text-center py-12">
-          <Scissors className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-          <p className="text-muted-foreground">No services yet</p>
-          <Button variant="link" className="mt-2" onClick={() => handleOpenDialog()}>
-            Add your first service
-          </Button>
-        </div>
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {services.map((service) => (
-            <div
-              key={service.id}
-              className="bg-card border border-border rounded-lg p-4 hover:shadow-md transition-shadow group"
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-medium text-foreground truncate">{service.name}</h3>
-                  <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
-                    <span className="flex items-center gap-1">
-                      <DollarSign className="h-3.5 w-3.5" />
-                      ${service.price.toFixed(2)}
-                    </span>
-                    {service.duration && (
-                      <span className="flex items-center gap-1">
-                        <Clock className="h-3.5 w-3.5" />
-                        {service.duration} min
-                      </span>
-                    )}
+      {/* Show inline notice if feature is not enabled */}
+      {!isEnabled && (
+        <FeatureNotice
+          icon={<Scissors className="h-8 w-8 text-primary" />}
+          title="Service Menu"
+          description="Perfect for salons, barbershops, massage therapists, and other service-based businesses."
+          features={[
+            'Create and manage your service offerings',
+            'Set prices and optional durations',
+            'Quick appointment creation from services',
+            'Automatic invoice line items',
+          ]}
+          onEnable={handleEnableServiceMenu}
+          loading={enabling}
+          className="max-w-2xl mx-auto"
+        />
+      )}
+
+      {/* Show content when enabled */}
+      {isEnabled && (
+        <>
+          {services.length === 0 ? (
+            <div className="text-center py-12">
+              <Scissors className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <p className="text-muted-foreground">No services yet</p>
+              <Button variant="link" className="mt-2" onClick={() => handleOpenDialog()}>
+                Add your first service
+              </Button>
+            </div>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {services.map((service) => (
+                <div
+                  key={service.id}
+                  className="bg-card border border-border rounded-lg p-4 hover:shadow-md transition-shadow group"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-medium text-foreground truncate">{service.name}</h3>
+                      <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <DollarSign className="h-3.5 w-3.5" />
+                          ${service.price.toFixed(2)}
+                        </span>
+                        {service.duration && (
+                          <span className="flex items-center gap-1">
+                            <Clock className="h-3.5 w-3.5" />
+                            {service.duration} min
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => handleOpenDialog(service)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-destructive hover:text-destructive"
+                        onClick={() => handleDelete(service)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
-                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => handleOpenDialog(service)}
-                  >
-                    <Pencil className="h-4 w-4" />
+              ))}
+            </div>
+          )}
+
+          {/* Add/Edit Dialog */}
+          <Dialog open={dialogOpen} onOpenChange={handleCloseDialog}>
+            <DialogContent className="sm:max-w-[400px]">
+              <DialogHeader>
+                <DialogTitle>{editingService ? 'Edit Service' : 'Add Service'}</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="service-name">Service Name</Label>
+                  <Input
+                    id="service-name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="e.g., Manicure, Haircut"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="service-price">Price ($)</Label>
+                  <Input
+                    id="service-price"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={price}
+                    onChange={(e) => setPrice(e.target.value)}
+                    placeholder="0.00"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="service-duration">Duration (minutes, optional)</Label>
+                  <Input
+                    id="service-duration"
+                    type="number"
+                    min="0"
+                    value={duration}
+                    onChange={(e) => setDuration(e.target.value)}
+                    placeholder="30"
+                  />
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={handleCloseDialog}>
+                    Cancel
                   </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-destructive hover:text-destructive"
-                    onClick={() => handleDelete(service)}
-                  >
-                    <Trash2 className="h-4 w-4" />
+                  <Button onClick={handleSave}>
+                    {editingService ? 'Save Changes' : 'Add Service'}
                   </Button>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            </DialogContent>
+          </Dialog>
+        </>
       )}
-
-      {/* Add/Edit Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={handleCloseDialog}>
-        <DialogContent className="sm:max-w-[400px]">
-          <DialogHeader>
-            <DialogTitle>{editingService ? 'Edit Service' : 'Add Service'}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="service-name">Service Name</Label>
-              <Input
-                id="service-name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="e.g., Manicure, Haircut"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="service-price">Price ($)</Label>
-              <Input
-                id="service-price"
-                type="number"
-                min="0"
-                step="0.01"
-                value={price}
-                onChange={(e) => setPrice(e.target.value)}
-                placeholder="0.00"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="service-duration">Duration (minutes, optional)</Label>
-              <Input
-                id="service-duration"
-                type="number"
-                min="0"
-                value={duration}
-                onChange={(e) => setDuration(e.target.value)}
-                placeholder="30"
-              />
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={handleCloseDialog}>
-                Cancel
-              </Button>
-              <Button onClick={handleSave}>
-                {editingService ? 'Save Changes' : 'Add Service'}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
