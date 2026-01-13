@@ -1,17 +1,18 @@
 import { useState, useEffect, useCallback } from 'react';
-import { ProjectNote } from '@/types/notes';
-import { getDb, generateLocalId } from '@/lib/localDb';
+import { GlobalNote } from '@/types/notes';
+import { generateLocalId } from '@/lib/localDb';
 
-// Storage key prefix for notes in localStorage (simple, reliable)
-const NOTES_STORAGE_KEY = 'nimble_project_notes';
+// Storage key for global notes in localStorage (shared with useGlobalNotes)
+const NOTES_STORAGE_KEY = 'nimble_global_notes';
 
-function getStoredNotes(): ProjectNote[] {
+function getStoredNotes(): GlobalNote[] {
   try {
     const stored = localStorage.getItem(NOTES_STORAGE_KEY);
     if (stored) {
       const parsed = JSON.parse(stored);
       return parsed.map((n: any) => ({
         ...n,
+        projectIds: n.projectIds || (n.projectId ? [n.projectId] : []),
         createdAt: new Date(n.createdAt),
         updatedAt: new Date(n.updatedAt),
       }));
@@ -22,7 +23,7 @@ function getStoredNotes(): ProjectNote[] {
   return [];
 }
 
-function saveStoredNotes(notes: ProjectNote[]): void {
+function saveStoredNotes(notes: GlobalNote[]): void {
   try {
     localStorage.setItem(NOTES_STORAGE_KEY, JSON.stringify(notes));
   } catch (error) {
@@ -31,23 +32,23 @@ function saveStoredNotes(notes: ProjectNote[]): void {
 }
 
 export function useProjectNotes(projectId: string) {
-  const [notes, setNotes] = useState<ProjectNote[]>([]);
+  const [notes, setNotes] = useState<GlobalNote[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Load notes for this project
   useEffect(() => {
     const allNotes = getStoredNotes();
-    const projectNotes = allNotes.filter(n => n.projectId === projectId);
+    const projectNotes = allNotes.filter(n => n.projectIds.includes(projectId));
     setNotes(projectNotes.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()));
     setLoading(false);
   }, [projectId]);
 
-  // Add a new note
-  const addNote = useCallback((body: string, title?: string): ProjectNote => {
+  // Add a new note (automatically assigned to this project)
+  const addNote = useCallback((body: string, title?: string): GlobalNote => {
     const now = new Date();
-    const newNote: ProjectNote = {
+    const newNote: GlobalNote = {
       id: generateLocalId(),
-      projectId,
+      projectIds: [projectId], // Automatically assign to current project
       title: title?.trim() || undefined,
       body: body.trim(),
       createdAt: now,
@@ -98,11 +99,25 @@ export function useProjectNotes(projectId: string) {
     return true;
   }, []);
 
+  // Remove note from this project only (doesn't delete globally)
+  const removeFromProject = useCallback((noteId: string): boolean => {
+    const allNotes = getStoredNotes();
+    const note = allNotes.find(n => n.id === noteId);
+    if (!note) return false;
+
+    note.projectIds = note.projectIds.filter(id => id !== projectId);
+    note.updatedAt = new Date();
+    saveStoredNotes(allNotes);
+    setNotes(prev => prev.filter(n => n.id !== noteId));
+    return true;
+  }, [projectId]);
+
   return {
     notes,
     loading,
     addNote,
     updateNote,
     deleteNote,
+    removeFromProject,
   };
 }

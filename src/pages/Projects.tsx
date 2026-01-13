@@ -236,7 +236,6 @@ export default function Projects() {
                     onUpdate={handleUpdateProject}
                     onDelete={handleDeleteProject}
                     onCreateInvoice={handleCreateInvoice}
-                    onAddReceipt={addReceipt}
                   />
                 ))}
               </div>

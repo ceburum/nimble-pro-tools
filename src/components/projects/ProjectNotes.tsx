@@ -3,16 +3,18 @@ import { useProjectNotes } from '@/hooks/useProjectNotes';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
-import { Plus, FileText, Trash2, Pencil, Check, X, Loader2 } from 'lucide-react';
+import { Plus, FileText, Trash2, Pencil, Check, X, Loader2, Unlink } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 
 interface ProjectNotesProps {
   projectId: string;
 }
 
 export function ProjectNotes({ projectId }: ProjectNotesProps) {
-  const { notes, loading, addNote, updateNote, deleteNote } = useProjectNotes(projectId);
+  const { notes, loading, addNote, updateNote, deleteNote, removeFromProject } = useProjectNotes(projectId);
+  const { toast } = useToast();
   const [isAdding, setIsAdding] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newBody, setNewBody] = useState('');
@@ -34,6 +36,7 @@ export function ProjectNotes({ projectId }: ProjectNotesProps) {
     setNewTitle('');
     setNewBody('');
     setIsAdding(false);
+    toast({ title: 'Note saved' });
   };
 
   const handleStartEdit = (noteId: string, title?: string, body?: string) => {
@@ -48,6 +51,7 @@ export function ProjectNotes({ projectId }: ProjectNotesProps) {
     setEditingId(null);
     setEditTitle('');
     setEditBody('');
+    toast({ title: 'Note updated' });
   };
 
   const handleCancelEdit = () => {
@@ -57,8 +61,16 @@ export function ProjectNotes({ projectId }: ProjectNotesProps) {
   };
 
   const handleDelete = (noteId: string) => {
-    if (confirm('Delete this note?')) {
+    if (confirm('Delete this note permanently?')) {
       deleteNote(noteId);
+      toast({ title: 'Note deleted' });
+    }
+  };
+
+  const handleRemoveFromProject = (noteId: string) => {
+    if (confirm('Remove this note from this project? (Note will remain in your Notepad)')) {
+      removeFromProject(noteId);
+      toast({ title: 'Note removed from project' });
     }
   };
 
@@ -179,6 +191,17 @@ export function ProjectNotes({ projectId }: ProjectNotesProps) {
                       </p>
                     </div>
                     <div className="flex gap-1 flex-shrink-0">
+                      {note.projectIds.length > 1 && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={() => handleRemoveFromProject(note.id)}
+                          title="Remove from this project"
+                        >
+                          <Unlink className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
                       <Button
                         variant="ghost"
                         size="icon"
