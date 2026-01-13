@@ -139,12 +139,31 @@ export default function Invoices() {
     }
   };
 
-  const handleSendText = (invoice: Invoice) => {
-    const client = clients.find((c) => c.id === invoice.clientId);
-    toast({
-      title: 'Coming soon',
-      description: `Text messaging to ${client?.phone} will be available soon.`,
-    });
+  const handleCopyLink = async (invoice: Invoice) => {
+    // Generate payment link using payment token
+    const paymentUrl = invoice.paymentToken 
+      ? `${window.location.origin}/pay/${invoice.paymentToken}`
+      : `${window.location.origin}/invoices/${invoice.id}`;
+    
+    try {
+      await navigator.clipboard.writeText(paymentUrl);
+      toast({
+        title: 'Link copied!',
+        description: 'Payment link copied to clipboard. Paste it in a text message to your client.',
+      });
+    } catch (error) {
+      // Fallback for browsers that don't support clipboard API
+      const textArea = document.createElement('textarea');
+      textArea.value = paymentUrl;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      toast({
+        title: 'Link copied!',
+        description: 'Payment link copied. Paste it in a text message.',
+      });
+    }
   };
 
   const [sendingReceipt, setSendingReceipt] = useState<string | null>(null);
@@ -301,7 +320,7 @@ export default function Invoices() {
               invoice={invoice}
               client={clients.find((c) => c.id === invoice.clientId)}
               onSendEmail={handleSendEmail}
-              onSendText={handleSendText}
+              onCopyLink={handleCopyLink}
               onMarkPaid={handleMarkPaid}
               onDelete={handleDelete}
               onClick={handleEditInvoice}

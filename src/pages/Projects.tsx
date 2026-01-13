@@ -135,12 +135,13 @@ export default function Projects() {
   const completedProjects = filteredProjects.filter((p) => p.status === 'completed');
   const invoicedProjects = filteredProjects.filter((p) => p.status === 'invoiced');
 
+  // Sort: Completed at top, Invoiced at bottom
   const statusGroups = [
+    { key: 'completed', label: 'Completed', icon: CheckCircle, projects: completedProjects },
     { key: 'in_progress', label: 'In Progress', icon: Play, projects: inProgressProjects },
     { key: 'accepted', label: 'Accepted', icon: CheckCircle, projects: acceptedProjects },
     { key: 'sent', label: 'Sent', icon: Send, projects: sentProjects },
     { key: 'draft', label: 'Drafts', icon: FolderKanban, projects: draftProjects },
-    { key: 'completed', label: 'Completed', icon: CheckCircle, projects: completedProjects },
     { key: 'invoiced', label: 'Invoiced', icon: DollarSign, projects: invoicedProjects },
   ].filter((g) => g.projects.length > 0);
 
