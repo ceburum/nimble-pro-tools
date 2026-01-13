@@ -23,6 +23,7 @@ import { cn } from '@/lib/utils';
 import { ProjectPhotoUploadDialog } from './ProjectPhotoUploadDialog';
 import { ProjectReceiptUploadDialog } from './ProjectReceiptUploadDialog';
 import { ProjectDetailDialog } from './ProjectDetailDialog';
+import { QuickNoteInput } from './QuickNoteInput';
 import { useToast } from '@/hooks/use-toast';
 import { useProjects } from '@/hooks/useProjects';
 import { useProjectNotes } from '@/hooks/useProjectNotes';
@@ -57,7 +58,7 @@ export function ProjectCard({
   const [isSavingPhoto, setIsSavingPhoto] = useState(false);
   const { toast } = useToast();
   const { addPhoto, addReceipt } = useProjects();
-  const { notes } = useProjectNotes(project.id);
+  const { notes, addNote } = useProjectNotes(project.id);
 
   const status = statusConfig[project.status];
   const totalExpenses = project.receipts.reduce((sum, r) => sum + r.amount, 0);
@@ -155,7 +156,7 @@ export function ProjectCard({
           )}
         </div>
 
-        <div className="grid grid-cols-2 gap-2" onClick={(e) => e.stopPropagation()}>
+        <div className="grid grid-cols-3 gap-2" onClick={(e) => e.stopPropagation()}>
           <Button variant="outline" size="sm" className="gap-1" onClick={() => setPhotoDialogOpen(true)}>
             <ImagePlus className="h-4 w-4" />
             Photo
@@ -164,6 +165,13 @@ export function ProjectCard({
             <FileText className="h-4 w-4" />
             Receipt
           </Button>
+          <QuickNoteInput
+            compact
+            onSave={(body) => {
+              addNote(body);
+              toast({ title: 'Note saved' });
+            }}
+          />
         </div>
       </div>
 

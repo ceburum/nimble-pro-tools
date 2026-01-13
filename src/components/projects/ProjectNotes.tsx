@@ -1,9 +1,9 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { useProjectNotes } from '@/hooks/useProjectNotes';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
-import { Plus, FileText, Trash2, Pencil, Check, X, Loader2, Unlink } from 'lucide-react';
+import { FileText, Trash2, Pencil, Check, X, Loader2, Unlink, Send } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -15,28 +15,31 @@ interface ProjectNotesProps {
 export function ProjectNotes({ projectId }: ProjectNotesProps) {
   const { notes, loading, addNote, updateNote, deleteNote, removeFromProject } = useProjectNotes(projectId);
   const { toast } = useToast();
-  const [isAdding, setIsAdding] = useState(false);
-  const [newTitle, setNewTitle] = useState('');
-  const [newBody, setNewBody] = useState('');
+  
+  // Quick-add state (always visible)
+  const [quickNote, setQuickNote] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const quickNoteRef = useRef<HTMLTextAreaElement>(null);
+  
+  // Edit state
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editBody, setEditBody] = useState('');
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Auto-focus textarea when adding
-  useEffect(() => {
-    if (isAdding && textareaRef.current) {
-      textareaRef.current.focus();
-    }
-  }, [isAdding]);
-
-  const handleAddNote = () => {
-    if (!newBody.trim()) return;
-    addNote(newBody, newTitle);
-    setNewTitle('');
-    setNewBody('');
-    setIsAdding(false);
+  const handleQuickAdd = () => {
+    if (!quickNote.trim()) return;
+    setIsSaving(true);
+    addNote(quickNote);
+    setQuickNote('');
+    setIsSaving(false);
     toast({ title: 'Note saved' });
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+      e.preventDefault();
+      handleQuickAdd();
+    }
   };
 
   const handleStartEdit = (noteId: string, title?: string, body?: string) => {
@@ -84,62 +87,38 @@ export function ProjectNotes({ projectId }: ProjectNotesProps) {
 
   return (
     <div className="space-y-4">
-      {/* Add Note Button / Form */}
-      {!isAdding ? (
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={() => setIsAdding(true)}
-          className="w-full justify-center"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Add Note
-        </Button>
-      ) : (
-        <div className="border border-border rounded-lg p-3 space-y-3 bg-muted/30">
-          <Input
-            placeholder="Title (optional)"
-            value={newTitle}
-            onChange={(e) => setNewTitle(e.target.value)}
-            className="text-sm"
-          />
-          <Textarea
-            ref={textareaRef}
-            placeholder="Write your note..."
-            value={newBody}
-            onChange={(e) => setNewBody(e.target.value)}
-            rows={3}
-            className="text-sm resize-none"
-          />
-          <div className="flex justify-end gap-2">
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={() => {
-                setIsAdding(false);
-                setNewTitle('');
-                setNewBody('');
-              }}
-            >
-              Cancel
-            </Button>
-            <Button 
-              size="sm" 
-              onClick={handleAddNote}
-              disabled={!newBody.trim()}
-            >
-              Save Note
-            </Button>
-          </div>
+      {/* Always-visible Quick Add */}
+      <div className="border border-border rounded-lg p-3 bg-muted/30">
+        <Textarea
+          ref={quickNoteRef}
+          placeholder="Add a quick note..."
+          value={quickNote}
+          onChange={(e) => setQuickNote(e.target.value)}
+          onKeyDown={handleKeyDown}
+          rows={2}
+          className="text-sm resize-none mb-2"
+        />
+        <div className="flex items-center justify-between">
+          <p className="text-xs text-muted-foreground hidden sm:block">
+            ⌘+Enter to save
+          </p>
+          <Button 
+            size="sm" 
+            onClick={handleQuickAdd}
+            disabled={!quickNote.trim() || isSaving}
+          >
+            <Send className="h-3.5 w-3.5 mr-1" />
+            Save Note
+          </Button>
         </div>
-      )}
+      </div>
 
       {/* Notes List */}
-      {notes.length === 0 && !isAdding ? (
-        <div className="text-center py-8">
-          <FileText className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
+      {notes.length === 0 ? (
+        <div className="text-center py-6">
+          <FileText className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
           <p className="text-muted-foreground text-sm">No notes yet</p>
-          <p className="text-muted-foreground text-xs mt-1">Add notes to keep track of project details</p>
+          <p className="text-muted-foreground text-xs mt-1">Use the field above to add notes</p>
         </div>
       ) : (
         <div className="space-y-3">
