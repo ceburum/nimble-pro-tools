@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DismissibleBanner } from '@/components/ui/dismissible-banner';
+import { AffiliateApplicationForm } from '@/components/affiliates/AffiliateApplicationForm';
 import { useAffiliate } from '@/hooks/useAffiliate';
 import { 
   Users, 
@@ -17,7 +18,8 @@ import {
   Clock,
   CheckCircle,
   AlertCircle,
-  CreditCard
+  CreditCard,
+  FileText
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -38,6 +40,9 @@ export default function Affiliates() {
   } = useAffiliate();
 
   const [onboardingLoading, setOnboardingLoading] = useState(false);
+
+  // Get recommended_by from URL params
+  const recommendedByCode = searchParams.get('recommended_by') || searchParams.get('ref');
 
   useEffect(() => {
     // Check for onboarding complete or refresh
@@ -84,13 +89,13 @@ export default function Affiliates() {
     );
   }
 
-  // Not yet an affiliate - show signup
+  // Not yet an affiliate - show application form
   if (!isAffiliate) {
     return (
       <div className="space-y-6 p-6">
         <div className="flex items-center gap-2">
           <Users className="h-6 w-6 text-primary" />
-          <h1 className="text-2xl font-bold">Affiliate Program</h1>
+          <h1 className="text-2xl font-bold">Become a Salesperson</h1>
         </div>
 
         {settings && !settings.signupsEnabled && (
@@ -99,7 +104,7 @@ export default function Affiliates() {
             variant="warning"
             className="mb-4"
           >
-            Affiliate signups are temporarily paused. Check back later!
+            Salesperson applications are temporarily paused. Check back later!
           </DismissibleBanner>
         )}
 
@@ -109,77 +114,84 @@ export default function Affiliates() {
             variant="warning"
             className="mb-4"
           >
-            We've reached our current affiliate limit. More spots opening soon!
+            We've reached our current salesperson limit. More spots opening soon!
           </DismissibleBanner>
         )}
 
-        <Card className="max-w-2xl">
+        <AffiliateApplicationForm 
+          recommendedByEmail={recommendedByCode}
+          onSubmitSuccess={checkAffiliateStatus}
+        />
+      </div>
+    );
+  }
+
+  // Is an affiliate but status is pending - show pending message
+  if (affiliate?.status === 'pending') {
+    return (
+      <div className="space-y-6 p-6">
+        <div className="flex items-center gap-2">
+          <Users className="h-6 w-6 text-primary" />
+          <h1 className="text-2xl font-bold">Application Submitted</h1>
+        </div>
+
+        <Card className="max-w-xl">
           <CardHeader>
-            <CardTitle>Become a Sidecar Affiliate</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5 text-primary" />
+              Application Under Review
+            </CardTitle>
             <CardDescription>
-              Earn commissions by referring new users to Sidecar. Share your unique link and earn on every paid subscription.
+              Your application to become a Sidecar Salesperson is being reviewed.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="flex items-start gap-3">
-                <div className="p-2 bg-primary/10 rounded-lg">
-                  <DollarSign className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <h3 className="font-medium">Earn 10% Commission</h3>
-                  <p className="text-sm text-muted-foreground">On all paid features purchased through your link</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="p-2 bg-primary/10 rounded-lg">
-                  <CreditCard className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <h3 className="font-medium">Stripe Handles Payouts</h3>
-                  <p className="text-sm text-muted-foreground">We never collect your banking info</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="p-2 bg-primary/10 rounded-lg">
-                  <Link className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <h3 className="font-medium">Unique Referral Link</h3>
-                  <p className="text-sm text-muted-foreground">Track all your referrals in real-time</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="p-2 bg-primary/10 rounded-lg">
-                  <TrendingUp className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <h3 className="font-medium">Transparent Dashboard</h3>
-                  <p className="text-sm text-muted-foreground">See your earnings and payout status</p>
-                </div>
-              </div>
+          <CardContent className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Clock className="h-5 w-5 text-muted-foreground" />
+              <span className="text-sm text-muted-foreground">
+                Applications are typically reviewed within 1-2 business days.
+              </span>
             </div>
-
-            <div className="pt-4 border-t">
-              <Button 
-                size="lg" 
-                onClick={handleStartOnboarding}
-                disabled={onboardingLoading || (settings && !settings.signupsEnabled)}
-              >
-                {onboardingLoading ? 'Setting up...' : 'Join Affiliate Program'}
-                <ExternalLink className="h-4 w-4 ml-2" />
-              </Button>
-              <p className="text-xs text-muted-foreground mt-3">
-                You'll be redirected to Stripe to complete onboarding. Sidecar does not collect any banking information.
-              </p>
+            <div className="p-4 bg-muted rounded-lg">
+              <p className="text-sm font-medium">Your Referral Code (Reserved)</p>
+              <code className="text-lg font-mono">{affiliate.referral_code}</code>
             </div>
+            <p className="text-sm text-muted-foreground">
+              Once approved, you'll receive instructions to complete payment setup through Stripe.
+            </p>
           </CardContent>
         </Card>
       </div>
     );
   }
 
-  // Is an affiliate - show dashboard
+  // Affiliate rejected
+  if (affiliate?.status === 'rejected') {
+    return (
+      <div className="space-y-6 p-6">
+        <div className="flex items-center gap-2">
+          <Users className="h-6 w-6 text-destructive" />
+          <h1 className="text-2xl font-bold">Application Status</h1>
+        </div>
+
+        <Card className="max-w-xl border-destructive/50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-destructive">
+              <AlertCircle className="h-5 w-5" />
+              Application Not Approved
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-muted-foreground">
+              Unfortunately, your application was not approved at this time. If you have questions, please contact support.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Is an active affiliate - show dashboard
   const referralLink = getReferralLink();
   const pendingReferrals = referrals.filter(r => r.status === 'pending');
   const paidReferrals = referrals.filter(r => r.status === 'paid');
@@ -189,19 +201,19 @@ export default function Affiliates() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Users className="h-6 w-6 text-primary" />
-          <h1 className="text-2xl font-bold">Affiliate Dashboard</h1>
+          <h1 className="text-2xl font-bold">Salesperson Dashboard</h1>
         </div>
         {getStatusBadge(affiliate?.status || 'pending')}
       </div>
 
-      {affiliate && !affiliate.stripe_onboarding_complete && (
+      {affiliate && !affiliate.stripe_onboarding_complete && affiliate.status === 'active' && (
         <DismissibleBanner
           storageKey="affiliate-onboarding-incomplete"
           variant="warning"
         >
           Complete your Stripe onboarding to start earning commissions.
           <Button variant="link" className="ml-2 p-0 h-auto" onClick={handleStartOnboarding}>
-            Continue Setup
+            {onboardingLoading ? 'Loading...' : 'Continue Setup'}
           </Button>
         </DismissibleBanner>
       )}

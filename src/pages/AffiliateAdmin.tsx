@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Dialog,
   DialogContent,
@@ -16,13 +17,15 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { useAffiliateAdmin } from '@/hooks/useAffiliateAdmin';
+import { PendingApplicationsTable } from '@/components/affiliates/PendingApplicationsTable';
 import { 
   Settings, 
   Users, 
   DollarSign, 
   Plus,
   TrendingUp,
-  AlertCircle
+  AlertCircle,
+  FileText
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -36,6 +39,7 @@ export default function AffiliateAdmin() {
     increaseLimit,
     updateAffiliate,
     processPayout,
+    fetchAffiliates,
   } = useAffiliateAdmin();
 
   const [payoutDialog, setPayoutDialog] = useState<{ open: boolean; affiliateId: string; maxAmount: number }>({
@@ -69,7 +73,7 @@ export default function AffiliateAdmin() {
               Access Denied
             </CardTitle>
             <CardDescription>
-              You don't have permission to access the affiliate admin panel.
+              You don't have permission to access the salesperson admin panel.
             </CardDescription>
           </CardHeader>
         </Card>
@@ -103,11 +107,26 @@ export default function AffiliateAdmin() {
     setPayoutAmount('');
   };
 
+  const handleApproveApplication = async (affiliateId: string) => {
+    await updateAffiliate(affiliateId, { status: 'active' as any });
+    await fetchAffiliates();
+  };
+
+  const handleRejectApplication = async (affiliateId: string, reason: string) => {
+    await updateAffiliate(affiliateId, { 
+      status: 'rejected' as any,
+      rejection_reason: reason,
+    } as any);
+    await fetchAffiliates();
+  };
+
   const handleUpdateStatus = async (affiliateId: string, status: string) => {
     await updateAffiliate(affiliateId, { status: status as any });
   };
 
+  const pendingApplications = affiliates.filter(a => a.status === 'pending');
   const activeAffiliates = affiliates.filter(a => a.status === 'active');
+  const allNonPending = affiliates.filter(a => a.status !== 'pending');
   const totalPending = affiliates.reduce((sum, a) => sum + (a.pending_earnings || 0), 0);
   const totalPaid = affiliates.reduce((sum, a) => sum + (a.total_earnings || 0), 0);
 
@@ -115,25 +134,25 @@ export default function AffiliateAdmin() {
     <div className="space-y-6 p-6">
       <div className="flex items-center gap-2">
         <Settings className="h-6 w-6 text-primary" />
-        <h1 className="text-2xl font-bold">Affiliate Admin</h1>
+        <h1 className="text-2xl font-bold">Salesperson Admin</h1>
       </div>
 
       {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardDescription>Total Affiliates</CardDescription>
+            <CardDescription>Total Salespeople</CardDescription>
             <CardTitle className="text-3xl">{affiliates.length}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">
-              {activeAffiliates.length} active
+              {activeAffiliates.length} active · {pendingApplications.length} pending
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardDescription>Affiliate Limit</CardDescription>
+            <CardDescription>Salesperson Limit</CardDescription>
             <CardTitle className="text-3xl">
               {settings?.current_affiliates || 0} / {settings?.max_affiliates || 25}
             </CardTitle>
@@ -167,14 +186,14 @@ export default function AffiliateAdmin() {
       <Card>
         <CardHeader>
           <CardTitle>Program Settings</CardTitle>
-          <CardDescription>Control affiliate program availability and defaults</CardDescription>
+          <CardDescription>Control salesperson program availability and defaults</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <Label>Accept New Affiliates</Label>
+              <Label>Accept New Applications</Label>
               <p className="text-sm text-muted-foreground">
-                {settings?.signups_enabled ? 'Signups are open' : 'Signups are paused'}
+                {settings?.signups_enabled ? 'Applications are open' : 'Applications are paused'}
               </p>
             </div>
             <Switch
@@ -205,103 +224,119 @@ export default function AffiliateAdmin() {
         </CardContent>
       </Card>
 
-      {/* Affiliates Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            All Affiliates
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {affiliates.length === 0 ? (
-            <p className="text-muted-foreground text-center py-8">
-              No affiliates yet.
-            </p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Referral Code</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Referrals</TableHead>
-                  <TableHead>Pending</TableHead>
-                  <TableHead>Total Paid</TableHead>
-                  <TableHead>Joined</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {affiliates.map((affiliate) => (
-                  <TableRow key={affiliate.id}>
-                    <TableCell className="font-mono">{affiliate.referral_code}</TableCell>
-                    <TableCell>
-                      <Badge variant={
-                        affiliate.status === 'active' ? 'default' :
-                        affiliate.status === 'pending' ? 'secondary' :
-                        affiliate.status === 'paused' ? 'outline' : 'destructive'
-                      }>
-                        {affiliate.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{affiliate.total_referrals}</TableCell>
-                    <TableCell className="text-yellow-600">
-                      ${(affiliate.pending_earnings || 0).toFixed(2)}
-                    </TableCell>
-                    <TableCell className="text-green-600">
-                      ${(affiliate.total_earnings || 0).toFixed(2)}
-                    </TableCell>
-                    <TableCell>
-                      {format(new Date(affiliate.created_at), 'MMM d, yyyy')}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        {affiliate.status === 'pending' && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleUpdateStatus(affiliate.id, 'active')}
-                          >
-                            Approve
-                          </Button>
-                        )}
-                        {affiliate.status === 'active' && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleUpdateStatus(affiliate.id, 'paused')}
-                          >
-                            Pause
-                          </Button>
-                        )}
-                        {affiliate.status === 'paused' && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleUpdateStatus(affiliate.id, 'active')}
-                          >
-                            Reactivate
-                          </Button>
-                        )}
-                        {(affiliate.pending_earnings || 0) >= (settings?.min_payout_threshold || 25) && (
-                          <Button
-                            variant="default"
-                            size="sm"
-                            onClick={() => handleOpenPayoutDialog(affiliate.id, affiliate.pending_earnings || 0)}
-                          >
-                            <DollarSign className="h-4 w-4 mr-1" />
-                            Payout
-                          </Button>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+      {/* Tabs for Pending vs All */}
+      <Tabs defaultValue={pendingApplications.length > 0 ? "pending" : "all"} className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="pending" className="gap-2">
+            <FileText className="h-4 w-4" />
+            Pending Applications
+            {pendingApplications.length > 0 && (
+              <Badge variant="secondary" className="ml-1">{pendingApplications.length}</Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="all" className="gap-2">
+            <Users className="h-4 w-4" />
+            All Salespeople
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="pending">
+          <PendingApplicationsTable
+            applications={pendingApplications}
+            onApprove={handleApproveApplication}
+            onReject={handleRejectApplication}
+          />
+        </TabsContent>
+
+        <TabsContent value="all">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5" />
+                All Salespeople
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {allNonPending.length === 0 ? (
+                <p className="text-muted-foreground text-center py-8">
+                  No salespeople yet. Pending applications will appear in the other tab.
+                </p>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Referral Code</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Referrals</TableHead>
+                      <TableHead>Pending</TableHead>
+                      <TableHead>Total Paid</TableHead>
+                      <TableHead>Joined</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {allNonPending.map((affiliate) => (
+                      <TableRow key={affiliate.id}>
+                        <TableCell className="font-mono">{affiliate.referral_code}</TableCell>
+                        <TableCell>
+                          <Badge variant={
+                            affiliate.status === 'active' ? 'default' :
+                            affiliate.status === 'paused' ? 'outline' : 'destructive'
+                          }>
+                            {affiliate.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{affiliate.total_referrals}</TableCell>
+                        <TableCell className="text-yellow-600">
+                          ${(affiliate.pending_earnings || 0).toFixed(2)}
+                        </TableCell>
+                        <TableCell className="text-green-600">
+                          ${(affiliate.total_earnings || 0).toFixed(2)}
+                        </TableCell>
+                        <TableCell>
+                          {format(new Date(affiliate.created_at), 'MMM d, yyyy')}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-2">
+                            {affiliate.status === 'active' && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleUpdateStatus(affiliate.id, 'paused')}
+                              >
+                                Pause
+                              </Button>
+                            )}
+                            {affiliate.status === 'paused' && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleUpdateStatus(affiliate.id, 'active')}
+                              >
+                                Reactivate
+                              </Button>
+                            )}
+                            {(affiliate.pending_earnings || 0) >= (settings?.min_payout_threshold || 25) && (
+                              <Button
+                                variant="default"
+                                size="sm"
+                                onClick={() => handleOpenPayoutDialog(affiliate.id, affiliate.pending_earnings || 0)}
+                              >
+                                <DollarSign className="h-4 w-4 mr-1" />
+                                Payout
+                              </Button>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       {/* Payout Dialog */}
       <Dialog open={payoutDialog.open} onOpenChange={(open) => setPayoutDialog({ ...payoutDialog, open })}>
@@ -309,7 +344,7 @@ export default function AffiliateAdmin() {
           <DialogHeader>
             <DialogTitle>Process Payout</DialogTitle>
             <DialogDescription>
-              Enter the amount to pay out to this affiliate. Maximum: ${payoutDialog.maxAmount.toFixed(2)}
+              Enter the amount to pay out to this salesperson. Maximum: ${payoutDialog.maxAmount.toFixed(2)}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
