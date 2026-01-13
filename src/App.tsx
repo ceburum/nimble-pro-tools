@@ -19,6 +19,8 @@ import PayInvoice from "./pages/PayInvoice";
 import Auth from "./pages/Auth";
 import Install from "./pages/Install";
 import NotFound from "./pages/NotFound";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import TermsOfService from "./pages/TermsOfService";
 
 const App = () => {
   const [queryClient] = useState(() => new QueryClient());
@@ -35,6 +37,8 @@ const App = () => {
               <Route path="/auth" element={<Auth />} />
               <Route path="/install" element={<Install />} />
               <Route path="/pay/:paymentToken" element={<PayInvoice />} />
+              <Route path="/privacy" element={<PrivacyPolicy />} />
+              <Route path="/terms" element={<TermsOfService />} />
               
               {/* Protected admin routes with AppLayout */}
               <Route 
