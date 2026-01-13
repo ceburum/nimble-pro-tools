@@ -14,6 +14,131 @@ export type Database = {
   }
   public: {
     Tables: {
+      affiliate_payouts: {
+        Row: {
+          affiliate_id: string
+          amount: number
+          created_at: string
+          id: string
+          processed_at: string | null
+          status: string
+          stripe_transfer_id: string | null
+        }
+        Insert: {
+          affiliate_id: string
+          amount: number
+          created_at?: string
+          id?: string
+          processed_at?: string | null
+          status?: string
+          stripe_transfer_id?: string | null
+        }
+        Update: {
+          affiliate_id?: string
+          amount?: number
+          created_at?: string
+          id?: string
+          processed_at?: string | null
+          status?: string
+          stripe_transfer_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "affiliate_payouts_affiliate_id_fkey"
+            columns: ["affiliate_id"]
+            isOneToOne: false
+            referencedRelation: "affiliates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      affiliate_settings: {
+        Row: {
+          current_affiliates: number
+          default_commission_rate: number
+          default_commission_type: string
+          id: string
+          max_affiliates: number
+          min_payout_threshold: number
+          signups_enabled: boolean
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          current_affiliates?: number
+          default_commission_rate?: number
+          default_commission_type?: string
+          id?: string
+          max_affiliates?: number
+          min_payout_threshold?: number
+          signups_enabled?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          current_affiliates?: number
+          default_commission_rate?: number
+          default_commission_type?: string
+          id?: string
+          max_affiliates?: number
+          min_payout_threshold?: number
+          signups_enabled?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      affiliates: {
+        Row: {
+          commission_rate: number
+          commission_type: string
+          created_at: string
+          id: string
+          pending_earnings: number
+          referral_code: string
+          status: Database["public"]["Enums"]["affiliate_status"]
+          stripe_account_id: string | null
+          stripe_account_type: string | null
+          stripe_onboarding_complete: boolean | null
+          total_earnings: number
+          total_referrals: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          commission_rate?: number
+          commission_type?: string
+          created_at?: string
+          id?: string
+          pending_earnings?: number
+          referral_code: string
+          status?: Database["public"]["Enums"]["affiliate_status"]
+          stripe_account_id?: string | null
+          stripe_account_type?: string | null
+          stripe_onboarding_complete?: boolean | null
+          total_earnings?: number
+          total_referrals?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          commission_rate?: number
+          commission_type?: string
+          created_at?: string
+          id?: string
+          pending_earnings?: number
+          referral_code?: string
+          status?: Database["public"]["Enums"]["affiliate_status"]
+          stripe_account_id?: string | null
+          stripe_account_type?: string | null
+          stripe_onboarding_complete?: boolean | null
+          total_earnings?: number
+          total_referrals?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       bank_expenses: {
         Row: {
           amount: number
@@ -638,6 +763,59 @@ export type Database = {
           },
         ]
       }
+      referrals: {
+        Row: {
+          affiliate_id: string
+          commission_amount: number
+          created_at: string
+          id: string
+          paid_at: string | null
+          product_name: string
+          product_type: string
+          referred_email: string | null
+          referred_user_id: string | null
+          sale_amount: number
+          status: string
+          stripe_payment_intent_id: string | null
+        }
+        Insert: {
+          affiliate_id: string
+          commission_amount?: number
+          created_at?: string
+          id?: string
+          paid_at?: string | null
+          product_name: string
+          product_type: string
+          referred_email?: string | null
+          referred_user_id?: string | null
+          sale_amount?: number
+          status?: string
+          stripe_payment_intent_id?: string | null
+        }
+        Update: {
+          affiliate_id?: string
+          commission_amount?: number
+          created_at?: string
+          id?: string
+          paid_at?: string | null
+          product_name?: string
+          product_type?: string
+          referred_email?: string | null
+          referred_user_id?: string | null
+          sale_amount?: number
+          status?: string
+          stripe_payment_intent_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referrals_affiliate_id_fkey"
+            columns: ["affiliate_id"]
+            isOneToOne: false
+            referencedRelation: "affiliates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       subcontractor_payments: {
         Row: {
           amount: number
@@ -765,6 +943,27 @@ export type Database = {
           },
         ]
       }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_settings: {
         Row: {
           ai_scans_period: string | null
@@ -851,6 +1050,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      generate_referral_code: { Args: never; Returns: string }
       get_invoice_by_payment_token: {
         Args: { p_token: string }
         Returns: {
@@ -863,9 +1063,17 @@ export type Database = {
           status: string
         }[]
       }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      affiliate_status: "pending" | "active" | "paused" | "rejected"
+      app_role: "admin" | "moderator" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -992,6 +1200,9 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      affiliate_status: ["pending", "active", "paused", "rejected"],
+      app_role: ["admin", "moderator", "user"],
+    },
   },
 } as const
