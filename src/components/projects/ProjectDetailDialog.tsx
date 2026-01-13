@@ -36,7 +36,7 @@ import {
   CalendarDays,
   StickyNote,
 } from 'lucide-react';
-import { SupplierQuoteScanDialog } from './SupplierQuoteScanDialog';
+// SupplierQuoteScanDialog removed - Add Items to Quote replaced with Add Receipt
 import { ScheduleDialog } from '@/components/scheduling/ScheduleDialog';
 import { ProjectPhotoUploadDialog } from './ProjectPhotoUploadDialog';
 import { ProjectReceiptUploadDialog } from './ProjectReceiptUploadDialog';
@@ -87,7 +87,7 @@ export function ProjectDetailDialog({
   const [selectedPhoto, setSelectedPhoto] = useState<ProjectPhoto | null>(null);
   const [editingQuote, setEditingQuote] = useState(false);
   const [isSendingQuote, setIsSendingQuote] = useState(false);
-  const [supplierScanOpen, setSupplierScanOpen] = useState(false);
+  // supplierScanOpen state removed - replaced by receiptUploadOpen
   const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
   const [photoUploadOpen, setPhotoUploadOpen] = useState(false);
   const [receiptUploadOpen, setReceiptUploadOpen] = useState(false);
@@ -517,9 +517,9 @@ export function ProjectDetailDialog({
                   <div className="flex items-center justify-between gap-2 flex-wrap">
                     <h3 className="text-sm font-medium">Line Items</h3>
                     <div className="flex gap-2">
-                      <Button size="sm" variant="outline" onClick={() => setSupplierScanOpen(true)}>
-                        <Store className="h-4 w-4 mr-1" />
-                        Add Items to Quote
+                      <Button size="sm" variant="outline" onClick={() => setReceiptUploadOpen(true)}>
+                        <Receipt className="h-4 w-4 mr-1" />
+                        Add Receipt
                       </Button>
                       <Button size="sm" variant="outline" onClick={handleAddLineItem}>
                         <Plus className="h-4 w-4 mr-1" />
@@ -783,11 +783,7 @@ export function ProjectDetailDialog({
         </DialogContent>
       </Dialog>
 
-      <SupplierQuoteScanDialog
-        open={supplierScanOpen}
-        onOpenChange={setSupplierScanOpen}
-        onImport={handleImportItems}
-      />
+      {/* SupplierQuoteScanDialog removed - use Add Receipt button in Quote tab */}
 
       <ScheduleDialog
         open={scheduleDialogOpen}

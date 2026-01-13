@@ -1,4 +1,4 @@
-import { Receipt, Calendar, MoreVertical, Mail, MessageSquare, CreditCard, Download, Paperclip, ImageDown } from 'lucide-react';
+import { Receipt, Calendar, MoreVertical, Mail, Copy, CreditCard, Download, ImageDown } from 'lucide-react';
 import { Invoice, Client } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -18,7 +18,7 @@ interface InvoiceCardProps {
   invoice: Invoice;
   client?: Client;
   onSendEmail: (invoice: Invoice) => void;
-  onSendText: (invoice: Invoice) => void;
+  onCopyLink: (invoice: Invoice) => void;
   onMarkPaid: (invoice: Invoice) => void;
   onDelete: (id: string) => void;
   onClick?: (invoice: Invoice) => void;
@@ -31,7 +31,7 @@ const statusConfig = {
   overdue: { label: 'Overdue', className: 'bg-destructive/10 text-destructive' },
 };
 
-export function InvoiceCard({ invoice, client, onSendEmail, onSendText, onMarkPaid, onDelete, onClick }: InvoiceCardProps) {
+export function InvoiceCard({ invoice, client, onSendEmail, onCopyLink, onMarkPaid, onDelete, onClick }: InvoiceCardProps) {
   const total = invoice.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
   const status = statusConfig[invoice.status];
 
@@ -133,9 +133,9 @@ export function InvoiceCard({ invoice, client, onSendEmail, onSendText, onMarkPa
                 <Mail className="h-4 w-4 mr-2" />
                 Send Email
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onSendText(invoice)}>
-                <MessageSquare className="h-4 w-4 mr-2" />
-                Send Text
+              <DropdownMenuItem onClick={() => onCopyLink(invoice)}>
+                <Copy className="h-4 w-4 mr-2" />
+                Copy Payment Link
               </DropdownMenuItem>
               {invoice.status !== 'paid' && (
                 <>

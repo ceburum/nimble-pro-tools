@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Receipt, Upload, X, Scan, Loader2, Pencil } from 'lucide-react';
+import { Receipt, Upload, X, Scan, Loader2, Pencil, Camera } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import {
@@ -37,6 +37,7 @@ export function ProjectReceiptUploadDialog({
   const [isSaving, setIsSaving] = useState(false);
   const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
   const [scansUsed, setScansUsed] = useState(0);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -175,14 +176,31 @@ export function ProjectReceiptUploadDialog({
                       </Button>
                     </div>
                   ) : (
-                    <div
-                      onClick={() => fileInputRef.current?.click()}
-                      className="border-2 border-dashed border-border rounded-lg p-6 text-center cursor-pointer hover:border-primary transition-colors"
-                    >
-                      <Upload className="h-6 w-6 mx-auto text-muted-foreground mb-2" />
-                      <p className="text-sm text-muted-foreground">Click to upload receipt image</p>
+                    <div className="flex gap-2">
+                      <div
+                        onClick={() => cameraInputRef.current?.click()}
+                        className="flex-1 border-2 border-dashed border-border rounded-lg p-4 text-center cursor-pointer hover:border-primary transition-colors"
+                      >
+                        <Camera className="h-6 w-6 mx-auto text-muted-foreground mb-2" />
+                        <p className="text-sm text-muted-foreground">Take Photo</p>
+                      </div>
+                      <div
+                        onClick={() => fileInputRef.current?.click()}
+                        className="flex-1 border-2 border-dashed border-border rounded-lg p-4 text-center cursor-pointer hover:border-primary transition-colors"
+                      >
+                        <Upload className="h-6 w-6 mx-auto text-muted-foreground mb-2" />
+                        <p className="text-sm text-muted-foreground">Choose File</p>
+                      </div>
                     </div>
                   )}
+                  <input
+                    ref={cameraInputRef}
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    className="hidden"
+                    onChange={handleFileChange}
+                  />
                   <input
                     ref={fileInputRef}
                     type="file"

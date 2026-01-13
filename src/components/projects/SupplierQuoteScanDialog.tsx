@@ -10,7 +10,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Camera, Upload, Loader2, Trash2, Store, FileText, Plus, Pencil } from 'lucide-react';
+import { Camera, Upload, Loader2, Trash2, Receipt, FileText, Plus, Pencil } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { LineItem } from '@/types';
@@ -228,8 +228,8 @@ export function SupplierQuoteScanDialog({
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Store className="h-5 w-5" />
-              Add Items to Quote
+              <Receipt className="h-5 w-5" />
+              Add Receipt
             </DialogTitle>
           </DialogHeader>
 

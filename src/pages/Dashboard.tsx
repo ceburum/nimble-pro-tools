@@ -79,12 +79,31 @@ export default function Dashboard() {
       return;
     }
 
-    // SMS not yet implemented
+    // Copy link instead of SMS
     if (method === 'text') {
-      toast({
-        title: "Coming soon",
-        description: `Text messaging to ${client.phone} will be available soon.`
-      });
+      const paymentUrl = invoice.paymentToken 
+        ? `${window.location.origin}/pay/${invoice.paymentToken}`
+        : `${window.location.origin}/invoices/${invoice.id}`;
+      
+      try {
+        await navigator.clipboard.writeText(paymentUrl);
+        toast({
+          title: "Link copied!",
+          description: "Payment link copied to clipboard. Paste it in a text message to your client."
+        });
+      } catch (error) {
+        // Fallback
+        const textArea = document.createElement('textarea');
+        textArea.value = paymentUrl;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        toast({
+          title: "Link copied!",
+          description: "Payment link copied. Paste it in a text message."
+        });
+      }
       return;
     }
 

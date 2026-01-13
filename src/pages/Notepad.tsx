@@ -9,7 +9,6 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
   Plus, 
-  FileText, 
   Trash2, 
   Pencil, 
   Check, 
@@ -17,12 +16,11 @@ import {
   Loader2,
   FolderKanban,
   Link2,
-  Unlink,
   StickyNote,
+  ArrowLeft,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { PageHeader } from '@/components/layout/PageHeader';
 import {
   Dialog,
   DialogContent,
@@ -39,7 +37,8 @@ export default function Notepad() {
   const { clients } = useClients();
   const { toast } = useToast();
   
-  const [isAdding, setIsAdding] = useState(false);
+  // View modes: 'list' for note list, 'compose' for full-screen note editing
+  const [viewMode, setViewMode] = useState<'list' | 'compose'>('list');
   const [newTitle, setNewTitle] = useState('');
   const [newBody, setNewBody] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -53,17 +52,17 @@ export default function Notepad() {
   const [filterProject, setFilterProject] = useState<string | 'all' | 'unassigned'>('all');
 
   useEffect(() => {
-    if (isAdding && textareaRef.current) {
+    if (viewMode === 'compose' && textareaRef.current) {
       textareaRef.current.focus();
     }
-  }, [isAdding]);
+  }, [viewMode]);
 
   const handleAddNote = () => {
     if (!newBody.trim()) return;
     addNote(newBody, newTitle);
     setNewTitle('');
     setNewBody('');
-    setIsAdding(false);
+    setViewMode('list');
     toast({ title: 'Note saved' });
   };
 
@@ -71,6 +70,7 @@ export default function Notepad() {
     setEditingId(noteId);
     setEditTitle(title || '');
     setEditBody(body || '');
+    setViewMode('compose');
   };
 
   const handleSaveEdit = () => {
@@ -79,6 +79,7 @@ export default function Notepad() {
     setEditingId(null);
     setEditTitle('');
     setEditBody('');
+    setViewMode('list');
     toast({ title: 'Note updated' });
   };
 
@@ -86,6 +87,13 @@ export default function Notepad() {
     setEditingId(null);
     setEditTitle('');
     setEditBody('');
+    setViewMode('list');
+  };
+
+  const handleCancelNew = () => {
+    setNewTitle('');
+    setNewBody('');
+    setViewMode('list');
   };
 
   const handleDelete = (noteId: string) => {
@@ -140,12 +148,73 @@ export default function Notepad() {
     );
   }
 
+  // Full-screen compose mode
+  if (viewMode === 'compose') {
+    const isEditing = editingId !== null;
+    const currentTitle = isEditing ? editTitle : newTitle;
+    const currentBody = isEditing ? editBody : newBody;
+    const setCurrentTitle = isEditing ? setEditTitle : setNewTitle;
+    const setCurrentBody = isEditing ? setEditBody : setNewBody;
+
+    return (
+      <div className="fixed inset-0 z-50 bg-background flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 border-b border-border">
+          <Button 
+            variant="ghost" 
+            size="sm"
+            onClick={isEditing ? handleCancelEdit : handleCancelNew}
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Cancel
+          </Button>
+          <h1 className="text-lg font-semibold">
+            {isEditing ? 'Edit Note' : 'New Note'}
+          </h1>
+          <Button 
+            size="sm"
+            onClick={isEditing ? handleSaveEdit : handleAddNote}
+            disabled={!currentBody.trim()}
+          >
+            <Check className="h-4 w-4 mr-2" />
+            Save
+          </Button>
+        </div>
+
+        {/* Full-screen editor */}
+        <div className="flex-1 flex flex-col p-4 overflow-hidden">
+          <Input
+            placeholder="Title (optional)"
+            value={currentTitle}
+            onChange={(e) => setCurrentTitle(e.target.value)}
+            className="text-lg font-medium border-0 border-b rounded-none focus-visible:ring-0 px-0 mb-4"
+          />
+          <Textarea
+            ref={textareaRef}
+            placeholder="Start writing..."
+            value={currentBody}
+            onChange={(e) => setCurrentBody(e.target.value)}
+            className="flex-1 resize-none border-0 focus-visible:ring-0 px-0 text-base leading-relaxed"
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // List view
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Notepad"
-        description="Quick notes and thoughts. Assign notes to projects as needed."
-      />
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Notepad</h1>
+          <p className="text-muted-foreground">Quick notes and thoughts. Assign notes to projects as needed.</p>
+        </div>
+        <Button onClick={() => setViewMode('compose')}>
+          <Plus className="h-4 w-4 mr-2" />
+          New Note
+        </Button>
+      </div>
 
       {/* Filter Bar */}
       <div className="flex flex-wrap gap-2 items-center">
@@ -177,51 +246,6 @@ export default function Notepad() {
         ))}
       </div>
 
-      {/* Add Note Section */}
-      {!isAdding ? (
-        <Button 
-          onClick={() => setIsAdding(true)}
-          className="w-full sm:w-auto"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          New Note
-        </Button>
-      ) : (
-        <div className="border border-border rounded-lg p-4 space-y-3 bg-card">
-          <Input
-            placeholder="Title (optional)"
-            value={newTitle}
-            onChange={(e) => setNewTitle(e.target.value)}
-          />
-          <Textarea
-            ref={textareaRef}
-            placeholder="Write your note..."
-            value={newBody}
-            onChange={(e) => setNewBody(e.target.value)}
-            rows={4}
-            className="resize-none"
-          />
-          <div className="flex justify-end gap-2">
-            <Button 
-              variant="ghost" 
-              onClick={() => {
-                setIsAdding(false);
-                setNewTitle('');
-                setNewBody('');
-              }}
-            >
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleAddNote}
-              disabled={!newBody.trim()}
-            >
-              Save Note
-            </Button>
-          </div>
-        </div>
-      )}
-
       {/* Notes List */}
       {filteredNotes.length === 0 ? (
         <div className="text-center py-12 border border-dashed border-border rounded-lg">
@@ -237,101 +261,68 @@ export default function Notepad() {
           {filteredNotes.map((note) => (
             <div 
               key={note.id} 
-              className={cn(
-                "border border-border rounded-lg p-4 bg-card transition-all hover:shadow-md",
-                editingId === note.id && "ring-2 ring-primary"
-              )}
+              className="border border-border rounded-lg p-4 bg-card transition-all hover:shadow-md cursor-pointer"
+              onClick={() => handleStartEdit(note.id, note.title, note.body)}
             >
-              {editingId === note.id ? (
-                <div className="space-y-3">
-                  <Input
-                    placeholder="Title (optional)"
-                    value={editTitle}
-                    onChange={(e) => setEditTitle(e.target.value)}
-                  />
-                  <Textarea
-                    value={editBody}
-                    onChange={(e) => setEditBody(e.target.value)}
-                    rows={4}
-                    className="resize-none"
-                    autoFocus
-                  />
-                  <div className="flex justify-end gap-2">
-                    <Button variant="ghost" size="sm" onClick={handleCancelEdit}>
-                      <X className="h-4 w-4 mr-1" />
-                      Cancel
-                    </Button>
-                    <Button size="sm" onClick={handleSaveEdit} disabled={!editBody.trim()}>
-                      <Check className="h-4 w-4 mr-1" />
-                      Save
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <div className="flex items-start justify-between gap-2 mb-2">
-                    <div className="flex-1 min-w-0">
-                      {note.title && (
-                        <h3 className="font-semibold text-foreground mb-1 truncate">
-                          {note.title}
-                        </h3>
-                      )}
-                    </div>
-                    <div className="flex gap-1 flex-shrink-0">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7"
-                        onClick={() => openAssignDialog(note.id)}
-                        title="Assign to projects"
-                      >
-                        <Link2 className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7"
-                        onClick={() => handleStartEdit(note.id, note.title, note.body)}
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 text-destructive hover:text-destructive"
-                        onClick={() => handleDelete(note.id)}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  </div>
-                  
-                  <p className="text-sm text-foreground/80 whitespace-pre-wrap break-words line-clamp-4 mb-3">
-                    {note.body}
-                  </p>
-
-                  {/* Project Tags */}
-                  {note.projectIds.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mb-3">
-                      {note.projectIds.map(projectId => (
-                        <Badge 
-                          key={projectId} 
-                          variant="secondary" 
-                          className="text-xs gap-1"
-                        >
-                          <FolderKanban className="h-3 w-3" />
-                          {getProjectName(projectId)}
-                        </Badge>
-                      ))}
-                    </div>
+              <div className="flex items-start justify-between gap-2 mb-2">
+                <div className="flex-1 min-w-0">
+                  {note.title && (
+                    <h3 className="font-semibold text-foreground mb-1 truncate">
+                      {note.title}
+                    </h3>
                   )}
+                </div>
+                <div className="flex gap-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openAssignDialog(note.id);
+                    }}
+                    title="Assign to projects"
+                  >
+                    <Link2 className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-destructive hover:text-destructive"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDelete(note.id);
+                    }}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </div>
+              
+              <p className="text-sm text-foreground/80 whitespace-pre-wrap break-words line-clamp-4 mb-3">
+                {note.body}
+              </p>
 
-                  <p className="text-xs text-muted-foreground">
-                    {format(note.updatedAt, 'MMM d, yyyy h:mm a')}
-                    {note.createdAt.getTime() !== note.updatedAt.getTime() && ' (edited)'}
-                  </p>
-                </>
+              {/* Project Tags */}
+              {note.projectIds.length > 0 && (
+                <div className="flex flex-wrap gap-1 mb-3" onClick={(e) => e.stopPropagation()}>
+                  {note.projectIds.map(projectId => (
+                    <Badge 
+                      key={projectId} 
+                      variant="secondary" 
+                      className="text-xs gap-1"
+                    >
+                      <FolderKanban className="h-3 w-3" />
+                      {getProjectName(projectId)}
+                    </Badge>
+                  ))}
+                </div>
               )}
+
+              <p className="text-xs text-muted-foreground">
+                {format(note.updatedAt, 'MMM d, yyyy h:mm a')}
+                {note.createdAt.getTime() !== note.updatedAt.getTime() && ' (edited)'}
+              </p>
             </div>
           ))}
         </div>
