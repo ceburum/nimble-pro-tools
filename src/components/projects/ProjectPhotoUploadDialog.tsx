@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
-import { Camera, Upload, X, Plus, Loader2 } from 'lucide-react';
+import { Camera, Upload, X, Plus, Loader2, AlertTriangle } from 'lucide-react';
 import { ProjectPhoto } from '@/types';
 import {
   Dialog,
@@ -13,11 +13,15 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
+import { DismissibleBanner } from '@/components/ui/dismissible-banner';
+import { IMAGE_COMPRESSION, getMaxPhotosPerProject } from '@/lib/photoLimits';
+import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 
 interface ProjectPhotoUploadDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   projectId: string;
+  existingPhotoCount?: number;
   onSave: (photos: ProjectPhoto[]) => void | Promise<void>;
 }
 
@@ -61,12 +65,18 @@ async function compressImageToJpegDataUrl(
   }
 }
 
-export function ProjectPhotoUploadDialog({ open, onOpenChange, projectId, onSave }: ProjectPhotoUploadDialogProps) {
+export function ProjectPhotoUploadDialog({ open, onOpenChange, projectId, existingPhotoCount = 0, onSave }: ProjectPhotoUploadDialogProps) {
   const [pendingPhotos, setPendingPhotos] = useState<PendingPhoto[]>([]);
   const [defaultType, setDefaultType] = useState<'before' | 'progress' | 'after'>('before');
   const [isSaving, setIsSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const { flags } = useFeatureFlags();
+  
+  // Pro users get higher limits
+  const isProUser = flags.financial_pro_enabled || flags.tax_pro_enabled || flags.cloud_backup_enabled;
+  const maxPhotos = getMaxPhotosPerProject(isProUser);
+  const remainingSlots = maxPhotos - existingPhotoCount;
 
   const resetState = () => {
     setPendingPhotos([]);
@@ -87,10 +97,27 @@ export function ProjectPhotoUploadDialog({ open, onOpenChange, projectId, onSave
     const selected = Array.from(files);
 
     const newPhotos: PendingPhoto[] = [];
+    
+    // Check if adding these photos would exceed the limit
+    const totalAfterAdd = pendingPhotos.length + selected.length;
+    if (totalAfterAdd > remainingSlots) {
+      const allowed = Math.max(0, remainingSlots - pendingPhotos.length);
+      toast({
+        title: 'Photo limit reached',
+        description: `You can only add ${allowed} more photo(s). Upgrade to Pro for up to 50 photos per project.`,
+        variant: 'destructive',
+      });
+      if (allowed === 0) return;
+      selected.splice(allowed);
+    }
 
     for (const file of selected) {
       try {
-        const dataUrl = await compressImageToJpegDataUrl(file, { maxDimension: 1600, quality: 0.82 });
+        // Use the centralized compression settings (1080px, 75% quality)
+        const dataUrl = await compressImageToJpegDataUrl(file, { 
+          maxDimension: IMAGE_COMPRESSION.MAX_DIMENSION, 
+          quality: IMAGE_COMPRESSION.QUALITY,
+        });
 
         // If a single photo is still huge, warn the user (saving may fail on some devices).
         if (dataUrl.length > 2_500_000) {
@@ -195,6 +222,20 @@ export function ProjectPhotoUploadDialog({ open, onOpenChange, projectId, onSave
         </DialogHeader>
 
         <div className="space-y-4 flex-1 overflow-hidden flex flex-col">
+          {/* Photo limit banner */}
+          {remainingSlots <= 3 && remainingSlots > 0 && (
+            <DismissibleBanner variant="warning" storageKey={`photo_limit_${projectId}`}>
+              {remainingSlots} photo slot{remainingSlots > 1 ? 's' : ''} remaining.{' '}
+              {!isProUser && 'Upgrade to Pro for up to 50 photos per project.'}
+            </DismissibleBanner>
+          )}
+          {remainingSlots <= 0 && (
+            <DismissibleBanner variant="error">
+              Photo limit reached ({maxPhotos} photos).{' '}
+              {!isProUser ? 'Upgrade to Pro for more storage.' : 'Delete some photos to add more.'}
+            </DismissibleBanner>
+          )}
+          
           <div className="space-y-2">
             <Label>Default Photo Type</Label>
             <RadioGroup

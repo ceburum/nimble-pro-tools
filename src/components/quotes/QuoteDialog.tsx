@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Quote, Client, LineItem } from '@/types';
+import { RangeLineItem, toRangeLineItem, fromRangeLineItem, formatTotalRange } from '@/types/lineItems';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { LineItemInput } from '@/components/ui/line-item-input';
 import {
   Dialog,
   DialogContent,
@@ -18,9 +18,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, Trash2, Store } from 'lucide-react';
+import { Plus, Store } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { SupplierQuoteScanDialog } from '@/components/projects/SupplierQuoteScanDialog';
+import { RangeLineItemInput } from '@/components/ui/range-line-item-input';
 
 interface QuoteDialogProps {
   open: boolean;
@@ -45,8 +46,8 @@ export function QuoteDialog({
   const [validUntil, setValidUntil] = useState(
     new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
   );
-  const [items, setItems] = useState<LineItem[]>([
-    { id: crypto.randomUUID(), description: '', quantity: 1, unitPrice: 0 }
+  const [items, setItems] = useState<RangeLineItem[]>([
+    { id: crypto.randomUUID(), description: '', quantity: 1, unitPrice: 0, isRange: false }
   ]);
   const [supplierScanOpen, setSupplierScanOpen] = useState(false);
 
@@ -59,26 +60,28 @@ export function QuoteDialog({
         setStatus(quote.status);
         setNotes(quote.notes || '');
         setValidUntil(new Date(quote.validUntil).toISOString().split('T')[0]);
-        setItems(quote.items);
+        // Convert legacy items to range items
+        setItems(quote.items.map(toRangeLineItem));
       } else {
         setTitle('');
         setClientId('');
         setStatus('draft');
         setNotes('');
         setValidUntil(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
-        setItems([{ id: crypto.randomUUID(), description: '', quantity: 1, unitPrice: 0 }]);
+        setItems([{ id: crypto.randomUUID(), description: '', quantity: 1, unitPrice: 0, isRange: false }]);
       }
     }
   }, [open, quote]);
 
   const handleAddItem = () => {
-    setItems([...items, { id: crypto.randomUUID(), description: '', quantity: 1, unitPrice: 0 }]);
+    setItems([...items, { id: crypto.randomUUID(), description: '', quantity: 1, unitPrice: 0, isRange: false }]);
   };
 
   const handleImportItems = (importedItems: LineItem[]) => {
     // Remove empty placeholder items before importing
     const nonEmptyItems = items.filter(item => item.description.trim() !== '' || item.unitPrice > 0);
-    setItems([...nonEmptyItems, ...importedItems]);
+    // Convert imported items to range items
+    setItems([...nonEmptyItems, ...importedItems.map(toRangeLineItem)]);
   };
 
   const handleRemoveItem = (id: string) => {
@@ -87,17 +90,11 @@ export function QuoteDialog({
     }
   };
 
-  const handleItemChange = (id: string, field: keyof LineItem, value: string | number) => {
-    setItems(
-      items.map((item) =>
-        item.id === id ? { ...item, [field]: value } : item
-      )
-    );
+  const handleItemChange = (id: string, updatedItem: RangeLineItem) => {
+    setItems(items.map((item) => item.id === id ? updatedItem : item));
   };
 
-  const calculateTotal = () => {
-    return items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
-  };
+  const totalDisplay = formatTotalRange(items);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -118,7 +115,8 @@ export function QuoteDialog({
       status,
       notes,
       validUntil: new Date(validUntil),
-      items,
+      // Convert range items back to legacy format for storage (uses min price)
+      items: items.map(fromRangeLineItem),
     });
 
     onOpenChange(false);
@@ -202,50 +200,24 @@ export function QuoteDialog({
               </div>
             </div>
 
+            <p className="text-xs text-muted-foreground">
+              Tip: Click the ↔ button to toggle between fixed price and price range (e.g., $300-$500)
+            </p>
+
             <div className="space-y-3">
-              {items.map((item, index) => (
-                <div key={item.id} className="flex gap-3 items-start">
-                  <div className="flex-1">
-                    <LineItemInput
-                      placeholder="Description"
-                      value={item.description}
-                      onChange={(val) => handleItemChange(item.id, 'description', val)}
-                    />
-                  </div>
-                  <div className="w-20">
-                    <Input
-                      type="number"
-                      placeholder="Qty"
-                      min="1"
-                      value={item.quantity}
-                      onChange={(e) => handleItemChange(item.id, 'quantity', parseInt(e.target.value) || 0)}
-                    />
-                  </div>
-                  <div className="w-28">
-                    <Input
-                      type="number"
-                      placeholder="Price"
-                      min="0"
-                      step="0.01"
-                      value={item.unitPrice}
-                      onChange={(e) => handleItemChange(item.id, 'unitPrice', parseFloat(e.target.value) || 0)}
-                    />
-                  </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleRemoveItem(item.id)}
-                    disabled={items.length === 1}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
+              {items.map((item) => (
+                <RangeLineItemInput
+                  key={item.id}
+                  item={item}
+                  onChange={(updated) => handleItemChange(item.id, updated)}
+                  onRemove={() => handleRemoveItem(item.id)}
+                  canRemove={items.length > 1}
+                />
               ))}
             </div>
 
             <div className="text-right font-semibold text-lg">
-              Total: ${calculateTotal().toFixed(2)}
+              Total: {totalDisplay}
             </div>
           </div>
 
