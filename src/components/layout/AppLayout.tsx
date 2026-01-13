@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, FolderKanban, Receipt, BarChart3, Menu, LogOut, Car, CalendarDays, Calculator, Lock } from 'lucide-react';
+import { LayoutDashboard, Users, FolderKanban, Receipt, BarChart3, Menu, LogOut, Car, CalendarDays, Calculator, Lock, Scissors } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
@@ -9,6 +9,7 @@ import { useSchedulingPro } from '@/hooks/useSchedulingPro';
 import { useFinancialPro } from '@/hooks/useFinancialPro';
 import { useMileagePro } from '@/hooks/useMileagePro';
 import { useTaxPro } from '@/hooks/useTaxPro';
+import { useServices } from '@/hooks/useServices';
 import cebLogo from '@/assets/ceb-logo.png';
 
 interface AppLayoutProps {
@@ -28,6 +29,7 @@ const proNavigation = [
   { name: 'Financial Pro', href: '/reports', icon: BarChart3 },
   { name: 'Mileage Pro', href: '/mileage', icon: Car },
   { name: 'Tax Pro', href: '/tax-pro', icon: Calculator },
+  { name: 'Service Menu', href: '/services', icon: Scissors },
 ];
 export function AppLayout({
   children
@@ -44,6 +46,7 @@ export function AppLayout({
   const { isEnabled: financialEnabled } = useFinancialPro();
   const { isEnabled: mileageEnabled } = useMileagePro();
   const { isEnabled: taxEnabled } = useTaxPro();
+  const { isEnabled: servicesEnabled } = useServices();
   
   // Use custom logo if set, otherwise fall back to default
   const displayLogo = logoUrl || cebLogo;
@@ -54,6 +57,7 @@ export function AppLayout({
     '/reports': financialEnabled,
     '/mileage': mileageEnabled,
     '/tax-pro': taxEnabled,
+    '/services': servicesEnabled,
   };
   const handleSignOut = async () => {
     await signOut();
