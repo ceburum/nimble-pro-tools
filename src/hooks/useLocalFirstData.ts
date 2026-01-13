@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { StorageConfig } from '@/lib/storage/StorageAdapter';
+import { StorageConfig, StorageRecord } from '@/lib/storage/StorageAdapter';
 import { HybridStorageAdapter } from '@/lib/storage/HybridStorageAdapter';
 import { SyncMetadata } from '@/lib/localDb';
 import { isCloudSyncEnabled } from '@/lib/featureFlags';
@@ -35,6 +35,9 @@ interface UseLocalFirstDataResult<T> {
  * - Primary storage in IndexedDB (works offline)
  * - Optional cloud sync when enabled
  * - Maintains same interface as existing hooks for UI compatibility
+ * 
+ * The hook handles type mapping: adapters work with StorageRecord,
+ * but the hook casts to/from the domain type T for type safety in components.
  */
 export function useLocalFirstData<T extends LocalRecord>(
   options: UseLocalFirstDataOptions
@@ -49,8 +52,8 @@ export function useLocalFirstData<T extends LocalRecord>(
   const [lastSynced, setLastSynced] = useState<Date | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
 
-  // Create adapter with current config
-  const adapterRef = useRef<HybridStorageAdapter<T> | null>(null);
+  // Create adapter with current config - adapter is non-generic
+  const adapterRef = useRef<HybridStorageAdapter | null>(null);
 
   const getAdapter = useCallback(() => {
     const config: StorageConfig = {
@@ -62,20 +65,21 @@ export function useLocalFirstData<T extends LocalRecord>(
     };
 
     if (!adapterRef.current) {
-      adapterRef.current = new HybridStorageAdapter<T>(config);
+      adapterRef.current = new HybridStorageAdapter(config);
     }
     
     return adapterRef.current;
   }, [tableName, cloudTableName, requiresAuth, user?.id]);
 
-  // Fetch all data
+  // Fetch all data - cast from StorageRecord to T
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
       const adapter = getAdapter();
       const records = await adapter.getAll();
-      setData(records);
+      // Cast StorageRecord[] to T[] - hooks are responsible for type safety
+      setData(records as unknown as T[]);
       
       // Count pending sync items
       const pending = records.filter(r => r.syncStatus === 'pending_push').length;
@@ -99,10 +103,12 @@ export function useLocalFirstData<T extends LocalRecord>(
   ): Promise<T | null> => {
     try {
       const adapter = getAdapter();
-      const created = await adapter.create(item as any);
-      setData(prev => [...prev, created]);
+      // Cast input to Record and output back to T
+      const created = await adapter.create(item as Record<string, unknown>);
+      const typedRecord = created as unknown as T;
+      setData(prev => [...prev, typedRecord]);
       setPendingCount(prev => prev + 1);
-      return created;
+      return typedRecord;
     } catch (err) {
       console.error(`Error adding to ${tableName}:`, err);
       setError(err as Error);
@@ -117,14 +123,16 @@ export function useLocalFirstData<T extends LocalRecord>(
   ): Promise<T | null> => {
     try {
       const adapter = getAdapter();
-      const updated = await adapter.update(id, updates);
+      const updated = await adapter.update(id, updates as Record<string, unknown>);
       if (updated) {
-        setData(prev => prev.map(item => item.id === id ? updated : item));
+        const typedRecord = updated as unknown as T;
+        setData(prev => prev.map(item => item.id === id ? typedRecord : item));
         // If record was synced, it's now pending
         const wasSync = data.find(d => d.id === id)?.syncStatus === 'synced';
         if (wasSync) setPendingCount(prev => prev + 1);
+        return typedRecord;
       }
-      return updated;
+      return null;
     } catch (err) {
       console.error(`Error updating ${tableName}:`, err);
       setError(err as Error);
