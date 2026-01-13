@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
-import { Camera, Upload, X, Plus } from 'lucide-react';
+import { Camera, Upload, X, Plus, Loader2 } from 'lucide-react';
 import { ProjectPhoto } from '@/types';
 import {
   Dialog,
@@ -18,7 +18,7 @@ interface ProjectPhotoUploadDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   projectId: string;
-  onSave: (photos: ProjectPhoto[]) => void;
+  onSave: (photos: ProjectPhoto[]) => void | Promise<void>;
 }
 
 interface PendingPhoto {
@@ -64,6 +64,7 @@ async function compressImageToJpegDataUrl(
 export function ProjectPhotoUploadDialog({ open, onOpenChange, projectId, onSave }: ProjectPhotoUploadDialogProps) {
   const [pendingPhotos, setPendingPhotos] = useState<PendingPhoto[]>([]);
   const [defaultType, setDefaultType] = useState<'before' | 'progress' | 'after'>('before');
+  const [isSaving, setIsSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -136,7 +137,7 @@ export function ProjectPhotoUploadDialog({ open, onOpenChange, projectId, onSave
     onOpenChange(false);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (pendingPhotos.length === 0) return;
 
     // Guardrail: if the pending payload is huge, saving to local storage may silently fail.
@@ -158,14 +159,29 @@ export function ProjectPhotoUploadDialog({ open, onOpenChange, projectId, onSave
       createdAt: new Date(),
     }));
 
-    onSave(photos);
-    closeDialog();
+    // Block dialog until save completes
+    setIsSaving(true);
+    try {
+      await onSave(photos);
+      closeDialog();
+    } catch (error) {
+      console.error('Error saving photos:', error);
+      toast({
+        title: 'Failed to save photos',
+        description: 'Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
     <Dialog
       open={open}
       onOpenChange={(nextOpen) => {
+        // Prevent closing while saving
+        if (isSaving) return;
         if (!nextOpen) resetState();
         onOpenChange(nextOpen);
       }}
@@ -292,9 +308,18 @@ export function ProjectPhotoUploadDialog({ open, onOpenChange, projectId, onSave
           )}
 
           <div className="flex justify-end gap-2 pt-2">
-            <Button type="button" variant="outline" onClick={closeDialog}>Cancel</Button>
-            <Button type="button" onClick={handleSave} disabled={pendingPhotos.length === 0}>
-              Save {pendingPhotos.length > 0 && `(${pendingPhotos.length})`}
+            <Button type="button" variant="outline" onClick={closeDialog} disabled={isSaving}>
+              Cancel
+            </Button>
+            <Button type="button" onClick={handleSave} disabled={pendingPhotos.length === 0 || isSaving}>
+              {isSaving ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                `Save${pendingPhotos.length > 0 ? ` (${pendingPhotos.length})` : ''}`
+              )}
             </Button>
           </div>
         </div>

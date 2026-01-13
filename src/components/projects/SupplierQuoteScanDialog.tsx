@@ -229,7 +229,7 @@ export function SupplierQuoteScanDialog({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Store className="h-5 w-5" />
-              Add Items from Quote
+              Add Items to Quote
             </DialogTitle>
           </DialogHeader>
 
