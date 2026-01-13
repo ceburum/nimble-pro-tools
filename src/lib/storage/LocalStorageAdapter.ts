@@ -1,13 +1,10 @@
-import { StorageAdapter, StorageConfig } from './StorageAdapter';
+import { StorageAdapter, StorageConfig, StorageRecord } from './StorageAdapter';
 import { 
   getDb, 
   generateLocalId, 
   createSyncMetadata, 
-  updateSyncMetadata,
-  SyncMetadata 
+  updateSyncMetadata 
 } from '../localDb';
-
-type LocalRecord = SyncMetadata & { id: string; createdAt: string };
 
 // Map of table names to their IndexedDB store names
 const TABLE_STORE_MAP: Record<string, string> = {
@@ -27,7 +24,7 @@ const TABLE_STORE_MAP: Record<string, string> = {
   irs_mileage_rates: 'irsMileageRates',
 };
 
-export class LocalStorageAdapter<T extends LocalRecord> implements StorageAdapter<T> {
+export class LocalStorageAdapter implements StorageAdapter {
   private storeName: string;
   private config: StorageConfig;
 
@@ -36,36 +33,36 @@ export class LocalStorageAdapter<T extends LocalRecord> implements StorageAdapte
     this.storeName = TABLE_STORE_MAP[config.tableName] || config.tableName;
   }
 
-  async getAll(): Promise<T[]> {
+  async getAll(): Promise<StorageRecord[]> {
     const db = await getDb();
     const records = await db.getAll(this.storeName as any);
-    return records as T[];
+    return records as StorageRecord[];
   }
 
-  async getById(id: string): Promise<T | null> {
+  async getById(id: string): Promise<StorageRecord | null> {
     const db = await getDb();
     const record = await db.get(this.storeName as any, id);
-    return (record as T) || null;
+    return (record as StorageRecord) || null;
   }
 
-  async getByIndex(indexName: string, value: string): Promise<T[]> {
+  async getByIndex(indexName: string, value: string): Promise<StorageRecord[]> {
     const db = await getDb();
     const tx = db.transaction(this.storeName as any, 'readonly');
     const index = tx.store.index(indexName);
     const records = await index.getAll(value);
-    return records as T[];
+    return records as StorageRecord[];
   }
 
-  async create(data: Omit<T, 'id' | 'createdAt'>): Promise<T> {
+  async create(data: Record<string, unknown>): Promise<StorageRecord> {
     const db = await getDb();
     const now = new Date().toISOString();
     
-    const record = {
+    const record: StorageRecord = {
       ...data,
       id: generateLocalId(),
       createdAt: now,
-      ...createSyncMetadata(null), // New local record, no cloud ID yet
-    } as T;
+      ...createSyncMetadata(null),
+    };
 
     await db.put(this.storeName as any, record);
     
@@ -77,17 +74,18 @@ export class LocalStorageAdapter<T extends LocalRecord> implements StorageAdapte
     return record;
   }
 
-  async update(id: string, data: Partial<T>): Promise<T | null> {
+  async update(id: string, data: Record<string, unknown>): Promise<StorageRecord | null> {
     const db = await getDb();
     const existing = await db.get(this.storeName as any, id);
     
     if (!existing) return null;
 
-    const updated = {
+    const updated: StorageRecord = {
       ...existing,
       ...data,
-      ...updateSyncMetadata(existing as LocalRecord),
-    } as T;
+      id, // Ensure id is preserved
+      ...updateSyncMetadata(existing as any),
+    };
 
     await db.put(this.storeName as any, updated);
 
@@ -108,8 +106,9 @@ export class LocalStorageAdapter<T extends LocalRecord> implements StorageAdapte
     await db.delete(this.storeName as any, id);
 
     // Add to sync queue if sync is enabled and record was synced to cloud
-    if (this.config.syncEnabled() && (existing as LocalRecord).cloudId) {
-      await this.addToSyncQueue(id, 'delete', { cloudId: (existing as LocalRecord).cloudId });
+    const record = existing as StorageRecord;
+    if (this.config.syncEnabled() && record.cloudId) {
+      await this.addToSyncQueue(id, 'delete', { cloudId: record.cloudId });
     }
 
     return true;
@@ -138,8 +137,6 @@ export class LocalStorageAdapter<T extends LocalRecord> implements StorageAdapte
   }
 }
 
-export function createLocalStorageAdapter<T extends LocalRecord>(
-  config: StorageConfig
-): LocalStorageAdapter<T> {
-  return new LocalStorageAdapter<T>(config);
+export function createLocalStorageAdapter(config: StorageConfig): LocalStorageAdapter {
+  return new LocalStorageAdapter(config);
 }

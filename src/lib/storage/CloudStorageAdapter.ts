@@ -1,4 +1,4 @@
-import { StorageAdapter, StorageConfig } from './StorageAdapter';
+import { StorageAdapter, StorageConfig, StorageRecord } from './StorageAdapter';
 import { supabase } from '@/integrations/supabase/client';
 
 // Field name mapping: camelCase (local) -> snake_case (cloud)
@@ -102,35 +102,16 @@ const FIELD_MAPPINGS: Record<string, Record<string, string>> = {
   },
 };
 
-type CloudRecord = { id: string; created_at?: string; [key: string]: unknown };
-
-// Valid Supabase table names
-type SupabaseTableName = 
-  | 'clients' 
-  | 'invoices' 
-  | 'projects' 
-  | 'project_photos' 
-  | 'project_receipts'
-  | 'mileage_entries'
-  | 'capital_assets'
-  | 'subcontractor_payments'
-  | 'expense_categories'
-  | 'bank_expenses'
-  | 'transactions'
-  | 'materials'
-  | 'user_settings'
-  | 'irs_mileage_rates';
-
-export class CloudStorageAdapter<T extends { id: string; createdAt?: string }> implements StorageAdapter<T> {
+export class CloudStorageAdapter implements StorageAdapter {
   private config: StorageConfig;
-  private tableName: SupabaseTableName;
+  private tableName: string;
 
   constructor(config: StorageConfig) {
     this.config = config;
-    this.tableName = (config.cloudTableName || config.tableName) as SupabaseTableName;
+    this.tableName = config.cloudTableName || config.tableName;
   }
 
-  private toCloudFormat(data: Partial<T>): Record<string, unknown> {
+  private toCloudFormat(data: Record<string, unknown>): Record<string, unknown> {
     const mapping = FIELD_MAPPINGS[this.tableName] || {};
     const result: Record<string, unknown> = {};
 
@@ -151,7 +132,7 @@ export class CloudStorageAdapter<T extends { id: string; createdAt?: string }> i
     return result;
   }
 
-  private toLocalFormat(data: CloudRecord): T {
+  private toLocalFormat(data: Record<string, unknown>): StorageRecord {
     const mapping = FIELD_MAPPINGS[this.tableName] || {};
     const reverseMapping: Record<string, string> = {};
     
@@ -167,119 +148,175 @@ export class CloudStorageAdapter<T extends { id: string; createdAt?: string }> i
       result[localKey] = value;
     }
 
-    return result as T;
+    return result as StorageRecord;
   }
 
-  async getAll(): Promise<T[]> {
-    const { data, error } = await supabase
-      .from(this.tableName)
-      .select('*');
-    
-    if (error) {
-      console.error(`Error fetching from ${this.tableName}:`, error);
-      throw error;
-    }
-
-    return ((data as CloudRecord[]) || []).map(record => this.toLocalFormat(record));
+  // Helper to execute queries with type safety bypass
+  private async executeQuery(
+    queryFn: () => Promise<{ data: unknown; error: unknown }>
+  ): Promise<Record<string, unknown>[]> {
+    const { data, error } = await queryFn();
+    if (error) throw error;
+    return (data || []) as Record<string, unknown>[];
   }
 
-  async getById(id: string): Promise<T | null> {
-    const { data, error } = await (supabase
-      .from(this.tableName) as any)
-      .select('*')
-      .eq('id', id)
-      .maybeSingle();
-
-    if (error) {
-      console.error(`Error fetching ${this.tableName} by id:`, error);
-      throw error;
-    }
-
-    return data ? this.toLocalFormat(data as CloudRecord) : null;
+  private async executeSingleQuery(
+    queryFn: () => Promise<{ data: unknown; error: unknown }>
+  ): Promise<Record<string, unknown> | null> {
+    const { data, error } = await queryFn();
+    if (error) throw error;
+    return data as Record<string, unknown> | null;
   }
 
-  async getByIndex(indexName: string, value: string): Promise<T[]> {
-    // Convert index name to cloud format (e.g., 'by-client' -> 'client_id')
-    const columnName = indexName.replace('by-', '') + '_id';
-    
-    const { data, error } = await (supabase
-      .from(this.tableName) as any)
-      .select('*')
-      .eq(columnName, value);
+  async getAll(): Promise<StorageRecord[]> {
+    try {
+      // Use any to bypass Supabase's complex generic inference
+      const client = supabase as any;
+      const { data, error } = await client.from(this.tableName).select('*');
+      
+      if (error) {
+        console.error(`Error fetching from ${this.tableName}:`, error);
+        throw error;
+      }
 
-    if (error) {
-      console.error(`Error fetching ${this.tableName} by ${columnName}:`, error);
-      throw error;
+      return (data || []).map((record: Record<string, unknown>) => this.toLocalFormat(record));
+    } catch (err) {
+      console.error(`Error in getAll for ${this.tableName}:`, err);
+      throw err;
     }
-
-    return ((data as CloudRecord[]) || []).map(record => this.toLocalFormat(record));
   }
 
-  async create(data: Omit<T, 'id' | 'createdAt'>): Promise<T> {
-    const cloudData = this.toCloudFormat(data as Partial<T>);
-    
-    const { data: created, error } = await (supabase
-      .from(this.tableName) as any)
-      .insert(cloudData)
-      .select()
-      .single();
+  async getById(id: string): Promise<StorageRecord | null> {
+    try {
+      const client = supabase as any;
+      const { data, error } = await client
+        .from(this.tableName)
+        .select('*')
+        .eq('id', id)
+        .maybeSingle();
 
-    if (error) {
-      console.error(`Error creating in ${this.tableName}:`, error);
-      throw error;
+      if (error) {
+        console.error(`Error fetching ${this.tableName} by id:`, error);
+        throw error;
+      }
+
+      return data ? this.toLocalFormat(data) : null;
+    } catch (err) {
+      console.error(`Error in getById for ${this.tableName}:`, err);
+      throw err;
     }
-
-    return this.toLocalFormat(created as CloudRecord);
   }
 
-  async update(id: string, data: Partial<T>): Promise<T | null> {
-    const cloudData = this.toCloudFormat(data);
-    
-    const { data: updated, error } = await (supabase
-      .from(this.tableName) as any)
-      .update(cloudData)
-      .eq('id', id)
-      .select()
-      .single();
+  async getByIndex(indexName: string, value: string): Promise<StorageRecord[]> {
+    try {
+      // Convert index name to cloud format (e.g., 'by-client' -> 'client_id')
+      const columnName = indexName.replace('by-', '') + '_id';
+      
+      const client = supabase as any;
+      const { data, error } = await client
+        .from(this.tableName)
+        .select('*')
+        .eq(columnName, value);
 
-    if (error) {
-      console.error(`Error updating ${this.tableName}:`, error);
-      throw error;
+      if (error) {
+        console.error(`Error fetching ${this.tableName} by ${columnName}:`, error);
+        throw error;
+      }
+
+      return (data || []).map((record: Record<string, unknown>) => this.toLocalFormat(record));
+    } catch (err) {
+      console.error(`Error in getByIndex for ${this.tableName}:`, err);
+      throw err;
     }
+  }
 
-    return updated ? this.toLocalFormat(updated as CloudRecord) : null;
+  async create(data: Record<string, unknown>): Promise<StorageRecord> {
+    try {
+      const cloudData = this.toCloudFormat(data);
+      
+      const client = supabase as any;
+      const { data: created, error } = await client
+        .from(this.tableName)
+        .insert(cloudData)
+        .select()
+        .single();
+
+      if (error) {
+        console.error(`Error creating in ${this.tableName}:`, error);
+        throw error;
+      }
+
+      return this.toLocalFormat(created);
+    } catch (err) {
+      console.error(`Error in create for ${this.tableName}:`, err);
+      throw err;
+    }
+  }
+
+  async update(id: string, data: Record<string, unknown>): Promise<StorageRecord | null> {
+    try {
+      const cloudData = this.toCloudFormat(data);
+      
+      const client = supabase as any;
+      const { data: updated, error } = await client
+        .from(this.tableName)
+        .update(cloudData)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error(`Error updating ${this.tableName}:`, error);
+        throw error;
+      }
+
+      return updated ? this.toLocalFormat(updated) : null;
+    } catch (err) {
+      console.error(`Error in update for ${this.tableName}:`, err);
+      throw err;
+    }
   }
 
   async delete(id: string): Promise<boolean> {
-    const { error } = await (supabase
-      .from(this.tableName) as any)
-      .delete()
-      .eq('id', id);
+    try {
+      const client = supabase as any;
+      const { error } = await client
+        .from(this.tableName)
+        .delete()
+        .eq('id', id);
 
-    if (error) {
-      console.error(`Error deleting from ${this.tableName}:`, error);
-      throw error;
+      if (error) {
+        console.error(`Error deleting from ${this.tableName}:`, error);
+        throw error;
+      }
+
+      return true;
+    } catch (err) {
+      console.error(`Error in delete for ${this.tableName}:`, err);
+      throw err;
     }
-
-    return true;
   }
 
   async count(): Promise<number> {
-    const { count, error } = await supabase
-      .from(this.tableName)
-      .select('id', { count: 'exact', head: true });
+    try {
+      const client = supabase as any;
+      const { count, error } = await client
+        .from(this.tableName)
+        .select('id', { count: 'exact', head: true });
 
-    if (error) {
-      console.error(`Error counting ${this.tableName}:`, error);
-      throw error;
+      if (error) {
+        console.error(`Error counting ${this.tableName}:`, error);
+        throw error;
+      }
+
+      return count || 0;
+    } catch (err) {
+      console.error(`Error in count for ${this.tableName}:`, err);
+      throw err;
     }
-
-    return count || 0;
   }
 }
 
-export function createCloudStorageAdapter<T extends { id: string; createdAt?: string }>(
-  config: StorageConfig
-): CloudStorageAdapter<T> {
-  return new CloudStorageAdapter<T>(config);
+export function createCloudStorageAdapter(config: StorageConfig): CloudStorageAdapter {
+  return new CloudStorageAdapter(config);
 }

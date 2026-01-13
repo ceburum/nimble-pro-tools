@@ -1,11 +1,14 @@
-// Storage adapter interface - abstracts local vs cloud storage
+// Storage adapter interface - operates on plain objects without generics
+// Hooks perform strongly-typed mapping between adapter data and domain models
 
-export interface StorageAdapter<T> {
-  getAll(): Promise<T[]>;
-  getById(id: string): Promise<T | null>;
-  getByIndex?(indexName: string, value: string): Promise<T[]>;
-  create(data: Omit<T, 'id' | 'createdAt'>): Promise<T>;
-  update(id: string, data: Partial<T>): Promise<T | null>;
+export type StorageRecord = Record<string, unknown> & { id: string };
+
+export interface StorageAdapter {
+  getAll(): Promise<StorageRecord[]>;
+  getById(id: string): Promise<StorageRecord | null>;
+  getByIndex?(indexName: string, value: string): Promise<StorageRecord[]>;
+  create(data: Record<string, unknown>): Promise<StorageRecord>;
+  update(id: string, data: Record<string, unknown>): Promise<StorageRecord | null>;
   delete(id: string): Promise<boolean>;
   count(): Promise<number>;
 }
@@ -18,6 +21,3 @@ export interface StorageConfig {
   syncEnabled: () => boolean;
   getUserId: () => string | null;
 }
-
-// Adapter factory type
-export type StorageAdapterFactory<T> = (config: StorageConfig) => StorageAdapter<T>;

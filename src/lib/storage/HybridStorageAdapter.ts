@@ -1,10 +1,8 @@
-import { StorageAdapter, StorageConfig } from './StorageAdapter';
+import { StorageAdapter, StorageConfig, StorageRecord } from './StorageAdapter';
 import { LocalStorageAdapter } from './LocalStorageAdapter';
 import { CloudStorageAdapter } from './CloudStorageAdapter';
-import { SyncMetadata, getDb, generateLocalId } from '../localDb';
+import { getDb, generateLocalId } from '../localDb';
 import { isCloudSyncEnabled } from '../featureFlags';
-
-type HybridRecord = SyncMetadata & { id: string; createdAt: string };
 
 /**
  * HybridStorageAdapter - Primary storage is always local (IndexedDB)
@@ -16,15 +14,15 @@ type HybridRecord = SyncMetadata & { id: string; createdAt: string };
  *   - Reads can optionally pull from cloud on cache miss
  * - App works fully offline
  */
-export class HybridStorageAdapter<T extends HybridRecord> implements StorageAdapter<T> {
-  private localAdapter: LocalStorageAdapter<T>;
-  private cloudAdapter: CloudStorageAdapter<T>;
+export class HybridStorageAdapter implements StorageAdapter {
+  private localAdapter: LocalStorageAdapter;
+  private cloudAdapter: CloudStorageAdapter;
   private config: StorageConfig;
 
   constructor(config: StorageConfig) {
     this.config = config;
-    this.localAdapter = new LocalStorageAdapter<T>(config);
-    this.cloudAdapter = new CloudStorageAdapter<T>(config);
+    this.localAdapter = new LocalStorageAdapter(config);
+    this.cloudAdapter = new CloudStorageAdapter(config);
   }
 
   private shouldSyncToCloud(): boolean {
@@ -32,21 +30,21 @@ export class HybridStorageAdapter<T extends HybridRecord> implements StorageAdap
            (!this.config.requiresAuth || !!this.config.getUserId());
   }
 
-  async getAll(): Promise<T[]> {
+  async getAll(): Promise<StorageRecord[]> {
     // Always read from local first
     return await this.localAdapter.getAll();
   }
 
-  async getById(id: string): Promise<T | null> {
+  async getById(id: string): Promise<StorageRecord | null> {
     // Always read from local first
     return await this.localAdapter.getById(id);
   }
 
-  async getByIndex(indexName: string, value: string): Promise<T[]> {
+  async getByIndex(indexName: string, value: string): Promise<StorageRecord[]> {
     return await this.localAdapter.getByIndex(indexName, value);
   }
 
-  async create(data: Omit<T, 'id' | 'createdAt'>): Promise<T> {
+  async create(data: Record<string, unknown>): Promise<StorageRecord> {
     // Create locally first
     const record = await this.localAdapter.create(data);
     
@@ -56,7 +54,7 @@ export class HybridStorageAdapter<T extends HybridRecord> implements StorageAdap
     return record;
   }
 
-  async update(id: string, data: Partial<T>): Promise<T | null> {
+  async update(id: string, data: Record<string, unknown>): Promise<StorageRecord | null> {
     // Update locally first
     const updated = await this.localAdapter.update(id, data);
     
@@ -99,13 +97,13 @@ export class HybridStorageAdapter<T extends HybridRecord> implements StorageAdap
       
       if (!localRecord) {
         // New record from cloud - add locally
-        const withSyncMeta = {
+        const withSyncMeta: StorageRecord = {
           ...cloudRecord,
-          localUpdatedAt: cloudRecord.createdAt,
-          cloudUpdatedAt: cloudRecord.createdAt,
-          syncStatus: 'synced' as const,
+          localUpdatedAt: cloudRecord.createdAt as string,
+          cloudUpdatedAt: cloudRecord.createdAt as string,
+          syncStatus: 'synced',
           cloudId: cloudRecord.id,
-        } as T;
+        };
         
         await db.put(this.config.tableName as any, withSyncMeta);
         added++;
@@ -113,21 +111,21 @@ export class HybridStorageAdapter<T extends HybridRecord> implements StorageAdap
         // Local has changes that haven't been pushed - conflict
         // For now, keep local changes (last write wins locally)
         // Mark as conflict for user review
-        const conflictRecord = {
+        const conflictRecord: StorageRecord = {
           ...localRecord,
-          syncStatus: 'conflict' as const,
-        } as T;
+          syncStatus: 'conflict',
+        };
         await db.put(this.config.tableName as any, conflictRecord);
         conflicts++;
       } else {
         // Local is synced, update from cloud
-        const withSyncMeta = {
+        const withSyncMeta: StorageRecord = {
           ...cloudRecord,
           localUpdatedAt: new Date().toISOString(),
-          cloudUpdatedAt: cloudRecord.createdAt,
-          syncStatus: 'synced' as const,
+          cloudUpdatedAt: cloudRecord.createdAt as string,
+          syncStatus: 'synced',
           cloudId: cloudRecord.id,
-        } as T;
+        };
         
         await db.put(this.config.tableName as any, withSyncMeta);
         updated++;
@@ -159,23 +157,23 @@ export class HybridStorageAdapter<T extends HybridRecord> implements StorageAdap
         if (item.operation === 'create') {
           const localRecord = await this.localAdapter.getById(item.recordId);
           if (localRecord) {
-            const cloudRecord = await this.cloudAdapter.create(localRecord as any);
+            const cloudRecord = await this.cloudAdapter.create(localRecord);
             // Update local with cloud ID
             await this.localAdapter.update(item.recordId, {
               cloudId: cloudRecord.id,
               cloudUpdatedAt: new Date().toISOString(),
               syncStatus: 'synced',
-            } as Partial<T>);
+            });
             created++;
           }
         } else if (item.operation === 'update') {
           const localRecord = await this.localAdapter.getById(item.recordId);
           if (localRecord && localRecord.cloudId) {
-            await this.cloudAdapter.update(localRecord.cloudId, localRecord);
+            await this.cloudAdapter.update(localRecord.cloudId as string, localRecord);
             await this.localAdapter.update(item.recordId, {
               cloudUpdatedAt: new Date().toISOString(),
               syncStatus: 'synced',
-            } as Partial<T>);
+            });
             updated++;
           }
         } else if (item.operation === 'delete') {
@@ -204,8 +202,6 @@ export class HybridStorageAdapter<T extends HybridRecord> implements StorageAdap
   }
 }
 
-export function createHybridStorageAdapter<T extends HybridRecord>(
-  config: StorageConfig
-): HybridStorageAdapter<T> {
-  return new HybridStorageAdapter<T>(config);
+export function createHybridStorageAdapter(config: StorageConfig): HybridStorageAdapter {
+  return new HybridStorageAdapter(config);
 }
