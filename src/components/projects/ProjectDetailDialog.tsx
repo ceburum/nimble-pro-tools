@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Project, Client, ProjectPhoto, ProjectReceipt, MileageEntry } from '@/types';
+import { Project, Client, ProjectPhoto, ProjectReceipt } from '@/types';
 import {
   Dialog,
   DialogContent,
@@ -16,7 +16,6 @@ import {
   FolderKanban,
   Camera,
   Receipt,
-  Navigation,
   User,
   MapPin,
   Phone,
@@ -99,7 +98,6 @@ export function ProjectDetailDialog({
   const { notes: projectNotes } = useProjectNotes(project.id);
 
   const status = statusConfig[project.status];
-  const totalMiles = project.mileageEntries.reduce((sum, e) => sum + e.distance, 0);
   const totalExpenses = project.receipts.reduce((sum, r) => sum + r.amount, 0);
   const quoteTotal = project.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
   
@@ -436,9 +434,9 @@ export function ProjectDetailDialog({
                         <p className="text-xs text-muted-foreground">Expenses</p>
                       </div>
                       <div className="bg-muted/50 rounded-lg p-3 text-center">
-                        <Navigation className="h-4 w-4 mx-auto text-muted-foreground mb-1" />
-                        <p className="text-lg font-bold text-foreground">{totalMiles.toFixed(1)}</p>
-                        <p className="text-xs text-muted-foreground">Miles</p>
+                        <StickyNote className="h-4 w-4 mx-auto text-muted-foreground mb-1" />
+                        <p className="text-lg font-bold text-foreground">{projectNotes.length}</p>
+                        <p className="text-xs text-muted-foreground">Notes</p>
                       </div>
                     </div>
                   </div>
