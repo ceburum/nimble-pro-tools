@@ -213,6 +213,12 @@ export default function Auth() {
               {isLogin ? 'Sign up' : 'Sign in'}
             </button>
           </div>
+          <div className="mt-6 text-center text-xs text-muted-foreground">
+            By {isLogin ? 'signing in' : 'creating an account'}, you agree to our{' '}
+            <a href="/terms" className="text-primary hover:underline">Terms of Service</a>
+            {' '}and{' '}
+            <a href="/privacy" className="text-primary hover:underline">Privacy Policy</a>.
+          </div>
         </CardContent>
       </Card>
     </div>
