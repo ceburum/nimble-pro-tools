@@ -38,6 +38,8 @@ import {
 } from 'lucide-react';
 import { SupplierQuoteScanDialog } from './SupplierQuoteScanDialog';
 import { ScheduleDialog } from '@/components/scheduling/ScheduleDialog';
+import { ProjectPhotoUploadDialog } from './ProjectPhotoUploadDialog';
+import { ProjectReceiptUploadDialog } from './ProjectReceiptUploadDialog';
 import { AddToCalendarButton } from '@/components/scheduling/AddToCalendarButton';
 import { formatArrivalWindow } from '@/lib/calendarUtils';
 import { useProjects } from '@/hooks/useProjects';
@@ -85,8 +87,11 @@ export function ProjectDetailDialog({
   const [isSendingQuote, setIsSendingQuote] = useState(false);
   const [supplierScanOpen, setSupplierScanOpen] = useState(false);
   const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
+  const [photoUploadOpen, setPhotoUploadOpen] = useState(false);
+  const [receiptUploadOpen, setReceiptUploadOpen] = useState(false);
+  const [isSavingPhoto, setIsSavingPhoto] = useState(false);
   const { toast } = useToast();
-  const { projects: allProjects, updateReceipt } = useProjects();
+  const { projects: allProjects, updateReceipt, addPhoto, addReceipt } = useProjects();
   const { categories } = useExpenseCategories();
 
   const status = statusConfig[project.status];
@@ -509,7 +514,7 @@ export function ProjectDetailDialog({
                     <div className="flex gap-2">
                       <Button size="sm" variant="outline" onClick={() => setSupplierScanOpen(true)}>
                         <Store className="h-4 w-4 mr-1" />
-                        Import from Supplier
+                        Add Items to Quote
                       </Button>
                       <Button size="sm" variant="outline" onClick={handleAddLineItem}>
                         <Plus className="h-4 w-4 mr-1" />
@@ -586,11 +591,19 @@ export function ProjectDetailDialog({
               {/* Photos Tab */}
               <TabsContent value="photos" className="p-6 m-0">
                 <div className="space-y-6">
+                  {/* Add Photo Button - always visible */}
+                  <div className="flex justify-end">
+                    <Button size="sm" onClick={() => setPhotoUploadOpen(true)}>
+                      <ImagePlus className="h-4 w-4 mr-2" />
+                      Add Photo
+                    </Button>
+                  </div>
+
                   {project.photos.length === 0 ? (
                     <div className="text-center py-8">
                       <Camera className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                       <p className="text-muted-foreground">No photos yet</p>
-                      <p className="text-sm text-muted-foreground">Use the Photo button to add pictures</p>
+                      <p className="text-sm text-muted-foreground">Click "Add Photo" above to add pictures</p>
                     </div>
                   ) : (
                     <>
@@ -641,18 +654,24 @@ export function ProjectDetailDialog({
               {/* Expenses Tab */}
               <TabsContent value="expenses" className="p-6 m-0">
                 <div className="space-y-4">
-                  {project.receipts.length > 0 && (
-                    <div className="flex justify-end">
+                  {/* Add Receipt Button - always visible */}
+                  <div className="flex justify-between items-center">
+                    <Button size="sm" onClick={() => setReceiptUploadOpen(true)}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Receipt
+                    </Button>
+                    {project.receipts.length > 0 && (
                       <p className="text-sm text-muted-foreground">
                         Total: <span className="font-semibold text-foreground">${totalExpenses.toFixed(2)}</span>
                       </p>
-                    </div>
-                  )}
+                    )}
+                  </div>
 
                   {project.receipts.length === 0 ? (
                     <div className="text-center py-8">
                       <Receipt className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                       <p className="text-muted-foreground">No receipts yet</p>
+                      <p className="text-sm text-muted-foreground">Click "Add Receipt" above to add expense receipts</p>
                     </div>
                   ) : (
                     <div className="space-y-2">
@@ -769,6 +788,48 @@ export function ProjectDetailDialog({
         onSchedule={(updatedProject) => {
           onUpdate(updatedProject);
           setScheduleDialogOpen(false);
+        }}
+      />
+
+      {/* Photo Upload Dialog - context-aware with projectId */}
+      <ProjectPhotoUploadDialog
+        open={photoUploadOpen}
+        onOpenChange={setPhotoUploadOpen}
+        projectId={project.id}
+        onSave={async (photos) => {
+          // Save each photo with proper context
+          setIsSavingPhoto(true);
+          try {
+            for (const photo of photos) {
+              // Convert dataUrl to File for storage upload
+              const response = await fetch(photo.dataUrl);
+              const blob = await response.blob();
+              const file = new File([blob], `photo-${Date.now()}.jpg`, { type: 'image/jpeg' });
+              
+              const success = await addPhoto(project.id, file, photo.type, photo.caption);
+              if (!success) {
+                toast({ title: 'Error saving photo', variant: 'destructive' });
+                return;
+              }
+            }
+            toast({ title: 'Photos saved', description: `Added ${photos.length} photo(s)` });
+          } catch (error) {
+            console.error('Error saving photos:', error);
+            toast({ title: 'Error saving photos', variant: 'destructive' });
+          } finally {
+            setIsSavingPhoto(false);
+          }
+        }}
+      />
+
+      {/* Receipt Upload Dialog - context-aware with projectId */}
+      <ProjectReceiptUploadDialog
+        open={receiptUploadOpen}
+        onOpenChange={setReceiptUploadOpen}
+        projectId={project.id}
+        onSave={async (file, storeName, totalAmount) => {
+          const success = await addReceipt(project.id, file, storeName, totalAmount);
+          return success;
         }}
       />
     </>

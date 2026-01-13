@@ -193,7 +193,7 @@ export function QuoteDialog({
               <div className="flex gap-2">
                 <Button type="button" variant="outline" size="sm" onClick={() => setSupplierScanOpen(true)}>
                   <Store className="h-4 w-4 mr-1" />
-                  Import from Supplier
+                  Add Items to Quote
                 </Button>
                 <Button type="button" variant="outline" size="sm" onClick={handleAddItem}>
                   <Plus className="h-4 w-4 mr-1" />
