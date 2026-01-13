@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserLogo } from '@/hooks/useUserLogo';
 import { useSchedulingPro } from '@/hooks/useSchedulingPro';
@@ -15,6 +16,7 @@ import { useFinancialPro } from '@/hooks/useFinancialPro';
 import { useMileagePro } from '@/hooks/useMileagePro';
 import { useTaxPro } from '@/hooks/useTaxPro';
 import { useServices } from '@/hooks/useServices';
+import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 import { supabase } from '@/integrations/supabase/client';
 import cebLogo from '@/assets/ceb-logo.png';
 
@@ -86,6 +88,7 @@ export function AppLayout({
   const { isEnabled: mileageEnabled } = useMileagePro();
   const { isEnabled: taxEnabled } = useTaxPro();
   const { isEnabled: servicesEnabled } = useServices();
+  const { isDevModeEnabled, toggleDevMode } = useFeatureFlags();
   const [isAdmin, setIsAdmin] = useState(false);
   
   // Check if user is admin
@@ -106,9 +109,16 @@ export function AppLayout({
   // Use custom logo if set, otherwise fall back to default
   const displayLogo = logoUrl || cebLogo;
   
-  // Map of add-on enabled states
-  const addOnEnabledMap: Record<string, boolean> = {
-    'cloud_backup_enabled': false, // TODO: integrate with actual cloud backup state
+  // Map of add-on enabled states - dev mode unlocks all
+  const addOnEnabledMap: Record<string, boolean> = isDevModeEnabled ? {
+    'cloud_backup_enabled': true,
+    'scheduling_pro_enabled': true,
+    'financial_pro_enabled': true,
+    'mileage_pro_enabled': true,
+    'tax_pro_enabled': true,
+    'service_menu_enabled': true,
+  } : {
+    'cloud_backup_enabled': false,
     'scheduling_pro_enabled': schedulingEnabled,
     'financial_pro_enabled': financialEnabled,
     'mileage_pro_enabled': mileageEnabled,
@@ -262,8 +272,20 @@ export function AppLayout({
           )}
         </nav>
 
-        {/* Sign Out Button */}
-        <div className="px-4 py-4 border-t border-sidebar-border">
+        {/* Footer with Dev Mode Toggle + Sign Out */}
+        <div className="px-4 py-4 border-t border-sidebar-border space-y-2">
+          {/* Dev Mode Toggle - Admin Only */}
+          {isAdmin && (
+            <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-sidebar-accent/50">
+              <span className="text-xs font-medium text-sidebar-foreground/70">Dev Mode</span>
+              <Switch 
+                checked={isDevModeEnabled} 
+                onCheckedChange={toggleDevMode}
+                className="scale-90"
+              />
+            </div>
+          )}
+          
           <Button variant="ghost" className="w-full justify-start gap-3 text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground" onClick={handleSignOut}>
             <LogOut className="h-5 w-5" />
             Sign Out

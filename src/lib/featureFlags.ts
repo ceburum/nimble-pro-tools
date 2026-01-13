@@ -13,6 +13,9 @@ export interface FeatureFlags {
   // Add-on feature flags
   service_menu_enabled: boolean;
   
+  // Developer mode (admin only)
+  dev_mode_enabled: boolean;
+  
   // Migration flags
   migration_completed: boolean;
   migration_started_at: string | null;
@@ -29,6 +32,7 @@ export const DEFAULT_FEATURE_FLAGS: FeatureFlags = {
   mileage_pro_enabled: false,
   financial_pro_enabled: false,
   service_menu_enabled: false,
+  dev_mode_enabled: false,
   migration_completed: false,
   migration_started_at: null,
   migration_completed_at: null,
