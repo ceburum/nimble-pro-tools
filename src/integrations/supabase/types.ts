@@ -90,12 +90,19 @@ export type Database = {
       }
       affiliates: {
         Row: {
+          application_submitted_at: string | null
+          application_text: string | null
           commission_rate: number
           commission_type: string
           created_at: string
           id: string
           pending_earnings: number
+          recommended_by_affiliate_id: string | null
+          recommended_by_email: string | null
           referral_code: string
+          rejection_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
           status: Database["public"]["Enums"]["affiliate_status"]
           stripe_account_id: string | null
           stripe_account_type: string | null
@@ -106,12 +113,19 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          application_submitted_at?: string | null
+          application_text?: string | null
           commission_rate?: number
           commission_type?: string
           created_at?: string
           id?: string
           pending_earnings?: number
+          recommended_by_affiliate_id?: string | null
+          recommended_by_email?: string | null
           referral_code: string
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           status?: Database["public"]["Enums"]["affiliate_status"]
           stripe_account_id?: string | null
           stripe_account_type?: string | null
@@ -122,12 +136,19 @@ export type Database = {
           user_id: string
         }
         Update: {
+          application_submitted_at?: string | null
+          application_text?: string | null
           commission_rate?: number
           commission_type?: string
           created_at?: string
           id?: string
           pending_earnings?: number
+          recommended_by_affiliate_id?: string | null
+          recommended_by_email?: string | null
           referral_code?: string
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           status?: Database["public"]["Enums"]["affiliate_status"]
           stripe_account_id?: string | null
           stripe_account_type?: string | null
@@ -137,7 +158,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "affiliates_recommended_by_affiliate_id_fkey"
+            columns: ["recommended_by_affiliate_id"]
+            isOneToOne: false
+            referencedRelation: "affiliates"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       bank_expenses: {
         Row: {
@@ -943,6 +972,63 @@ export type Database = {
           },
         ]
       }
+      user_referral_rewards: {
+        Row: {
+          created_at: string | null
+          expires_at: string | null
+          id: string
+          original_purchase_amount: number
+          original_stripe_payment_intent_id: string | null
+          referral_code: string
+          referred_at: string | null
+          referred_buyer_email: string | null
+          referred_buyer_id: string | null
+          referred_purchase_amount: number | null
+          reward_amount: number | null
+          reward_method: string | null
+          reward_processed_at: string | null
+          status: Database["public"]["Enums"]["referral_link_status"]
+          stripe_refund_id: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          original_purchase_amount?: number
+          original_stripe_payment_intent_id?: string | null
+          referral_code: string
+          referred_at?: string | null
+          referred_buyer_email?: string | null
+          referred_buyer_id?: string | null
+          referred_purchase_amount?: number | null
+          reward_amount?: number | null
+          reward_method?: string | null
+          reward_processed_at?: string | null
+          status?: Database["public"]["Enums"]["referral_link_status"]
+          stripe_refund_id?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          original_purchase_amount?: number
+          original_stripe_payment_intent_id?: string | null
+          referral_code?: string
+          referred_at?: string | null
+          referred_buyer_email?: string | null
+          referred_buyer_id?: string | null
+          referred_purchase_amount?: number | null
+          reward_amount?: number | null
+          reward_method?: string | null
+          reward_processed_at?: string | null
+          status?: Database["public"]["Enums"]["referral_link_status"]
+          stripe_refund_id?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -1051,6 +1137,7 @@ export type Database = {
     }
     Functions: {
       generate_referral_code: { Args: never; Returns: string }
+      generate_user_referral_code: { Args: never; Returns: string }
       get_invoice_by_payment_token: {
         Args: { p_token: string }
         Returns: {
@@ -1074,6 +1161,12 @@ export type Database = {
     Enums: {
       affiliate_status: "pending" | "active" | "paused" | "rejected"
       app_role: "admin" | "moderator" | "user"
+      referral_link_status:
+        | "active"
+        | "used"
+        | "expired"
+        | "reward_pending"
+        | "reward_completed"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1203,6 +1296,13 @@ export const Constants = {
     Enums: {
       affiliate_status: ["pending", "active", "paused", "rejected"],
       app_role: ["admin", "moderator", "user"],
+      referral_link_status: [
+        "active",
+        "used",
+        "expired",
+        "reward_pending",
+        "reward_completed",
+      ],
     },
   },
 } as const

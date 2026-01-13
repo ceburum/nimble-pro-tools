@@ -59,3 +59,12 @@ verify_jwt = false
 
 [functions.affiliate-admin]
 verify_jwt = false
+
+[functions.user-referral-generate]
+verify_jwt = false
+
+[functions.user-referral-status]
+verify_jwt = false
+
+[functions.user-referral-process]
+verify_jwt = false

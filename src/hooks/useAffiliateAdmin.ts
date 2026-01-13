@@ -1,7 +1,18 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import type { Affiliate } from './useAffiliate';
+import type { Affiliate as BaseAffiliate } from './useAffiliate';
+
+// Extended Affiliate type with application fields
+export interface Affiliate extends BaseAffiliate {
+  application_text?: string;
+  recommended_by_email?: string;
+  recommended_by_affiliate_id?: string;
+  application_submitted_at?: string;
+  reviewed_by?: string;
+  reviewed_at?: string;
+  rejection_reason?: string;
+}
 
 interface AdminSettings {
   id: string;

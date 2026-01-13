@@ -5,6 +5,7 @@ import { StatCard } from '@/components/dashboard/StatCard';
 import { RecentActivity } from '@/components/dashboard/RecentActivity';
 import { OverdueAlerts } from '@/components/dashboard/OverdueAlerts';
 import { DashboardAvatar } from '@/components/dashboard/DashboardAvatar';
+import { ReferralRewardCard } from '@/components/dashboard/ReferralRewardCard';
 import { BusinessProfileDialog } from '@/components/settings/BusinessProfileDialog';
 import { PartnerSuggestions } from '@/components/reports/PartnerSuggestions';
 import { Button } from '@/components/ui/button';
@@ -160,6 +161,9 @@ export default function Dashboard() {
           <span className="hidden sm:inline">Business Settings</span>
         </Button>
       </div>
+
+      {/* Referral Reward Card */}
+      <ReferralRewardCard />
 
       {/* Quick Actions - moved to top */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
