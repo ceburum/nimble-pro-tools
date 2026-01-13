@@ -3,7 +3,7 @@ import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, Users, FolderKanban, Receipt, Menu, LogOut, 
   Car, CalendarDays, Calculator, Lock, Scissors, StickyNote,
-  Cloud, Sparkles, BarChart3, CreditCard, Shield, BookOpen, ExternalLink,
+  Sparkles, BarChart3, CreditCard, Shield, BookOpen, ExternalLink,
   UserPlus, Settings
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -35,8 +35,6 @@ const baseNavigation = [
 
 // Add-ons (paid features)
 const addOnsNavigation = [
-  { name: 'Cloud Backup', href: '/pro/cloud', icon: Cloud, flagKey: 'cloud_backup_enabled' as const },
-  { name: 'AI Scanning', href: '/pro/ai-scanner', icon: Sparkles, flagKey: 'cloud_backup_enabled' as const },
   { name: 'Scheduling Pro', href: '/scheduling', icon: CalendarDays, flagKey: 'scheduling_pro_enabled' as const },
   { name: 'Financial Pro', href: '/reports', icon: BarChart3, flagKey: 'financial_pro_enabled' as const },
   { name: 'Mileage Pro', href: '/mileage', icon: Car, flagKey: 'mileage_pro_enabled' as const },
@@ -111,14 +109,12 @@ export function AppLayout({
   
   // Map of add-on enabled states - dev mode unlocks all
   const addOnEnabledMap: Record<string, boolean> = isDevModeEnabled ? {
-    'cloud_backup_enabled': true,
     'scheduling_pro_enabled': true,
     'financial_pro_enabled': true,
     'mileage_pro_enabled': true,
     'tax_pro_enabled': true,
     'service_menu_enabled': true,
   } : {
-    'cloud_backup_enabled': false,
     'scheduling_pro_enabled': schedulingEnabled,
     'financial_pro_enabled': financialEnabled,
     'mileage_pro_enabled': mileageEnabled,

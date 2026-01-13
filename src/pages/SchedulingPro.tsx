@@ -6,7 +6,7 @@ import { CalendarView } from '@/components/scheduling/CalendarView';
 import { DayDetailDialog } from '@/components/scheduling/DayDetailDialog';
 import { ScheduleDialog } from '@/components/scheduling/ScheduleDialog';
 import { ProjectDetailDialog } from '@/components/projects/ProjectDetailDialog';
-import { ProUpgradePage } from '@/components/pro/ProUpgradePage';
+import { FeatureNotice } from '@/components/ui/feature-notice';
 import { useProjects } from '@/hooks/useProjects';
 import { useClients } from '@/hooks/useClients';
 import { useInvoices } from '@/hooks/useInvoices';
@@ -14,6 +14,7 @@ import { useSchedulingPro } from '@/hooks/useSchedulingPro';
 import { Project } from '@/types';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { isToday, startOfToday, startOfWeek, endOfWeek, isWithinInterval } from 'date-fns';
+import { toast } from 'sonner';
 
 export default function SchedulingPro() {
   const navigate = useNavigate();
@@ -87,32 +88,22 @@ export default function SchedulingPro() {
     navigate('/invoices', { state: { openNewInvoice: true, prefillProject: project } });
   };
 
+  const handleEnableSchedulingPro = async () => {
+    const success = await enableSchedulingPro();
+    if (success) {
+      toast.success('Scheduling Pro enabled!');
+    } else {
+      toast.error('Failed to enable Scheduling Pro');
+    }
+    return success;
+  };
+
   // Show loading state
   if (featureLoading || projectsLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
+      <div className="flex items-center justify-center min-h-[200px]">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
       </div>
-    );
-  }
-
-  // Show upgrade page if not enabled
-  if (!isEnabled) {
-    return (
-      <ProUpgradePage
-        icon={<CalendarIcon className="h-12 w-12 text-primary" />}
-        title="Scheduling Pro"
-        description="Professional calendar management for your contracting business"
-        features={[
-          "Visual calendar with drag-and-drop scheduling",
-          "Arrival time windows for client expectations",
-          "Branded email notifications to clients",
-          "Add to Calendar integration (Google, Apple, Outlook)",
-          "Conflict detection for overlapping jobs",
-          "Today's schedule dashboard widget",
-        ]}
-        onEnable={enableSchedulingPro}
-      />
     );
   }
 
@@ -125,76 +116,100 @@ export default function SchedulingPro() {
         description="Manage your project schedule and appointments"
       />
 
-      {/* Stats */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          title="Today's Jobs"
-          value={stats.todayCount}
-          icon={CalendarIcon}
-          variant={stats.todayCount > 0 ? 'primary' : 'default'}
-        />
-        <StatCard
-          title="This Week"
-          value={stats.thisWeekCount}
-          icon={CalendarDays}
-          variant="default"
-        />
-        <StatCard
-          title="Upcoming"
-          value={stats.upcomingCount}
-          icon={CalendarClock}
-          variant="default"
-        />
-        <StatCard
-          title="Need Scheduling"
-          value={stats.unscheduledCount}
-          icon={CalendarCheck}
-          variant={stats.unscheduledCount > 0 ? 'warning' : 'success'}
-        />
-      </div>
-
-      {/* Calendar */}
-      <CalendarView
-        projects={projects}
-        clients={clients}
-        onDayClick={handleDayClick}
-      />
-
-      {/* Day Detail Dialog */}
-      {selectedDate && (
-        <DayDetailDialog
-          open={dayDetailOpen}
-          onOpenChange={setDayDetailOpen}
-          date={selectedDate}
-          projects={selectedDayProjects}
-          clients={clients}
-          onViewProject={handleViewProject}
+      {/* Show inline notice if feature is not enabled */}
+      {!isEnabled && (
+        <FeatureNotice
+          icon={<CalendarIcon className="h-8 w-8 text-primary" />}
+          title="Scheduling Pro"
+          description="Professional calendar management for your contracting business"
+          features={[
+            'Visual calendar with drag-and-drop scheduling',
+            'Arrival time windows for client expectations',
+            'Branded email notifications to clients',
+            'Add to Calendar integration (Google, Apple, Outlook)',
+            'Conflict detection for overlapping jobs',
+            "Today's schedule dashboard widget",
+          ]}
+          onEnable={handleEnableSchedulingPro}
+          className="max-w-2xl mx-auto"
         />
       )}
 
-      {/* Schedule Dialog */}
-      {projectToSchedule && (
-        <ScheduleDialog
-          open={scheduleDialogOpen}
-          onOpenChange={setScheduleDialogOpen}
-          project={projectToSchedule}
-          client={getClient(projectToSchedule.clientId)}
-          allProjects={projects}
-          onSchedule={handleSaveSchedule}
-        />
-      )}
+      {/* Show content when enabled */}
+      {isEnabled && (
+        <>
+          {/* Stats */}
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <StatCard
+              title="Today's Jobs"
+              value={stats.todayCount}
+              icon={CalendarIcon}
+              variant={stats.todayCount > 0 ? 'primary' : 'default'}
+            />
+            <StatCard
+              title="This Week"
+              value={stats.thisWeekCount}
+              icon={CalendarDays}
+              variant="default"
+            />
+            <StatCard
+              title="Upcoming"
+              value={stats.upcomingCount}
+              icon={CalendarClock}
+              variant="default"
+            />
+            <StatCard
+              title="Need Scheduling"
+              value={stats.unscheduledCount}
+              icon={CalendarCheck}
+              variant={stats.unscheduledCount > 0 ? 'warning' : 'success'}
+            />
+          </div>
 
-      {/* Project Detail Dialog */}
-      {selectedProject && (
-        <ProjectDetailDialog
-          open={projectDetailOpen}
-          onOpenChange={setProjectDetailOpen}
-          project={selectedProject}
-          client={getClient(selectedProject.clientId)}
-          onUpdate={handleUpdateProject}
-          onDelete={() => {}}
-          onCreateInvoice={handleCreateInvoice}
-        />
+          {/* Calendar */}
+          <CalendarView
+            projects={projects}
+            clients={clients}
+            onDayClick={handleDayClick}
+          />
+
+          {/* Day Detail Dialog */}
+          {selectedDate && (
+            <DayDetailDialog
+              open={dayDetailOpen}
+              onOpenChange={setDayDetailOpen}
+              date={selectedDate}
+              projects={selectedDayProjects}
+              clients={clients}
+              onViewProject={handleViewProject}
+            />
+          )}
+
+          {/* Schedule Dialog */}
+          {projectToSchedule && (
+            <ScheduleDialog
+              open={scheduleDialogOpen}
+              onOpenChange={setScheduleDialogOpen}
+              project={projectToSchedule}
+              client={getClient(projectToSchedule.clientId)}
+              allProjects={projects}
+              onSchedule={handleSaveSchedule}
+            />
+          )}
+
+          {/* Project Detail Dialog */}
+          {selectedProject && (
+            <ProjectDetailDialog
+              open={projectDetailOpen}
+              onOpenChange={setProjectDetailOpen}
+              project={selectedProject}
+              client={getClient(selectedProject.clientId)}
+              onUpdate={handleUpdateProject}
+              onDelete={() => {}}
+              onCreateInvoice={handleCreateInvoice}
+            />
+          )}
+        </>
       )}
     </div>
   );

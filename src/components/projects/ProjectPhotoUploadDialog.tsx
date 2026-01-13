@@ -74,7 +74,7 @@ export function ProjectPhotoUploadDialog({ open, onOpenChange, projectId, existi
   const { flags } = useFeatureFlags();
   
   // Pro users get higher limits
-  const isProUser = flags.financial_pro_enabled || flags.tax_pro_enabled || flags.cloud_backup_enabled;
+  const isProUser = flags.financial_pro_enabled || flags.tax_pro_enabled || flags.scheduling_pro_enabled;
   const maxPhotos = getMaxPhotosPerProject(isProUser);
   const remainingSlots = maxPhotos - existingPhotoCount;
 

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { StorageConfig, StorageRecord } from '@/lib/storage/StorageAdapter';
 import { HybridStorageAdapter } from '@/lib/storage/HybridStorageAdapter';
 import { SyncMetadata } from '@/lib/localDb';
-import { isCloudSyncEnabled } from '@/lib/featureFlags';
+import { isDevModeEnabled } from '@/lib/featureFlags';
 import { useAuth } from './useAuth';
 
 type LocalRecord = SyncMetadata & { id: string; createdAt: string };
@@ -60,7 +60,8 @@ export function useLocalFirstData<T extends LocalRecord>(
       tableName,
       cloudTableName,
       requiresAuth,
-      syncEnabled: () => isCloudSyncEnabled(),
+      // Cloud sync is disabled - local-only mode
+      syncEnabled: () => false,
       getUserId: () => user?.id || null,
     };
 
@@ -146,16 +147,10 @@ export function useLocalFirstData<T extends LocalRecord>(
       const adapter = getAdapter();
       const deleted = await adapter.delete(id);
       if (deleted) {
-        const wasSync = data.find(d => d.id === id)?.syncStatus === 'synced';
+        const wasPending = data.find(d => d.id === id)?.syncStatus === 'pending_push';
         setData(prev => prev.filter(item => item.id !== id));
-        // If record was synced, add to pending (delete needs to sync)
-        if (wasSync && isCloudSyncEnabled()) {
-          setPendingCount(prev => prev + 1);
-        } else {
-          // Local-only record deleted, reduce pending if it was pending
-          const wasPending = data.find(d => d.id === id)?.syncStatus === 'pending_push';
-          if (wasPending) setPendingCount(prev => Math.max(0, prev - 1));
-        }
+        // Local-only record deleted, reduce pending if it was pending
+        if (wasPending) setPendingCount(prev => Math.max(0, prev - 1));
       }
       return deleted;
     } catch (err) {

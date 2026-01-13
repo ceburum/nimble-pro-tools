@@ -3,8 +3,6 @@ import { useSearchParams } from 'react-router-dom';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { TaxProOverview } from '@/components/tax-pro/TaxProOverview';
 import { Form1099Management } from '@/components/tax-pro/Form1099Management';
 import { CapitalAssetList } from '@/components/tax-pro/CapitalAssetList';
@@ -13,8 +11,9 @@ import { TaxExportDialog } from '@/components/tax-pro/TaxExportDialog';
 import { TaxDisclaimer } from '@/components/tax-pro/TaxDisclaimer';
 import { ScheduleCBreakdown } from '@/components/tax-pro/ScheduleCBreakdown';
 import { UncategorizedExpensesList } from '@/components/tax-pro/UncategorizedExpensesList';
+import { FeatureNotice } from '@/components/ui/feature-notice';
 import { useTaxPro } from '@/hooks/useTaxPro';
-import { Calculator, Lock } from 'lucide-react';
+import { Calculator } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function TaxPro() {
@@ -35,54 +34,11 @@ export default function TaxPro() {
     }
   };
 
-  // Show upgrade prompt if not enabled
-  if (!loading && !isEnabled) {
+  // Loading state
+  if (loading) {
     return (
-      <div className="space-y-6">
-        <PageHeader
-          title="Tax Pro"
-          description="Tax organization for contractors & small businesses"
-        />
-
-        <Card className="max-w-2xl mx-auto">
-          <CardContent className="py-12 text-center">
-            <div className="bg-primary/10 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6">
-              <Lock className="h-8 w-8 text-primary" />
-            </div>
-            
-            <h2 className="text-2xl font-bold mb-4">Unlock Tax Pro</h2>
-            
-            <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-              Organize your tax data, track 1099 payments, manage capital assets, 
-              and generate CPA-ready exports — all in one place.
-            </p>
-
-            <div className="grid gap-3 text-left max-w-sm mx-auto mb-8">
-              <div className="flex items-center gap-2 text-sm">
-                <Calculator className="h-4 w-4 text-primary" />
-                <span>1099 payment tracking & threshold alerts</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                <Calculator className="h-4 w-4 text-primary" />
-                <span>Capital asset & equipment registry</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                <Calculator className="h-4 w-4 text-primary" />
-                <span>Mileage tax summaries by year</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                <Calculator className="h-4 w-4 text-primary" />
-                <span>CPA-ready CSV & PDF exports</span>
-              </div>
-            </div>
-
-            <Button size="lg" onClick={handleEnableTaxPro}>
-              Enable Tax Pro
-            </Button>
-
-            <TaxDisclaimer variant="inline" className="mt-6 justify-center" />
-          </CardContent>
-        </Card>
+      <div className="flex items-center justify-center min-h-[200px]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
       </div>
     );
   }
@@ -93,59 +49,84 @@ export default function TaxPro() {
         title="Tax Pro"
         description="Tax organization for contractors & small businesses"
         action={
-          <div className="flex items-center gap-3">
-            <Select value={selectedYear.toString()} onValueChange={(v) => setSelectedYear(parseInt(v))}>
-              <SelectTrigger className="w-32">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {years.map((year) => (
-                  <SelectItem key={year} value={year.toString()}>
-                    {year}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <TaxExportDialog selectedYear={selectedYear} />
-          </div>
+          isEnabled ? (
+            <div className="flex items-center gap-3">
+              <Select value={selectedYear.toString()} onValueChange={(v) => setSelectedYear(parseInt(v))}>
+                <SelectTrigger className="w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {years.map((year) => (
+                    <SelectItem key={year} value={year.toString()}>
+                      {year}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <TaxExportDialog selectedYear={selectedYear} />
+            </div>
+          ) : undefined
         }
       />
 
-      <Tabs value={currentTab} onValueChange={(value) => setSearchParams({ tab: value })} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3 sm:grid-cols-6 lg:w-auto lg:inline-grid">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="categorize">Categorize</TabsTrigger>
-          <TabsTrigger value="schedule-c">Schedule C</TabsTrigger>
-          <TabsTrigger value="1099">1099s</TabsTrigger>
-          <TabsTrigger value="assets">Assets</TabsTrigger>
-          <TabsTrigger value="mileage">Mileage</TabsTrigger>
-        </TabsList>
+      {/* Show inline notice if feature is not enabled */}
+      {!isEnabled && (
+        <FeatureNotice
+          icon={<Calculator className="h-8 w-8 text-primary" />}
+          title="Tax Pro"
+          description="Organize your tax data, track 1099 payments, manage capital assets, and generate CPA-ready exports — all in one place."
+          features={[
+            '1099 payment tracking & threshold alerts',
+            'Capital asset & equipment registry',
+            'Mileage tax summaries by year',
+            'CPA-ready CSV & PDF exports',
+          ]}
+          onEnable={handleEnableTaxPro}
+          className="max-w-2xl mx-auto"
+        />
+      )}
 
-        <TabsContent value="overview">
-          <TaxProOverview selectedYear={selectedYear} />
-        </TabsContent>
+      {/* Show content when enabled */}
+      {isEnabled && (
+        <>
+          <Tabs value={currentTab} onValueChange={(value) => setSearchParams({ tab: value })} className="space-y-6">
+            <TabsList className="grid w-full grid-cols-3 sm:grid-cols-6 lg:w-auto lg:inline-grid">
+              <TabsTrigger value="overview">Overview</TabsTrigger>
+              <TabsTrigger value="categorize">Categorize</TabsTrigger>
+              <TabsTrigger value="schedule-c">Schedule C</TabsTrigger>
+              <TabsTrigger value="1099">1099s</TabsTrigger>
+              <TabsTrigger value="assets">Assets</TabsTrigger>
+              <TabsTrigger value="mileage">Mileage</TabsTrigger>
+            </TabsList>
 
-        <TabsContent value="categorize">
-          <UncategorizedExpensesList selectedYear={selectedYear} />
-        </TabsContent>
+            <TabsContent value="overview">
+              <TaxProOverview selectedYear={selectedYear} />
+            </TabsContent>
 
-        <TabsContent value="schedule-c">
-          <ScheduleCBreakdown selectedYear={selectedYear} />
-        </TabsContent>
+            <TabsContent value="categorize">
+              <UncategorizedExpensesList selectedYear={selectedYear} />
+            </TabsContent>
 
-        <TabsContent value="1099">
-          <Form1099Management selectedYear={selectedYear} />
-        </TabsContent>
+            <TabsContent value="schedule-c">
+              <ScheduleCBreakdown selectedYear={selectedYear} />
+            </TabsContent>
 
-        <TabsContent value="assets">
-          <CapitalAssetList />
-        </TabsContent>
+            <TabsContent value="1099">
+              <Form1099Management selectedYear={selectedYear} />
+            </TabsContent>
 
-        <TabsContent value="mileage">
-          <TaxMileageSummary selectedYear={selectedYear} />
-        </TabsContent>
-      </Tabs>
+            <TabsContent value="assets">
+              <CapitalAssetList />
+            </TabsContent>
+
+            <TabsContent value="mileage">
+              <TaxMileageSummary selectedYear={selectedYear} />
+            </TabsContent>
+          </Tabs>
+
+          <TaxDisclaimer variant="inline" className="justify-center" />
+        </>
+      )}
     </div>
   );
 }

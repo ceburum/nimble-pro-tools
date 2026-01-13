@@ -2,16 +2,13 @@ import { StorageAdapter, StorageConfig, StorageRecord } from './StorageAdapter';
 import { LocalStorageAdapter } from './LocalStorageAdapter';
 import { CloudStorageAdapter } from './CloudStorageAdapter';
 import { getDb, generateLocalId } from '../localDb';
-import { isCloudSyncEnabled } from '../featureFlags';
 
 /**
  * HybridStorageAdapter - Primary storage is always local (IndexedDB)
  * 
  * Behavior:
  * - All reads/writes go to local storage first
- * - If cloud sync is enabled AND user is authenticated:
- *   - Writes are queued for background sync
- *   - Reads can optionally pull from cloud on cache miss
+ * - Cloud sync functionality has been removed
  * - App works fully offline
  */
 export class HybridStorageAdapter implements StorageAdapter {
@@ -26,8 +23,8 @@ export class HybridStorageAdapter implements StorageAdapter {
   }
 
   private shouldSyncToCloud(): boolean {
-    return isCloudSyncEnabled() && 
-           (!this.config.requiresAuth || !!this.config.getUserId());
+    // Cloud sync disabled - always return false
+    return false;
   }
 
   async getAll(): Promise<StorageRecord[]> {
