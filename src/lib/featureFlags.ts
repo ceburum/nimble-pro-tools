@@ -10,6 +10,9 @@ export interface FeatureFlags {
   mileage_pro_enabled: boolean;
   financial_pro_enabled: boolean;
   
+  // Add-on feature flags
+  service_menu_enabled: boolean;
+  
   // Migration flags
   migration_completed: boolean;
   migration_started_at: string | null;
@@ -25,6 +28,7 @@ export const DEFAULT_FEATURE_FLAGS: FeatureFlags = {
   scheduling_pro_enabled: false,
   mileage_pro_enabled: false,
   financial_pro_enabled: false,
+  service_menu_enabled: false,
   migration_completed: false,
   migration_started_at: null,
   migration_completed_at: null,

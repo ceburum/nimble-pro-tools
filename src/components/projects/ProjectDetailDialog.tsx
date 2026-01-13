@@ -35,15 +35,18 @@ import {
   Plus,
   Store,
   CalendarDays,
+  StickyNote,
 } from 'lucide-react';
 import { SupplierQuoteScanDialog } from './SupplierQuoteScanDialog';
 import { ScheduleDialog } from '@/components/scheduling/ScheduleDialog';
 import { ProjectPhotoUploadDialog } from './ProjectPhotoUploadDialog';
 import { ProjectReceiptUploadDialog } from './ProjectReceiptUploadDialog';
+import { ProjectNotes } from './ProjectNotes';
 import { AddToCalendarButton } from '@/components/scheduling/AddToCalendarButton';
 import { formatArrivalWindow } from '@/lib/calendarUtils';
 import { useProjects } from '@/hooks/useProjects';
 import { useExpenseCategories } from '@/hooks/useExpenseCategories';
+import { useProjectNotes } from '@/hooks/useProjectNotes';
 import { LineItem } from '@/types';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -93,6 +96,7 @@ export function ProjectDetailDialog({
   const { toast } = useToast();
   const { projects: allProjects, updateReceipt, addPhoto, addReceipt } = useProjects();
   const { categories } = useExpenseCategories();
+  const { notes: projectNotes } = useProjectNotes(project.id);
 
   const status = statusConfig[project.status];
   const totalMiles = project.mileageEntries.reduce((sum, e) => sum + e.distance, 0);
@@ -324,6 +328,9 @@ export function ProjectDetailDialog({
               </TabsTrigger>
               <TabsTrigger value="expenses" className="text-xs sm:text-sm">
                 Expenses ({project.receipts.length})
+              </TabsTrigger>
+              <TabsTrigger value="notes" className="text-xs sm:text-sm">
+                Notes ({projectNotes.length})
               </TabsTrigger>
             </TabsList>
 
@@ -742,6 +749,11 @@ export function ProjectDetailDialog({
                     </div>
                   )}
                 </div>
+              </TabsContent>
+
+              {/* Notes Tab */}
+              <TabsContent value="notes" className="p-6 m-0">
+                <ProjectNotes projectId={project.id} />
               </TabsContent>
             </ScrollArea>
           </Tabs>

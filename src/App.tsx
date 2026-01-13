@@ -15,6 +15,7 @@ import Reports from "./pages/Reports";
 import MileagePro from "./pages/MileagePro";
 import SchedulingPro from "./pages/SchedulingPro";
 import TaxPro from "./pages/TaxPro";
+import ServiceMenu from "./pages/ServiceMenu";
 import PayInvoice from "./pages/PayInvoice";
 import Auth from "./pages/Auth";
 import Install from "./pages/Install";
@@ -102,6 +103,14 @@ const App = () => {
                 element={
                   <ProtectedRoute>
                     <AppLayout><TaxPro /></AppLayout>
+                  </ProtectedRoute>
+                } 
+              />
+              <Route
+                path="/services" 
+                element={
+                  <ProtectedRoute>
+                    <AppLayout><ServiceMenu /></AppLayout>
                   </ProtectedRoute>
                 } 
               />
