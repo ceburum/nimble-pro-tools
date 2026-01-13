@@ -184,8 +184,8 @@ export class CloudStorageAdapter<T extends { id: string; createdAt?: string }> i
   }
 
   async getById(id: string): Promise<T | null> {
-    const { data, error } = await supabase
-      .from(this.tableName)
+    const { data, error } = await (supabase
+      .from(this.tableName) as any)
       .select('*')
       .eq('id', id)
       .maybeSingle();
@@ -202,10 +202,10 @@ export class CloudStorageAdapter<T extends { id: string; createdAt?: string }> i
     // Convert index name to cloud format (e.g., 'by-client' -> 'client_id')
     const columnName = indexName.replace('by-', '') + '_id';
     
-    const { data, error } = await supabase
-      .from(this.tableName)
+    const { data, error } = await (supabase
+      .from(this.tableName) as any)
       .select('*')
-      .eq(columnName as any, value);
+      .eq(columnName, value);
 
     if (error) {
       console.error(`Error fetching ${this.tableName} by ${columnName}:`, error);
@@ -251,8 +251,8 @@ export class CloudStorageAdapter<T extends { id: string; createdAt?: string }> i
   }
 
   async delete(id: string): Promise<boolean> {
-    const { error } = await supabase
-      .from(this.tableName)
+    const { error } = await (supabase
+      .from(this.tableName) as any)
       .delete()
       .eq('id', id);
 
