@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -23,6 +23,15 @@ import Install from "./pages/Install";
 import NotFound from "./pages/NotFound";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsOfService from "./pages/TermsOfService";
+import Affiliates from "./pages/Affiliates";
+import AffiliateAdmin from "./pages/AffiliateAdmin";
+import { useReferralTracking } from "@/hooks/useReferralTracking";
+
+// Component to track referral codes from URL
+function ReferralTracker() {
+  useReferralTracking();
+  return null;
+}
 
 const App = () => {
   const [queryClient] = useState(() => new QueryClient());
@@ -34,6 +43,7 @@ const App = () => {
           <Toaster />
           <Sonner />
           <BrowserRouter>
+            <ReferralTracker />
             <Routes>
               {/* Public routes */}
               <Route path="/auth" element={<Auth />} />
@@ -120,6 +130,22 @@ const App = () => {
                 element={
                   <ProtectedRoute>
                     <AppLayout><Notepad /></AppLayout>
+                  </ProtectedRoute>
+                } 
+              />
+              <Route
+                path="/affiliates" 
+                element={
+                  <ProtectedRoute>
+                    <AppLayout><Affiliates /></AppLayout>
+                  </ProtectedRoute>
+                } 
+              />
+              <Route
+                path="/affiliate-admin" 
+                element={
+                  <ProtectedRoute>
+                    <AppLayout><AffiliateAdmin /></AppLayout>
                   </ProtectedRoute>
                 } 
               />
