@@ -278,18 +278,28 @@ export function ProjectReceiptUploadDialog({
                           setPreviewBase64(null);
                           setFile(null);
                           if (fileInputRef.current) fileInputRef.current.value = '';
+                          if (cameraInputRef.current) cameraInputRef.current.value = '';
                         }}
                       >
                         <X className="h-4 w-4" />
                       </Button>
                     </div>
                   ) : (
-                    <div
-                      onClick={() => fileInputRef.current?.click()}
-                      className="border-2 border-dashed border-border rounded-lg p-6 text-center cursor-pointer hover:border-primary transition-colors"
-                    >
-                      <Upload className="h-6 w-6 mx-auto text-muted-foreground mb-2" />
-                      <p className="text-sm text-muted-foreground">Click to upload receipt image</p>
+                    <div className="flex gap-2">
+                      <div
+                        onClick={() => cameraInputRef.current?.click()}
+                        className="flex-1 border-2 border-dashed border-border rounded-lg p-4 text-center cursor-pointer hover:border-primary transition-colors"
+                      >
+                        <Camera className="h-6 w-6 mx-auto text-muted-foreground mb-2" />
+                        <p className="text-sm text-muted-foreground">Take Photo</p>
+                      </div>
+                      <div
+                        onClick={() => fileInputRef.current?.click()}
+                        className="flex-1 border-2 border-dashed border-border rounded-lg p-4 text-center cursor-pointer hover:border-primary transition-colors"
+                      >
+                        <Upload className="h-6 w-6 mx-auto text-muted-foreground mb-2" />
+                        <p className="text-sm text-muted-foreground">Choose File</p>
+                      </div>
                     </div>
                   )}
                 </div>
