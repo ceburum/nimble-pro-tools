@@ -1,45 +1,33 @@
 import { useState, useEffect, useCallback } from 'react';
 import { GlobalNote } from '@/types/notes';
 import { generateLocalId } from '@/lib/localDb';
-
-// Storage key for global notes in localStorage
-const NOTES_STORAGE_KEY = 'nimble_global_notes';
-
-function getStoredNotes(): GlobalNote[] {
-  try {
-    const stored = localStorage.getItem(NOTES_STORAGE_KEY);
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      return parsed.map((n: any) => ({
-        ...n,
-        projectIds: n.projectIds || (n.projectId ? [n.projectId] : []), // Migration from old format
-        createdAt: new Date(n.createdAt),
-        updatedAt: new Date(n.updatedAt),
-      }));
-    }
-  } catch (error) {
-    console.error('Error reading notes:', error);
-  }
-  return [];
-}
-
-function saveStoredNotes(notes: GlobalNote[]): void {
-  try {
-    localStorage.setItem(NOTES_STORAGE_KEY, JSON.stringify(notes));
-  } catch (error) {
-    console.error('Error saving notes:', error);
-  }
-}
+import { 
+  getStoredNotes, 
+  saveStoredNotes, 
+  NOTES_CHANGE_EVENT 
+} from './useNotesSync';
 
 export function useGlobalNotes() {
   const [notes, setNotes] = useState<GlobalNote[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Load all notes
+  // Load all notes and subscribe to changes
   useEffect(() => {
-    const allNotes = getStoredNotes();
-    setNotes(allNotes.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()));
-    setLoading(false);
+    const loadNotes = () => {
+      const allNotes = getStoredNotes();
+      setNotes(allNotes.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()));
+      setLoading(false);
+    };
+
+    loadNotes();
+
+    // Listen for changes from other hook instances
+    const handleChange = () => loadNotes();
+    window.addEventListener(NOTES_CHANGE_EVENT, handleChange);
+    
+    return () => {
+      window.removeEventListener(NOTES_CHANGE_EVENT, handleChange);
+    };
   }, []);
 
   // Get notes for a specific project
@@ -68,7 +56,6 @@ export function useGlobalNotes() {
     const updatedNotes = [newNote, ...allNotes];
     saveStoredNotes(updatedNotes);
     
-    setNotes(updatedNotes.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()));
     return newNote;
   }, []);
 
@@ -90,7 +77,6 @@ export function useGlobalNotes() {
     allNotes[noteIndex] = updatedNote;
     saveStoredNotes(allNotes);
 
-    setNotes(allNotes.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()));
     return true;
   }, []);
 
@@ -104,7 +90,6 @@ export function useGlobalNotes() {
       note.projectIds = [...note.projectIds, projectId];
       note.updatedAt = new Date();
       saveStoredNotes(allNotes);
-      setNotes([...allNotes].sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()));
     }
     return true;
   }, []);
@@ -118,7 +103,6 @@ export function useGlobalNotes() {
     note.projectIds = note.projectIds.filter(id => id !== projectId);
     note.updatedAt = new Date();
     saveStoredNotes(allNotes);
-    setNotes([...allNotes].sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()));
     return true;
   }, []);
 
@@ -130,7 +114,6 @@ export function useGlobalNotes() {
     if (filtered.length === allNotes.length) return false;
 
     saveStoredNotes(filtered);
-    setNotes(filtered);
     return true;
   }, []);
 

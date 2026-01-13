@@ -1,46 +1,34 @@
 import { useState, useEffect, useCallback } from 'react';
 import { GlobalNote } from '@/types/notes';
 import { generateLocalId } from '@/lib/localDb';
-
-// Storage key for global notes in localStorage (shared with useGlobalNotes)
-const NOTES_STORAGE_KEY = 'nimble_global_notes';
-
-function getStoredNotes(): GlobalNote[] {
-  try {
-    const stored = localStorage.getItem(NOTES_STORAGE_KEY);
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      return parsed.map((n: any) => ({
-        ...n,
-        projectIds: n.projectIds || (n.projectId ? [n.projectId] : []),
-        createdAt: new Date(n.createdAt),
-        updatedAt: new Date(n.updatedAt),
-      }));
-    }
-  } catch (error) {
-    console.error('Error reading notes:', error);
-  }
-  return [];
-}
-
-function saveStoredNotes(notes: GlobalNote[]): void {
-  try {
-    localStorage.setItem(NOTES_STORAGE_KEY, JSON.stringify(notes));
-  } catch (error) {
-    console.error('Error saving notes:', error);
-  }
-}
+import { 
+  getStoredNotes, 
+  saveStoredNotes, 
+  NOTES_CHANGE_EVENT 
+} from './useNotesSync';
 
 export function useProjectNotes(projectId: string) {
   const [notes, setNotes] = useState<GlobalNote[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Load notes for this project
+  // Load notes for this project and subscribe to changes
   useEffect(() => {
-    const allNotes = getStoredNotes();
-    const projectNotes = allNotes.filter(n => n.projectIds.includes(projectId));
-    setNotes(projectNotes.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()));
-    setLoading(false);
+    const loadNotes = () => {
+      const allNotes = getStoredNotes();
+      const projectNotes = allNotes.filter(n => n.projectIds.includes(projectId));
+      setNotes(projectNotes.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()));
+      setLoading(false);
+    };
+
+    loadNotes();
+
+    // Listen for changes from other hook instances
+    const handleChange = () => loadNotes();
+    window.addEventListener(NOTES_CHANGE_EVENT, handleChange);
+    
+    return () => {
+      window.removeEventListener(NOTES_CHANGE_EVENT, handleChange);
+    };
   }, [projectId]);
 
   // Add a new note (automatically assigned to this project)
@@ -59,7 +47,6 @@ export function useProjectNotes(projectId: string) {
     const updatedNotes = [newNote, ...allNotes];
     saveStoredNotes(updatedNotes);
     
-    setNotes(prev => [newNote, ...prev]);
     return newNote;
   }, [projectId]);
 
@@ -80,10 +67,6 @@ export function useProjectNotes(projectId: string) {
     allNotes[noteIndex] = updatedNote;
     saveStoredNotes(allNotes);
 
-    setNotes(prev => 
-      prev.map(n => n.id === noteId ? { ...updatedNote, createdAt: new Date(updatedNote.createdAt), updatedAt: new Date(updatedNote.updatedAt) } : n)
-        .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
-    );
     return true;
   }, []);
 
@@ -95,7 +78,6 @@ export function useProjectNotes(projectId: string) {
     if (filtered.length === allNotes.length) return false;
 
     saveStoredNotes(filtered);
-    setNotes(prev => prev.filter(n => n.id !== noteId));
     return true;
   }, []);
 
@@ -108,7 +90,6 @@ export function useProjectNotes(projectId: string) {
     note.projectIds = note.projectIds.filter(id => id !== projectId);
     note.updatedAt = new Date();
     saveStoredNotes(allNotes);
-    setNotes(prev => prev.filter(n => n.id !== noteId));
     return true;
   }, [projectId]);
 
