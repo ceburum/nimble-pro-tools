@@ -1,6 +1,10 @@
 import { useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, FolderKanban, Receipt, BarChart3, Menu, LogOut, Car, CalendarDays, Calculator, Lock, Scissors, StickyNote } from 'lucide-react';
+import { 
+  LayoutDashboard, Users, FolderKanban, Receipt, Menu, LogOut, 
+  Car, CalendarDays, Calculator, Lock, Scissors, StickyNote,
+  Cloud, Sparkles, BarChart3, CreditCard, Shield, BookOpen, ExternalLink
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
@@ -15,8 +19,9 @@ import cebLogo from '@/assets/ceb-logo.png';
 interface AppLayoutProps {
   children: React.ReactNode;
 }
-// Core features
-const coreNavigation = [
+
+// Base app navigation
+const baseNavigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Clients', href: '/clients', icon: Users },
   { name: 'Projects', href: '/projects', icon: FolderKanban },
@@ -24,13 +29,44 @@ const coreNavigation = [
   { name: 'Notepad', href: '/notepad', icon: StickyNote },
 ];
 
-// Pro add-ons
-const proNavigation = [
-  { name: 'Scheduling Pro', href: '/scheduling', icon: CalendarDays },
-  { name: 'Financial Pro', href: '/reports', icon: BarChart3 },
-  { name: 'Mileage Pro', href: '/mileage', icon: Car },
-  { name: 'Tax Pro', href: '/tax-pro', icon: Calculator },
-  { name: 'Service Menu', href: '/services', icon: Scissors },
+// Add-ons (paid features)
+const addOnsNavigation = [
+  { name: 'Cloud Backup', href: '/pro/cloud', icon: Cloud, flagKey: 'cloud_backup_enabled' as const },
+  { name: 'AI Scanning', href: '/pro/ai-scanner', icon: Sparkles, flagKey: 'cloud_backup_enabled' as const },
+  { name: 'Scheduling Pro', href: '/scheduling', icon: CalendarDays, flagKey: 'scheduling_pro_enabled' as const },
+  { name: 'Financial Pro', href: '/reports', icon: BarChart3, flagKey: 'financial_pro_enabled' as const },
+  { name: 'Mileage Pro', href: '/mileage', icon: Car, flagKey: 'mileage_pro_enabled' as const },
+  { name: 'Tax Pro', href: '/tax-pro', icon: Calculator, flagKey: 'tax_pro_enabled' as const },
+  { name: 'Service Menu', href: '/services', icon: Scissors, flagKey: 'service_menu_enabled' as const },
+];
+
+// Affiliate links
+const affiliateLinks = [
+  { 
+    name: 'Stripe Payments', 
+    href: 'https://stripe.com/partners/directory/lovable', 
+    icon: CreditCard, 
+    external: true,
+    description: 'Accept card payments',
+  },
+  { 
+    name: 'Zoho Mail', 
+    href: 'https://www.zoho.com/mail/', 
+    icon: BookOpen, 
+    external: true,
+    description: 'Professional email',
+  },
+];
+
+// Recommendations (optional resources)
+const recommendationLinks = [
+  { 
+    name: 'Simply Business', 
+    href: 'https://www.simplybusiness.com/', 
+    icon: Shield, 
+    external: true,
+    description: 'Business insurance',
+  },
 ];
 export function AppLayout({
   children
@@ -52,14 +88,16 @@ export function AppLayout({
   // Use custom logo if set, otherwise fall back to default
   const displayLogo = logoUrl || cebLogo;
   
-  // Map of Pro feature enabled states
-  const proEnabledMap: Record<string, boolean> = {
-    '/scheduling': schedulingEnabled,
-    '/reports': financialEnabled,
-    '/mileage': mileageEnabled,
-    '/tax-pro': taxEnabled,
-    '/services': servicesEnabled,
+  // Map of add-on enabled states
+  const addOnEnabledMap: Record<string, boolean> = {
+    'cloud_backup_enabled': false, // TODO: integrate with actual cloud backup state
+    'scheduling_pro_enabled': schedulingEnabled,
+    'financial_pro_enabled': financialEnabled,
+    'mileage_pro_enabled': mileageEnabled,
+    'tax_pro_enabled': taxEnabled,
+    'service_menu_enabled': servicesEnabled,
   };
+
   const handleSignOut = async () => {
     await signOut();
     navigate('/auth', {
@@ -81,8 +119,8 @@ export function AppLayout({
         </div>
 
         <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
-          {/* Core Features */}
-          {coreNavigation.map(item => {
+          {/* Base App Features */}
+          {baseNavigation.map(item => {
             const isActive = location.pathname === item.href;
             return (
               <NavLink 
@@ -103,15 +141,15 @@ export function AppLayout({
           {/* Separator */}
           <div className="my-4 border-t border-sidebar-border" />
           
-          {/* Pro Add-ons Label */}
+          {/* Add-ons Label */}
           <p className="px-4 py-2 text-xs font-semibold text-sidebar-foreground/50 uppercase tracking-wider">
-            Pro Add-ons
+            Add-ons
           </p>
 
-          {/* Pro Features */}
-          {proNavigation.map(item => {
+          {/* Add-on Features */}
+          {addOnsNavigation.map(item => {
             const isActive = location.pathname === item.href;
-            const isUnlocked = proEnabledMap[item.href];
+            const isUnlocked = addOnEnabledMap[item.flagKey];
             return (
               <NavLink 
                 key={item.name} 
@@ -130,6 +168,44 @@ export function AppLayout({
               </NavLink>
             );
           })}
+
+          {/* Separator */}
+          <div className="my-4 border-t border-sidebar-border" />
+          
+          {/* Affiliates Label */}
+          <p className="px-4 py-2 text-xs font-semibold text-sidebar-foreground/50 uppercase tracking-wider">
+            Partners
+          </p>
+
+          {/* Affiliate Links */}
+          {affiliateLinks.map(item => (
+            <a
+              key={item.name}
+              href={item.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+            >
+              <item.icon className="h-5 w-5" />
+              <span className="flex-1">{item.name}</span>
+              <ExternalLink className="h-3.5 w-3.5 text-sidebar-foreground/40" />
+            </a>
+          ))}
+
+          {/* Recommendations (collapsible or smaller) */}
+          {recommendationLinks.map(item => (
+            <a
+              key={item.name}
+              href={item.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-3 px-4 py-2 rounded-lg text-xs font-medium transition-all duration-200 text-sidebar-foreground/50 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+            >
+              <item.icon className="h-4 w-4" />
+              <span className="flex-1">{item.name}</span>
+              <ExternalLink className="h-3 w-3 text-sidebar-foreground/30" />
+            </a>
+          ))}
         </nav>
 
         {/* Sign Out Button */}
