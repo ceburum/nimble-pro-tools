@@ -161,6 +161,41 @@ export default function Dashboard() {
         </Button>
       </div>
 
+      {/* Quick Actions - moved to top */}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <Link to="/clients" className="flex items-center gap-3 p-4 rounded-lg border border-border bg-card hover:border-primary/50 hover:bg-primary/5 transition-all duration-200">
+          <Users className="text-primary w-8 h-8" />
+          <div>
+            <p className="text-card-foreground font-bold text-sm">Add Client</p>
+            <p className="text-sm text-muted-foreground">Create new contact</p>
+          </div>
+        </Link>
+        <Link to="/projects" className="flex items-center gap-3 p-4 rounded-lg border border-border bg-card hover:border-primary/50 hover:bg-primary/5 transition-all duration-200">
+          <FolderKanban className="text-primary w-8 h-8" />
+          <div>
+            <p className="text-card-foreground text-sm font-bold">New Project</p>
+            <p className="text-sm text-muted-foreground">Create quote/job</p>
+          </div>
+        </Link>
+        <button 
+          onClick={() => navigate('/invoices', { state: { openNewInvoice: true } })} 
+          className="flex items-center gap-3 p-4 rounded-lg border border-border bg-card hover:border-primary/50 hover:bg-primary/5 transition-all duration-200 w-full text-left"
+        >
+          <Receipt className="text-accent w-8 h-8" />
+          <div>
+            <p className="text-card-foreground text-sm font-bold">New Invoice</p>
+            <p className="text-sm text-muted-foreground">Bill a client</p>
+          </div>
+        </button>
+        <Link to="/invoices" className="flex items-center gap-3 p-4 rounded-lg border border-border bg-card hover:border-success/50 hover:bg-success/5 transition-all duration-200">
+          <DollarSign className="text-success w-8 h-8" />
+          <div>
+            <p className="text-card-foreground text-sm font-bold">Record Payment</p>
+            <p className="text-sm text-muted-foreground">Mark invoice paid</p>
+          </div>
+        </Link>
+      </div>
+
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard title="Total Clients" value={clients.length} icon={Users} variant="default" href="/clients" />
         <StatCard title="Active Projects" value={projects.filter(p => p.status === 'draft' || p.status === 'sent' || p.status === 'accepted' || p.status === 'in_progress').length} icon={FolderKanban} variant="primary" href="/projects" />
@@ -173,46 +208,7 @@ export default function Dashboard() {
 
       {overdueCount > 0 && <OverdueAlerts invoices={invoices} clients={clients} onSendReminder={handleSendReminder} />}
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <RecentActivity />
-        
-        <div className="bg-card rounded-xl border border-border p-6 shadow-sm">
-          <h3 className="text-lg font-semibold text-card-foreground mb-4">Quick Actions</h3>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Link to="/clients" className="flex items-center gap-3 p-4 rounded-lg border border-border hover:border-primary/50 hover:bg-primary/5 transition-all duration-200">
-              <Users className="text-primary w-[35px] h-[35px]" />
-              <div>
-                <p className="text-card-foreground font-bold text-sm">Add Client</p>
-                <p className="text-sm text-muted-foreground">Create new contact</p>
-              </div>
-            </Link>
-            <Link to="/projects" className="flex items-center gap-3 p-4 rounded-lg border border-border hover:border-primary/50 hover:bg-primary/5 transition-all duration-200">
-              <FolderKanban className="text-primary w-[35px] h-[35px]" />
-              <div>
-                <p className="text-card-foreground text-sm font-bold">New Project</p>
-                <p className="text-sm text-muted-foreground">Create quote/job</p>
-              </div>
-            </Link>
-            <button 
-              onClick={() => navigate('/invoices', { state: { openNewInvoice: true } })} 
-              className="flex items-center gap-3 p-4 rounded-lg border border-border hover:border-primary/50 hover:bg-primary/5 transition-all duration-200 w-full text-left"
-            >
-              <Receipt className="text-accent w-[35px] h-[35px]" />
-              <div>
-                <p className="text-card-foreground text-sm font-bold">New Invoice</p>
-                <p className="text-sm text-muted-foreground">Bill a client</p>
-              </div>
-            </button>
-            <Link to="/invoices" className="flex items-center gap-3 p-4 rounded-lg border border-border hover:border-success/50 hover:bg-success/5 transition-all duration-200">
-              <DollarSign className="text-success w-[35px] h-[35px]" />
-              <div>
-                <p className="text-card-foreground text-sm font-bold">Record Payment</p>
-                <p className="text-sm text-muted-foreground">Mark invoice paid</p>
-              </div>
-            </Link>
-          </div>
-        </div>
-      </div>
+      <RecentActivity />
 
       {/* Partner Suggestions - at bottom, out of the way */}
       <PartnerSuggestions />
