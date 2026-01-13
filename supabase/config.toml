@@ -44,3 +44,18 @@ verify_jwt = false
 
 [functions.manage-tin]
 verify_jwt = false
+
+[functions.affiliate-connect-onboard]
+verify_jwt = false
+
+[functions.affiliate-check-status]
+verify_jwt = false
+
+[functions.affiliate-dashboard]
+verify_jwt = false
+
+[functions.affiliate-track-referral]
+verify_jwt = false
+
+[functions.affiliate-admin]
+verify_jwt = false

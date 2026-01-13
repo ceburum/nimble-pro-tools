@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, Users, FolderKanban, Receipt, Menu, LogOut, 
   Car, CalendarDays, Calculator, Lock, Scissors, StickyNote,
-  Cloud, Sparkles, BarChart3, CreditCard, Shield, BookOpen, ExternalLink
+  Cloud, Sparkles, BarChart3, CreditCard, Shield, BookOpen, ExternalLink,
+  UserPlus, Settings
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -14,6 +15,7 @@ import { useFinancialPro } from '@/hooks/useFinancialPro';
 import { useMileagePro } from '@/hooks/useMileagePro';
 import { useTaxPro } from '@/hooks/useTaxPro';
 import { useServices } from '@/hooks/useServices';
+import { supabase } from '@/integrations/supabase/client';
 import cebLogo from '@/assets/ceb-logo.png';
 
 interface AppLayoutProps {
@@ -84,6 +86,22 @@ export function AppLayout({
   const { isEnabled: mileageEnabled } = useMileagePro();
   const { isEnabled: taxEnabled } = useTaxPro();
   const { isEnabled: servicesEnabled } = useServices();
+  const [isAdmin, setIsAdmin] = useState(false);
+  
+  // Check if user is admin
+  useEffect(() => {
+    async function checkAdminRole() {
+      if (!user?.id) return;
+      const { data } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .eq('role', 'admin')
+        .maybeSingle();
+      setIsAdmin(!!data);
+    }
+    checkAdminRole();
+  }, [user?.id]);
   
   // Use custom logo if set, otherwise fall back to default
   const displayLogo = logoUrl || cebLogo;
@@ -206,6 +224,42 @@ export function AppLayout({
               <ExternalLink className="h-3 w-3 text-sidebar-foreground/30" />
             </a>
           ))}
+
+          {/* Separator */}
+          <div className="my-4 border-t border-sidebar-border" />
+          
+          {/* Affiliates Label */}
+          <p className="px-4 py-2 text-xs font-semibold text-sidebar-foreground/50 uppercase tracking-wider">
+            Earn Money
+          </p>
+
+          {/* Affiliate Link */}
+          <NavLink 
+            to="/affiliates"
+            onClick={() => setSidebarOpen(false)} 
+            className={cn(
+              "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200", 
+              location.pathname === '/affiliates' ? "bg-sidebar-accent text-sidebar-primary" : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+            )}
+          >
+            <UserPlus className="h-5 w-5" />
+            Become a Salesperson
+          </NavLink>
+
+          {/* Admin Link - only visible to admins */}
+          {isAdmin && (
+            <NavLink 
+              to="/affiliate-admin"
+              onClick={() => setSidebarOpen(false)} 
+              className={cn(
+                "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200", 
+                location.pathname === '/affiliate-admin' ? "bg-sidebar-accent text-sidebar-primary" : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+              )}
+            >
+              <Settings className="h-5 w-5" />
+              Manage Affiliates
+            </NavLink>
+          )}
         </nav>
 
         {/* Sign Out Button */}
