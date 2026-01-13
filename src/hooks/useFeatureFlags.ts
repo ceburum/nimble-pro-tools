@@ -57,6 +57,11 @@ export function useFeatureFlags() {
     return updateFlag(key, false);
   }, [updateFlag]);
 
+  // Toggle dev mode
+  const toggleDevMode = useCallback(() => {
+    return updateFlag('dev_mode_enabled', !flags.dev_mode_enabled);
+  }, [updateFlag, flags.dev_mode_enabled]);
+
   return {
     flags,
     loading,
@@ -66,12 +71,14 @@ export function useFeatureFlags() {
     disableCloudBackup,
     enableProFeature,
     disableProFeature,
+    toggleDevMode,
     // Convenience getters
     isCloudBackupEnabled: flags.cloud_backup_enabled,
     isTaxProEnabled: flags.tax_pro_enabled,
     isSchedulingProEnabled: flags.scheduling_pro_enabled,
     isMileageProEnabled: flags.mileage_pro_enabled,
     isFinancialProEnabled: flags.financial_pro_enabled,
+    isDevModeEnabled: flags.dev_mode_enabled,
     hasMigrationCompleted: flags.migration_completed,
   };
 }
