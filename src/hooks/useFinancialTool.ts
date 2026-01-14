@@ -1,54 +1,30 @@
-import { useState, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
+import { useAppState } from './useAppState';
 import { useTrials } from './useTrials';
 
+/**
+ * useFinancialTool - Financial feature hook using centralized AppState
+ * 
+ * Access is determined by AppState. This hook provides:
+ * - Read access to enabled status (from AppState)
+ * - Trial management
+ * - Actions to enable/disable the feature (persists to DB)
+ */
 export function useFinancialTool() {
   const { user } = useAuth();
+  const { hasAccess, loading: stateLoading, isTrialActive: globalTrialActive } = useAppState();
   const { isTrialActive, startTrial, hasTrialBeenUsed, getTrialDaysRemaining } = useTrials();
-  const [isEnabled, setIsEnabled] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState(false);
 
-  useEffect(() => {
-    if (!user) {
-      setIsEnabled(false);
-      setLoading(false);
-      return;
-    }
+  // Access determined by AppState - NOT by individual DB flag
+  const isEnabled = hasAccess('financial');
+  const loading = stateLoading;
 
-    const fetchStatus = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('user_settings')
-          .select('financial_tool_enabled, tax_pro_enabled, financial_pro_enabled')
-          .eq('user_id', user.id)
-          .maybeSingle();
-
-        if (error) {
-          console.error('Error fetching financial tool status:', error);
-          setIsEnabled(false);
-        } else {
-          // Enabled if new flag is set OR either legacy flag is set
-          setIsEnabled(
-            data?.financial_tool_enabled ?? 
-            data?.tax_pro_enabled ?? 
-            data?.financial_pro_enabled ?? 
-            false
-          );
-        }
-      } catch (err) {
-        console.error('Error:', err);
-        setIsEnabled(false);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchStatus();
-  }, [user]);
-
-  const enableFinancialTool = async () => {
+  const enableFinancialTool = useCallback(async (): Promise<boolean> => {
     if (!user) return false;
+    setActionLoading(true);
 
     try {
       const { error } = await supabase
@@ -66,19 +42,21 @@ export function useFinancialTool() {
         return false;
       }
 
-      setIsEnabled(true);
       return true;
     } catch (err) {
       console.error('Error:', err);
       return false;
+    } finally {
+      setActionLoading(false);
     }
-  };
+  }, [user]);
 
-  const startFinancialToolTrial = async () => {
+  const startFinancialToolTrial = useCallback(async (): Promise<boolean> => {
     return startTrial('financial_tool');
-  };
+  }, [startTrial]);
 
   // Check if active through purchase OR trial
+  // In ADMIN_PREVIEW or PAID_PRO state, this is always true
   const isActive = isEnabled || isTrialActive('financial_tool');
   const trialDaysRemaining = getTrialDaysRemaining('financial_tool');
   const canStartTrial = !hasTrialBeenUsed('financial_tool') && !isEnabled;
@@ -87,6 +65,7 @@ export function useFinancialTool() {
     isEnabled,
     isActive,
     loading,
+    actionLoading,
     enableFinancialTool,
     startTrial: startFinancialToolTrial,
     canStartTrial,

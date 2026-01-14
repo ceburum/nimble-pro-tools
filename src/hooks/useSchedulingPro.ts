@@ -1,53 +1,65 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
+import { useAppState } from './useAppState';
 
 export type BusinessType = 'mobile_job' | 'stationary_appointment' | null;
 
+/**
+ * useSchedulingPro - Scheduling feature hook using centralized AppState
+ * 
+ * Access is determined by AppState. This hook provides:
+ * - Read access to enabled status (from AppState)
+ * - Business type management
+ * - Actions to enable/disable the feature (persists to DB)
+ */
 export function useSchedulingPro() {
   const { user } = useAuth();
-  const [isEnabled, setIsEnabled] = useState(false);
+  const { hasAccess, loading: stateLoading } = useAppState();
   const [businessType, setBusinessTypeState] = useState<BusinessType>(null);
-  const [loading, setLoading] = useState(true);
+  const [businessTypeLoading, setBusinessTypeLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState(false);
 
+  // Access determined by AppState - NOT by individual DB flag
+  const isEnabled = hasAccess('scheduling');
+  const loading = stateLoading || businessTypeLoading;
+
+  // Fetch business type separately (still needed for scheduling mode)
   useEffect(() => {
     if (!user) {
-      setIsEnabled(false);
       setBusinessTypeState(null);
-      setLoading(false);
+      setBusinessTypeLoading(false);
       return;
     }
 
-    const fetchSchedulingProStatus = async () => {
+    const fetchBusinessType = async () => {
       try {
         const { data, error } = await supabase
           .from('user_settings')
-          .select('scheduling_pro_enabled, business_type')
+          .select('business_type')
           .eq('user_id', user.id)
           .maybeSingle();
 
         if (error) {
-          console.error('Error fetching scheduling pro status:', error);
-          setIsEnabled(false);
+          console.error('Error fetching business type:', error);
           setBusinessTypeState(null);
         } else {
-          setIsEnabled(data?.scheduling_pro_enabled ?? false);
           setBusinessTypeState((data?.business_type as BusinessType) ?? null);
         }
       } catch (err) {
         console.error('Error:', err);
-        setIsEnabled(false);
         setBusinessTypeState(null);
       } finally {
-        setLoading(false);
+        setBusinessTypeLoading(false);
       }
     };
 
-    fetchSchedulingProStatus();
+    fetchBusinessType();
   }, [user]);
 
-  const enableSchedulingPro = async () => {
+  const enableSchedulingPro = useCallback(async (): Promise<boolean> => {
     if (!user) return false;
+    setActionLoading(true);
 
     try {
       const { error } = await supabase
@@ -63,21 +75,26 @@ export function useSchedulingPro() {
         return false;
       }
 
-      setIsEnabled(true);
       return true;
     } catch (err) {
       console.error('Error:', err);
       return false;
+    } finally {
+      setActionLoading(false);
     }
-  };
+  }, [user]);
 
-  const disableSchedulingPro = async () => {
+  const disableSchedulingPro = useCallback(async (): Promise<boolean> => {
     if (!user) return false;
+    setActionLoading(true);
 
     try {
       const { error } = await supabase
         .from('user_settings')
-        .update({ scheduling_pro_enabled: false, updated_at: new Date().toISOString() })
+        .update({ 
+          scheduling_pro_enabled: false, 
+          updated_at: new Date().toISOString() 
+        })
         .eq('user_id', user.id);
 
       if (error) {
@@ -85,16 +102,18 @@ export function useSchedulingPro() {
         return false;
       }
 
-      setIsEnabled(false);
       return true;
     } catch (err) {
       console.error('Error:', err);
       return false;
+    } finally {
+      setActionLoading(false);
     }
-  };
+  }, [user]);
 
-  const setBusinessType = async (type: BusinessType) => {
+  const setBusinessType = useCallback(async (type: BusinessType): Promise<boolean> => {
     if (!user) return false;
+    setActionLoading(true);
 
     try {
       const { error } = await supabase
@@ -115,13 +134,16 @@ export function useSchedulingPro() {
     } catch (err) {
       console.error('Error:', err);
       return false;
+    } finally {
+      setActionLoading(false);
     }
-  };
+  }, [user]);
 
   return {
     isEnabled,
     businessType,
     loading,
+    actionLoading,
     enableSchedulingPro,
     disableSchedulingPro,
     setBusinessType,

@@ -1,21 +1,18 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, Users, FolderKanban, Receipt, Menu, LogOut, 
-  Car, CalendarDays, Calculator, Lock, Scissors, StickyNote,
-  Sparkles, BarChart3, CreditCard, Shield, BookOpen, ExternalLink,
-  UserPlus, Settings, RotateCcw
+  Car, CalendarDays, Lock, Scissors, StickyNote,
+  BarChart3, CreditCard, Shield, BookOpen, ExternalLink,
+  UserPlus, Settings, RotateCcw, ShieldCheck
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserLogo } from '@/hooks/useUserLogo';
-import { useSchedulingPro } from '@/hooks/useSchedulingPro';
-import { useFinancialTool } from '@/hooks/useFinancialTool';
-import { useMileagePro } from '@/hooks/useMileagePro';
-import { useServices } from '@/hooks/useServices';
-import { useSetup } from '@/hooks/useSetup';
-import { supabase } from '@/integrations/supabase/client';
+import { useAppState } from '@/hooks/useAppState';
+import { AppState } from '@/lib/appState';
 import { useToast } from '@/hooks/use-toast';
 import cebLogo from '@/assets/ceb-logo.png';
 
@@ -32,12 +29,12 @@ const baseNavigation = [
   { name: 'Notepad', href: '/notepad', icon: StickyNote },
 ];
 
-// Add-ons (paid features)
+// Add-ons (paid features) - access determined by AppState
 const addOnsNavigation = [
-  { name: 'Scheduling Pro', href: '/scheduling', icon: CalendarDays, flagKey: 'scheduling_pro_enabled' as const },
-  { name: 'Financial Tool', href: '/reports', icon: BarChart3, flagKey: 'financial_tool_enabled' as const },
-  { name: 'Mileage Pro', href: '/mileage', icon: Car, flagKey: 'mileage_pro_enabled' as const },
-  { name: 'Service Menu', href: '/services', icon: Scissors, flagKey: 'service_menu_enabled' as const },
+  { name: 'Scheduling Pro', href: '/scheduling', icon: CalendarDays, featureKey: 'scheduling' as const },
+  { name: 'Financial Tool', href: '/reports', icon: BarChart3, featureKey: 'financial' as const },
+  { name: 'Mileage Pro', href: '/mileage', icon: Car, featureKey: 'mileage' as const },
+  { name: 'Service Menu', href: '/services', icon: Scissors, featureKey: 'serviceMenu' as const },
 ];
 
 // Affiliate links
@@ -68,65 +65,32 @@ const recommendationLinks = [
     description: 'Business insurance',
   },
 ];
-export function AppLayout({
-  children
-}: AppLayoutProps) {
+
+export function AppLayout({ children }: AppLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const {
-    user,
-    signOut
-  } = useAuth();
+  const { user, signOut } = useAuth();
   const { logoUrl } = useUserLogo();
-  const { isEnabled: schedulingEnabled } = useSchedulingPro();
-  const { isActive: financialToolEnabled } = useFinancialTool();
-  const { isEnabled: mileageEnabled } = useMileagePro();
-  const { isEnabled: servicesEnabled } = useServices();
-  const { resetSetup } = useSetup();
+  const { state, hasAccess, capabilities, resetToInstall, isAdmin } = useAppState();
   const { toast } = useToast();
-  const [isAdmin, setIsAdmin] = useState(false);
-  
-  // Check if user is admin
-  useEffect(() => {
-    async function checkAdminRole() {
-      if (!user?.id) return;
-      const { data } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', user.id)
-        .eq('role', 'admin')
-        .maybeSingle();
-      setIsAdmin(!!data);
-    }
-    checkAdminRole();
-  }, [user?.id]);
   
   // Use custom logo if set, otherwise fall back to default
   const displayLogo = logoUrl || cebLogo;
-  
-  // Map of add-on enabled states - admin users get all add-ons unlocked
-  const addOnEnabledMap: Record<string, boolean> = isAdmin ? {
-    'scheduling_pro_enabled': true,
-    'financial_tool_enabled': true,
-    'mileage_pro_enabled': true,
-    'service_menu_enabled': true,
-  } : {
-    'scheduling_pro_enabled': schedulingEnabled,
-    'financial_tool_enabled': financialToolEnabled,
-    'mileage_pro_enabled': mileageEnabled,
-    'service_menu_enabled': servicesEnabled,
-  };
 
-  // Handle setup reset (admin maintenance - returns to onboarding wizard)
+  // Handle setup reset (ADMIN_PREVIEW only)
   const handleResetSetup = async () => {
+    if (state !== AppState.ADMIN_PREVIEW) {
+      toast({ 
+        title: 'Access denied', 
+        description: 'Only admins in preview mode can reset setup.',
+        variant: 'destructive'
+      });
+      return;
+    }
+    
     if (confirm('Reset to initial setup? This will return to the onboarding wizard.')) {
-      // Clear service data for a fresh onboarding test
-      localStorage.removeItem('nimble_services');
-      localStorage.removeItem('nimble_services_preview');
-      localStorage.removeItem('nimble_service_menu_settings');
-      
-      const success = await resetSetup();
+      const success = await resetToInstall();
       if (success) {
         toast({ 
           title: 'Setup reset', 
@@ -134,27 +98,70 @@ export function AppLayout({
         });
         // Use hard reload to force all hooks to re-fetch fresh state from database
         window.location.href = '/';
+      } else {
+        toast({ 
+          title: 'Reset failed', 
+          description: 'Could not reset setup. Please try again.',
+          variant: 'destructive'
+        });
       }
     }
   };
 
   const handleSignOut = async () => {
     await signOut();
-    navigate('/auth', {
-      replace: true
-    });
+    navigate('/auth', { replace: true });
   };
-  return <div className="min-h-screen bg-background">
+
+  // Get state label for admin badge
+  const getStateBadge = () => {
+    switch (state) {
+      case AppState.ADMIN_PREVIEW:
+        return { label: 'Admin Preview', variant: 'default' as const };
+      case AppState.TRIAL_PRO:
+        return { label: 'Trial', variant: 'secondary' as const };
+      case AppState.PAID_PRO:
+        return { label: 'Pro', variant: 'default' as const };
+      default:
+        return null;
+    }
+  };
+
+  const stateBadge = getStateBadge();
+
+  return (
+    <div className="min-h-screen bg-background">
       {/* Mobile sidebar overlay */}
-      {sidebarOpen && <div className="fixed inset-0 z-40 bg-foreground/20 backdrop-blur-sm lg:hidden" onClick={() => setSidebarOpen(false)} />}
+      {sidebarOpen && (
+        <div 
+          className="fixed inset-0 z-40 bg-foreground/20 backdrop-blur-sm lg:hidden" 
+          onClick={() => setSidebarOpen(false)} 
+        />
+      )}
 
       {/* Sidebar */}
-      <aside className={cn("fixed inset-y-0 left-0 z-50 w-64 bg-sidebar text-sidebar-foreground transform transition-transform duration-300 ease-in-out lg:translate-x-0 flex flex-col", sidebarOpen ? "translate-x-0" : "-translate-x-full")}>
+      <aside className={cn(
+        "fixed inset-y-0 left-0 z-50 w-64 bg-sidebar text-sidebar-foreground transform transition-transform duration-300 ease-in-out lg:translate-x-0 flex flex-col", 
+        sidebarOpen ? "translate-x-0" : "-translate-x-full"
+      )}>
         <div className="flex h-16 items-center gap-3 px-6 border-b border-sidebar-border">
-          <img src={displayLogo} alt="CEB Building Logo" className="h-10 w-10 rounded-lg object-cover border-0" />
-          <div>
-            <h1 className="text-lg font-bold text-sidebar-foreground">CEB Building</h1>
-            <p className="text-xs text-sidebar-foreground/60">{user?.email || 'chad@cebbuilding.com'}</p>
+          <img 
+            src={displayLogo} 
+            alt="CEB Building Logo" 
+            className="h-10 w-10 rounded-lg object-cover border-0" 
+          />
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <h1 className="text-lg font-bold text-sidebar-foreground truncate">CEB Building</h1>
+              {stateBadge && (
+                <Badge variant={stateBadge.variant} className="text-[10px] px-1.5 py-0">
+                  {stateBadge.label}
+                </Badge>
+              )}
+            </div>
+            <p className="text-xs text-sidebar-foreground/60 truncate">
+              {user?.email || 'chad@cebbuilding.com'}
+            </p>
           </div>
         </div>
 
@@ -169,7 +176,9 @@ export function AppLayout({
                 onClick={() => setSidebarOpen(false)} 
                 className={cn(
                   "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200", 
-                  isActive ? "bg-sidebar-accent text-sidebar-primary" : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                  isActive 
+                    ? "bg-sidebar-accent text-sidebar-primary" 
+                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
                 )}
               >
                 <item.icon className="h-5 w-5" />
@@ -186,10 +195,11 @@ export function AppLayout({
             Add-ons
           </p>
 
-          {/* Add-on Features */}
+          {/* Add-on Features - Lock icon shown based on AppState */}
           {addOnsNavigation.map(item => {
             const isActive = location.pathname === item.href;
-            const isUnlocked = addOnEnabledMap[item.flagKey];
+            const isUnlocked = hasAccess(item.featureKey);
+            
             return (
               <NavLink 
                 key={item.name} 
@@ -197,7 +207,9 @@ export function AppLayout({
                 onClick={() => setSidebarOpen(false)} 
                 className={cn(
                   "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200", 
-                  isActive ? "bg-sidebar-accent text-sidebar-primary" : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                  isActive 
+                    ? "bg-sidebar-accent text-sidebar-primary" 
+                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
                 )}
               >
                 <item.icon className="h-5 w-5" />
@@ -212,7 +224,7 @@ export function AppLayout({
           {/* Separator */}
           <div className="my-4 border-t border-sidebar-border" />
           
-          {/* Affiliates Label */}
+          {/* Partners Label */}
           <p className="px-4 py-2 text-xs font-semibold text-sidebar-foreground/50 uppercase tracking-wider">
             Partners
           </p>
@@ -232,7 +244,7 @@ export function AppLayout({
             </a>
           ))}
 
-          {/* Recommendations (collapsible or smaller) */}
+          {/* Recommendations (smaller) */}
           {recommendationLinks.map(item => (
             <a
               key={item.name}
@@ -250,7 +262,7 @@ export function AppLayout({
           {/* Separator */}
           <div className="my-4 border-t border-sidebar-border" />
           
-          {/* Affiliates Label */}
+          {/* Earn Money Label */}
           <p className="px-4 py-2 text-xs font-semibold text-sidebar-foreground/50 uppercase tracking-wider">
             Earn Money
           </p>
@@ -261,21 +273,25 @@ export function AppLayout({
             onClick={() => setSidebarOpen(false)} 
             className={cn(
               "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200", 
-              location.pathname === '/affiliates' ? "bg-sidebar-accent text-sidebar-primary" : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+              location.pathname === '/affiliates' 
+                ? "bg-sidebar-accent text-sidebar-primary" 
+                : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
             )}
           >
             <UserPlus className="h-5 w-5" />
             Become a Salesperson
           </NavLink>
 
-          {/* Admin Link - only visible to admins */}
-          {isAdmin && (
+          {/* Admin Link - only visible in ADMIN_PREVIEW state */}
+          {state === AppState.ADMIN_PREVIEW && (
             <NavLink 
               to="/affiliate-admin"
               onClick={() => setSidebarOpen(false)} 
               className={cn(
                 "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200", 
-                location.pathname === '/affiliate-admin' ? "bg-sidebar-accent text-sidebar-primary" : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                location.pathname === '/affiliate-admin' 
+                  ? "bg-sidebar-accent text-sidebar-primary" 
+                  : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
               )}
             >
               <Settings className="h-5 w-5" />
@@ -286,10 +302,15 @@ export function AppLayout({
 
         {/* Footer with Admin Tools + Sign Out */}
         <div className="px-4 py-4 border-t border-sidebar-border space-y-2">
-          {/* Admin Maintenance Section */}
-          {isAdmin && (
+          {/* Admin Maintenance Section - ONLY in ADMIN_PREVIEW state */}
+          {state === AppState.ADMIN_PREVIEW && capabilities.canResetSetup && (
             <div className="px-3 py-2 rounded-lg bg-sidebar-accent/50 space-y-2">
-              <span className="text-xs font-semibold text-sidebar-foreground/50 uppercase">Admin</span>
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="h-3 w-3 text-sidebar-foreground/50" />
+                <span className="text-xs font-semibold text-sidebar-foreground/50 uppercase">
+                  Admin Preview
+                </span>
+              </div>
               <Button
                 variant="ghost"
                 size="sm"
@@ -302,7 +323,11 @@ export function AppLayout({
             </div>
           )}
           
-          <Button variant="ghost" className="w-full justify-start gap-3 text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground" onClick={handleSignOut}>
+          <Button 
+            variant="ghost" 
+            className="w-full justify-start gap-3 text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground" 
+            onClick={handleSignOut}
+          >
             <LogOut className="h-5 w-5" />
             Sign Out
           </Button>
@@ -313,7 +338,12 @@ export function AppLayout({
       <div className="lg:pl-64">
         {/* Top bar */}
         <header className="sticky top-0 z-30 flex h-16 items-center gap-4 bg-background/80 backdrop-blur-md border-b border-border px-4 lg:px-8">
-          <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setSidebarOpen(true)}>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="lg:hidden" 
+            onClick={() => setSidebarOpen(true)}
+          >
             <Menu className="h-5 w-5" />
           </Button>
           
@@ -325,5 +355,6 @@ export function AppLayout({
           {children}
         </main>
       </div>
-    </div>;
+    </div>
+  );
 }
