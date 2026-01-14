@@ -4,6 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { ThemeProvider } from "next-themes";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { ProtectedRoute } from "@/components/layout/ProtectedRoute";
 import ErrorBoundary from "@/components/ErrorBoundary";
@@ -19,6 +20,7 @@ import Appointments from "./pages/Appointments";
 import TaxPro from "./pages/TaxPro";
 import ServiceMenu from "./pages/ServiceMenu";
 import Notepad from "./pages/Notepad";
+import Settings from "./pages/Settings";
 import PayInvoice from "./pages/PayInvoice";
 import Auth from "./pages/Auth";
 import Install from "./pages/Install";
@@ -42,11 +44,12 @@ const App = () => {
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <ReferralTracker />
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <ReferralTracker />
             <Routes>
               {/* Public routes */}
               <Route path="/auth" element={<Auth />} />
@@ -176,14 +179,23 @@ const App = () => {
                   </ProtectedRoute>
                 } 
               />
+              <Route
+                path="/settings" 
+                element={
+                  <ProtectedRoute>
+                    <AppLayout><Settings /></AppLayout>
+                  </ProtectedRoute>
+                } 
+              />
               <Route path="/quotes" element={<Navigate to="/projects" replace />} />
               <Route path="/jobs" element={<Navigate to="/projects" replace />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
         </TooltipProvider>
-      </QueryClientProvider>
-    </ErrorBoundary>
+      </ThemeProvider>
+    </QueryClientProvider>
+  </ErrorBoundary>
   );
 };
 

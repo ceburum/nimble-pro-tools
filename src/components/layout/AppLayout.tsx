@@ -379,8 +379,23 @@ export function AppLayout({ children }: AppLayoutProps) {
           )}
         </nav>
 
-        {/* Footer with Admin Tools + Sign Out */}
+        {/* Footer with Settings + Admin Tools + Sign Out */}
         <div className="px-4 py-4 border-t border-sidebar-border space-y-2">
+          {/* Settings Link */}
+          <NavLink 
+            to="/settings"
+            onClick={() => setSidebarOpen(false)} 
+            className={cn(
+              "flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200", 
+              location.pathname === '/settings' 
+                ? "bg-sidebar-accent text-sidebar-primary" 
+                : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+            )}
+          >
+            <Settings className="h-4 w-4" />
+            Settings
+          </NavLink>
+
           {/* Admin Maintenance Section - ONLY in ADMIN_PREVIEW state */}
           {state === AppState.ADMIN_PREVIEW && capabilities.canResetSetup && (
             <div className="px-3 py-2 rounded-lg bg-sidebar-accent/50 space-y-2">
