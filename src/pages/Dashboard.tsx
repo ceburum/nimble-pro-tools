@@ -13,7 +13,7 @@ import { PartnerSuggestions } from '@/components/reports/PartnerSuggestions';
 import { ClientDialog } from '@/components/clients/ClientDialog';
 import { ProjectDialog } from '@/components/projects/ProjectDialog';
 import { InvoiceDialog } from '@/components/invoices/InvoiceDialog';
-import { AppointmentDialog } from '@/components/scheduling/AppointmentDialog';
+import { QuickAppointmentDialog } from '@/components/scheduling/QuickAppointmentDialog';
 import { SetupWizard } from '@/components/setup/SetupWizard';
 import { Button } from '@/components/ui/button';
 import { mockClients, mockInvoices } from '@/lib/mockData';
@@ -25,8 +25,9 @@ import { useAppointments } from '@/hooks/useAppointments';
 import { useServices } from '@/hooks/useServices';
 import { useSetup } from '@/hooks/useSetup';
 import { useAppState } from '@/hooks/useAppState';
+import { useAppointmentInvoice } from '@/hooks/useAppointmentInvoice';
 import { AppState } from '@/lib/appState';
-import { Client, Invoice, Project } from '@/types';
+import { Client, Invoice, Project, LineItem } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
@@ -213,7 +214,7 @@ export default function Dashboard() {
     }
   };
 
-  // Handle appointment creation for stationary businesses
+  // Handle appointment creation for stationary businesses with auto-invoice
   const handleSaveAppointment = async (data: {
     clientId: string;
     serviceId?: string;
@@ -221,7 +222,8 @@ export default function Dashboard() {
     startTime: string;
     duration: number;
     notes?: string;
-  }) => {
+    items: LineItem[];
+  }): Promise<{ appointmentId: string; invoiceId?: string; paymentToken?: string } | null> => {
     const service = data.serviceId ? services.find(s => s.id === data.serviceId) : undefined;
     
     const result = await addAppointment({
@@ -236,8 +238,13 @@ export default function Dashboard() {
         title: "Appointment booked!",
         description: `Appointment scheduled for ${data.date.toLocaleDateString()}.`
       });
-      setAppointmentDialogOpen(false);
+      const appointmentId = typeof result === 'string' ? result : result.id;
+      return { 
+        appointmentId,
+        paymentToken: undefined
+      };
     }
+    return null;
   };
 
   // Handle setup completion - refresh app state after
@@ -405,8 +412,8 @@ export default function Dashboard() {
         onSave={handleSaveInvoice}
       />
 
-      {/* Appointment Dialog for stationary businesses */}
-      <AppointmentDialog
+      {/* Quick Appointment Dialog for stationary businesses */}
+      <QuickAppointmentDialog
         open={appointmentDialogOpen}
         onOpenChange={setAppointmentDialogOpen}
         clients={clients}

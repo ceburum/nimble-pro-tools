@@ -68,6 +68,10 @@ export default function Clients() {
     navigate('/projects', { state: { openNewProject: true, selectedClientId: client.id } });
   };
 
+  const handleCreateAppointment = (client: Client) => {
+    navigate('/appointments', { state: { openNewAppointment: true, selectedClientId: client.id } });
+  };
+
   const handleClientClick = (client: Client) => {
     setSelectedClient(client);
     setDetailDialogOpen(true);
@@ -150,6 +154,7 @@ export default function Clients() {
         onOpenChange={setDetailDialogOpen}
         onEdit={handleEdit}
         onCreateProject={handleCreateProject}
+        onCreateAppointment={handleCreateAppointment}
         onSendInvoice={handleSendInvoice}
       />
     </div>

@@ -1,4 +1,4 @@
-import { Mail, Phone, MapPin, FolderPlus, FileText, Edit } from 'lucide-react';
+import { Mail, Phone, MapPin, FolderPlus, FileText, Edit, CalendarPlus } from 'lucide-react';
 import { Client } from '@/types';
 import { Button } from '@/components/ui/button';
 import {
@@ -7,6 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { useAppointments } from '@/hooks/useAppointments';
 
 interface ClientDetailDialogProps {
   client: Client | null;
@@ -14,6 +15,7 @@ interface ClientDetailDialogProps {
   onOpenChange: (open: boolean) => void;
   onEdit: (client: Client) => void;
   onCreateProject: (client: Client) => void;
+  onCreateAppointment?: (client: Client) => void;
   onSendInvoice: (client: Client) => void;
 }
 
@@ -23,8 +25,11 @@ export function ClientDetailDialog({
   onOpenChange,
   onEdit,
   onCreateProject,
+  onCreateAppointment,
   onSendInvoice,
 }: ClientDetailDialogProps) {
+  const { isStationaryBusiness } = useAppointments();
+
   if (!client) return null;
 
   const initials = client.name
@@ -32,6 +37,15 @@ export function ClientDetailDialog({
     .map((n) => n[0])
     .join('')
     .toUpperCase();
+
+  const handlePrimaryAction = () => {
+    if (isStationaryBusiness && onCreateAppointment) {
+      onCreateAppointment(client);
+    } else {
+      onCreateProject(client);
+    }
+    onOpenChange(false);
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -73,14 +87,20 @@ export function ClientDetailDialog({
 
         <div className="grid gap-2 pt-2">
           <Button 
-            onClick={() => {
-              onCreateProject(client);
-              onOpenChange(false);
-            }}
+            onClick={handlePrimaryAction}
             className="w-full gap-2"
           >
-            <FolderPlus className="h-4 w-4" />
-            Create Project
+            {isStationaryBusiness ? (
+              <>
+                <CalendarPlus className="h-4 w-4" />
+                Create Appointment
+              </>
+            ) : (
+              <>
+                <FolderPlus className="h-4 w-4" />
+                Create Project
+              </>
+            )}
           </Button>
           <Button 
             variant="outline"
