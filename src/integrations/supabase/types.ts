@@ -1056,6 +1056,7 @@ export type Database = {
           ai_scans_subscription_customer_id: string | null
           ai_scans_subscription_status: string | null
           ai_scans_used: number
+          business_type: string | null
           company_address: string | null
           company_email: string | null
           company_name: string | null
@@ -1082,6 +1083,7 @@ export type Database = {
           ai_scans_subscription_customer_id?: string | null
           ai_scans_subscription_status?: string | null
           ai_scans_used?: number
+          business_type?: string | null
           company_address?: string | null
           company_email?: string | null
           company_name?: string | null
@@ -1108,6 +1110,7 @@ export type Database = {
           ai_scans_subscription_customer_id?: string | null
           ai_scans_subscription_status?: string | null
           ai_scans_used?: number
+          business_type?: string | null
           company_address?: string | null
           company_email?: string | null
           company_name?: string | null

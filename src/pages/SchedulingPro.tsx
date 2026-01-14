@@ -5,6 +5,7 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { CalendarView } from '@/components/scheduling/CalendarView';
 import { DayDetailDialog } from '@/components/scheduling/DayDetailDialog';
 import { ScheduleDialog } from '@/components/scheduling/ScheduleDialog';
+import { BusinessTypeSetupDialog } from '@/components/scheduling/BusinessTypeSetupDialog';
 import { ProjectDetailDialog } from '@/components/projects/ProjectDetailDialog';
 import { FeatureNotice } from '@/components/ui/feature-notice';
 import { useProjects } from '@/hooks/useProjects';
@@ -21,7 +22,9 @@ export default function SchedulingPro() {
   const { projects, loading: projectsLoading, updateProject } = useProjects();
   const { clients } = useClients();
   const { addInvoice } = useInvoices();
-  const { isEnabled, loading: featureLoading, enableSchedulingPro } = useSchedulingPro();
+  const { isEnabled, businessType, loading: featureLoading, enableSchedulingPro, setBusinessType } = useSchedulingPro();
+
+  const [businessTypeDialogOpen, setBusinessTypeDialogOpen] = useState(false);
 
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedDayProjects, setSelectedDayProjects] = useState<Project[]>([]);
@@ -135,13 +138,22 @@ export default function SchedulingPro() {
         />
       )}
 
-      {/* Show content when enabled */}
-      {isEnabled && (
+      {/* Business Type Setup - shown once when enabled but no type selected */}
+      {isEnabled && !businessType && (
+        <BusinessTypeSetupDialog
+          open={!businessType}
+          onOpenChange={() => {}}
+          onSelectType={setBusinessType}
+        />
+      )}
+
+      {/* Show content when enabled and business type is set */}
+      {isEnabled && businessType && (
         <>
-          {/* Stats */}
+          {/* Stats - labels adapt based on business type */}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <StatCard
-              title="Today's Jobs"
+              title={businessType === 'stationary_appointment' ? "Today's Appointments" : "Today's Jobs"}
               value={stats.todayCount}
               icon={CalendarIcon}
               variant={stats.todayCount > 0 ? 'primary' : 'default'}

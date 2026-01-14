@@ -12,6 +12,7 @@ import Clients from "./pages/Clients";
 import Projects from "./pages/Projects";
 import Invoices from "./pages/Invoices";
 import Reports from "./pages/Reports";
+import Financials from "./pages/Financials";
 import MileagePro from "./pages/MileagePro";
 import SchedulingPro from "./pages/SchedulingPro";
 import TaxPro from "./pages/TaxPro";
@@ -90,6 +91,14 @@ const App = () => {
                 element={
                   <ProtectedRoute>
                     <AppLayout><Reports /></AppLayout>
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/financials" 
+                element={
+                  <ProtectedRoute>
+                    <AppLayout><Financials /></AppLayout>
                   </ProtectedRoute>
                 } 
               />
