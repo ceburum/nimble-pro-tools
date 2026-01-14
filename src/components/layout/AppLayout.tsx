@@ -20,14 +20,16 @@ interface AppLayoutProps {
   children: React.ReactNode;
 }
 
-// Base app navigation
+// Base app navigation - dynamically shown based on business type
+// mobileOnly: only shown for mobile/contractor businesses
+// stationaryOnly: only shown for stationary businesses
 const baseNavigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Clients', href: '/clients', icon: Users },
-  { name: 'Projects', href: '/projects', icon: FolderKanban },
+  { name: 'Projects', href: '/projects', icon: FolderKanban, mobileOnly: true },
+  { name: 'Appointments', href: '/appointments', icon: CalendarDays, stationaryOnly: true },
   { name: 'Invoices', href: '/invoices', icon: Receipt },
   { name: 'Notepad', href: '/notepad', icon: StickyNote },
-  { name: 'Appointments', href: '/appointments', icon: CalendarDays, stationaryOnly: true },
 ];
 
 // Add-ons (paid features) - access determined by AppState
@@ -170,9 +172,14 @@ export function AppLayout({ children }: AppLayoutProps) {
           {/* Base App Features */}
           {baseNavigation
             .filter(item => {
+              const isStationary = setupProgress.businessType === 'stationary_appointment';
               // Filter out stationary-only items for mobile businesses
               if ('stationaryOnly' in item && item.stationaryOnly) {
-                return setupProgress.businessType === 'stationary_appointment';
+                return isStationary;
+              }
+              // Filter out mobile-only items for stationary businesses
+              if ('mobileOnly' in item && item.mobileOnly) {
+                return !isStationary;
               }
               return true;
             })

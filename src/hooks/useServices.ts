@@ -298,6 +298,7 @@ export function useServices() {
   }, []);
 
   // Check if we need to show the init dialog
+  // If isUnlocked is true (even with no services), user chose blank menu - don't show init
   const needsInit = isEnabled && 
     services.length === 0 && 
     previewServices.length === 0 && 

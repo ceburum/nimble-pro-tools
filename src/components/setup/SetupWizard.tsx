@@ -182,24 +182,53 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
 
   // Handle menu upsell - user chooses blank menu
   const handleChooseBlank = useCallback(async () => {
+    if (!companyName || !businessType || !businessSector) return;
+    
     setLoading(true);
     
     // Clear any preset services, start with blank
     setPreviewServices([]);
     setMenuPresetPurchased(false);
     
+    // Complete setup immediately with blank menu
+    const themeColor = getThemeForSector(businessSector);
+    const success = await onComplete({
+      companyName,
+      businessType,
+      businessSector,
+      services: undefined, // No services - blank menu
+      themeColor,
+      menuPresetPurchased: false,
+    });
+    
     setLoading(false);
     
-    // Complete setup without services
-    handleComplete();
-  }, []);
+    if (!success) {
+      console.error('Setup completion failed');
+    }
+  }, [companyName, businessType, businessSector, onComplete]);
 
   // Skip menu entirely
-  const handleSkipMenu = useCallback(() => {
+  const handleSkipMenu = useCallback(async () => {
+    if (!companyName || !businessType || !businessSector) return;
+    
+    setLoading(true);
     setPreviewServices([]);
     setMenuPresetPurchased(false);
-    handleComplete();
-  }, []);
+    
+    // Complete setup
+    const themeColor = getThemeForSector(businessSector);
+    await onComplete({
+      companyName,
+      businessType,
+      businessSector,
+      services: undefined,
+      themeColor,
+      menuPresetPurchased: false,
+    });
+    
+    setLoading(false);
+  }, [companyName, businessType, businessSector, onComplete]);
 
   const handleDeleteService = useCallback((serviceId: string) => {
     setPreviewServices(prev => prev.filter(s => s.id !== serviceId));
