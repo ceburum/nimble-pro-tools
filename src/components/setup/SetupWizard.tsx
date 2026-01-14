@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -18,12 +18,14 @@ import {
   ArrowLeft,
   Check,
   Sparkles,
-  ListChecks
+  ListChecks,
+  Loader2
 } from 'lucide-react';
 import { BusinessSector, BusinessType, SECTOR_PRESETS, SECTOR_OPTIONS } from '@/config/sectorPresets';
 import { cn } from '@/lib/utils';
 import { getServicesForSector, getThemeForSector, PreviewService } from '@/lib/serviceUtils';
 import { ServicePreviewCard } from './ServicePreviewCard';
+import { useAppState } from '@/hooks/useAppState';
 
 interface SetupWizardProps {
   onComplete: (data: {
@@ -45,49 +47,74 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
 };
 
 export function SetupWizard({ onComplete }: SetupWizardProps) {
+  const { persistSetupStep, setupProgress } = useAppState();
+  
   const [step, setStep] = useState(1);
-  const [companyName, setCompanyName] = useState('');
-  const [businessType, setBusinessType] = useState<BusinessType | null>(null);
-  const [businessSector, setBusinessSector] = useState<BusinessSector | null>(null);
+  const [companyName, setCompanyName] = useState(setupProgress.companyName || '');
+  const [businessType, setBusinessType] = useState<BusinessType | null>(
+    (setupProgress.businessType as BusinessType) || null
+  );
+  const [businessSector, setBusinessSector] = useState<BusinessSector | null>(
+    (setupProgress.businessSector as BusinessSector) || null
+  );
   const [previewServices, setPreviewServices] = useState<PreviewService[]>([]);
   const [loading, setLoading] = useState(false);
+  const [stepSaving, setStepSaving] = useState(false);
 
   // Dynamic step count: 4 if we have services to review, otherwise 3
   const hasServices = previewServices.length > 0;
   const totalSteps = hasServices ? 4 : 3;
   const progress = (step / totalSteps) * 100;
 
-  const handleNext = () => {
+  const handleNext = useCallback(() => {
     if (step < totalSteps) {
       setStep(step + 1);
     }
-  };
+  }, [step, totalSteps]);
 
-  const handleBack = () => {
+  const handleBack = useCallback(() => {
     if (step > 1) {
       setStep(step - 1);
-      // If going back from service review, keep services but allow re-selection
     }
-  };
+  }, [step]);
 
-  const handleSectorSelect = (sector: BusinessSector) => {
+  // Handle business type selection with immediate persistence
+  const handleBusinessTypeSelect = useCallback(async (type: BusinessType) => {
+    setBusinessType(type);
+    setStepSaving(true);
+    
+    // Persist to database immediately for visible progress
+    await persistSetupStep('business_type', type);
+    setStepSaving(false);
+  }, [persistSetupStep]);
+
+  // Handle sector selection with immediate persistence and service loading
+  const handleSectorSelect = useCallback(async (sector: BusinessSector) => {
     setBusinessSector(sector);
-    // Auto-set business type based on sector default
+    setStepSaving(true);
+    
+    // Auto-set business type based on sector default if not already set
     const preset = SECTOR_PRESETS[sector];
-    if (preset) {
+    if (preset && !businessType) {
       setBusinessType(preset.defaultBusinessType);
+      await persistSetupStep('business_type', preset.defaultBusinessType);
     }
     
-    // Load services for this sector into preview
+    // Persist sector selection immediately
+    await persistSetupStep('business_sector', sector);
+    
+    // Load services for this sector into preview (visible immediately)
     const services = getServicesForSector(sector);
     setPreviewServices(services);
-  };
+    
+    setStepSaving(false);
+  }, [businessType, persistSetupStep]);
 
-  const handleDeleteService = (serviceId: string) => {
+  const handleDeleteService = useCallback((serviceId: string) => {
     setPreviewServices(prev => prev.filter(s => s.id !== serviceId));
-  };
+  }, []);
 
-  const handleComplete = async () => {
+  const handleComplete = useCallback(async () => {
     if (!companyName || !businessType || !businessSector) return;
     
     setLoading(true);
@@ -104,7 +131,7 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
     if (!success) {
       // Handle error - could show toast
     }
-  };
+  }, [companyName, businessType, businessSector, previewServices, onComplete]);
 
   const canProceed = () => {
     switch (step) {
@@ -174,14 +201,18 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
             {step === 2 && (
               <div className="grid gap-4 md:grid-cols-2">
                 <button
-                  onClick={() => setBusinessType('mobile_job')}
+                  onClick={() => handleBusinessTypeSelect('mobile_job')}
+                  disabled={stepSaving}
                   className={cn(
-                    "p-6 rounded-lg border-2 text-left transition-all",
+                    "p-6 rounded-lg border-2 text-left transition-all relative",
                     businessType === 'mobile_job'
                       ? "border-primary bg-primary/5"
                       : "border-border hover:border-primary/50"
                   )}
                 >
+                  {stepSaving && businessType === 'mobile_job' && (
+                    <Loader2 className="absolute top-4 right-4 h-4 w-4 animate-spin" />
+                  )}
                   <div className="flex items-center gap-3 mb-3">
                     <div className={cn(
                       "p-2 rounded-full",
@@ -198,14 +229,18 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
                 </button>
 
                 <button
-                  onClick={() => setBusinessType('stationary_appointment')}
+                  onClick={() => handleBusinessTypeSelect('stationary_appointment')}
+                  disabled={stepSaving}
                   className={cn(
-                    "p-6 rounded-lg border-2 text-left transition-all",
+                    "p-6 rounded-lg border-2 text-left transition-all relative",
                     businessType === 'stationary_appointment'
                       ? "border-primary bg-primary/5"
                       : "border-border hover:border-primary/50"
                   )}
                 >
+                  {stepSaving && businessType === 'stationary_appointment' && (
+                    <Loader2 className="absolute top-4 right-4 h-4 w-4 animate-spin" />
+                  )}
                   <div className="flex items-center gap-3 mb-3">
                     <div className={cn(
                       "p-2 rounded-full",
@@ -228,21 +263,26 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
               <div className="grid gap-3 md:grid-cols-2">
                 {SECTOR_OPTIONS.map((option) => {
                   const IconComponent = ICON_MAP[option.icon] || FileText;
+                  const isSelected = businessSector === option.value;
                   return (
                     <button
                       key={option.value}
                       onClick={() => handleSectorSelect(option.value)}
+                      disabled={stepSaving}
                       className={cn(
-                        "p-4 rounded-lg border-2 text-left transition-all",
-                        businessSector === option.value
+                        "p-4 rounded-lg border-2 text-left transition-all relative",
+                        isSelected
                           ? "border-primary bg-primary/5"
                           : "border-border hover:border-primary/50"
                       )}
                     >
+                      {stepSaving && isSelected && (
+                        <Loader2 className="absolute top-3 right-3 h-4 w-4 animate-spin" />
+                      )}
                       <div className="flex items-center gap-3 mb-2">
                         <div className={cn(
                           "p-2 rounded-full",
-                          businessSector === option.value ? "bg-primary text-primary-foreground" : "bg-muted"
+                          isSelected ? "bg-primary text-primary-foreground" : "bg-muted"
                         )}>
                           <IconComponent className="h-4 w-4" />
                         </div>

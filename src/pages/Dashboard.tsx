@@ -19,6 +19,8 @@ import { useProjects } from '@/hooks/useProjects';
 import { useClients } from '@/hooks/useClients';
 import { useInvoices } from '@/hooks/useInvoices';
 import { useSetup } from '@/hooks/useSetup';
+import { useAppState } from '@/hooks/useAppState';
+import { AppState } from '@/lib/appState';
 import { Client, Invoice, Project } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -30,7 +32,8 @@ export default function Dashboard() {
   const { projects, addProject } = useProjects();
   const { clients: dbClients, addClient } = useClients();
   const { addInvoice } = useInvoices();
-  const { setupCompleted, loading: setupLoading, completeSetup } = useSetup();
+  const { completeSetup, loading: setupLoading } = useSetup();
+  const { state, loading: appStateLoading, isSetupComplete, refreshState } = useAppState();
   
   // Use DB clients if available, otherwise fall back to local
   const clients = dbClients.length > 0 ? dbClients : localClients;
@@ -199,8 +202,19 @@ export default function Dashboard() {
     }
   };
 
+  // Handle setup completion - refresh app state after
+  const handleSetupComplete = async (data: Parameters<typeof completeSetup>[0]) => {
+    const success = await completeSetup(data);
+    if (success) {
+      // Refresh app state to transition from SETUP_INCOMPLETE to READY_BASE
+      await refreshState();
+    }
+    return success;
+  };
+
   // Show loading while checking setup state
-  if (setupLoading) {
+  const loading = setupLoading || appStateLoading;
+  if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -208,9 +222,12 @@ export default function Dashboard() {
     );
   }
 
-  // Show setup wizard for new users
-  if (!setupCompleted) {
-    return <SetupWizard onComplete={completeSetup} />;
+  // Show setup wizard based on AppState (SETUP_INCOMPLETE or ADMIN_PREVIEW with incomplete setup)
+  const shouldShowSetup = !isSetupComplete && 
+    (state === AppState.SETUP_INCOMPLETE || state === AppState.ADMIN_PREVIEW);
+  
+  if (shouldShowSetup) {
+    return <SetupWizard onComplete={handleSetupComplete} />;
   }
 
   return (
