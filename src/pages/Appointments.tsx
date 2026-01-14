@@ -8,10 +8,12 @@ import { Button } from '@/components/ui/button';
 import { AppointmentDialog } from '@/components/scheduling/AppointmentDialog';
 import { AppointmentCalendarView } from '@/components/scheduling/AppointmentCalendarView';
 import { AppointmentDayDialog } from '@/components/scheduling/AppointmentDayDialog';
+import { AppointmentDetailDialog } from '@/components/appointments/AppointmentDetailDialog';
 import { useAppointments } from '@/hooks/useAppointments';
 import { useClients } from '@/hooks/useClients';
 import { useServices } from '@/hooks/useServices';
 import { useAppState } from '@/hooks/useAppState';
+import { useAppointmentInvoice } from '@/hooks/useAppointmentInvoice';
 import { AppState } from '@/lib/appState';
 import { toast } from 'sonner';
 
@@ -24,16 +26,22 @@ export default function Appointments() {
     canAccessAppointments,
     isStationaryBusiness,
     addAppointment,
+    updateAppointment,
+    completeAppointment,
+    cancelAppointment,
     getAppointmentsForDate,
     hasConflict,
   } = useAppointments();
   const { clients } = useClients();
   const { services } = useServices();
   const { state, setupProgress } = useAppState();
+  const { setActiveAppointmentId } = useAppointmentInvoice();
 
   const [appointmentDialogOpen, setAppointmentDialogOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [dayDialogOpen, setDayDialogOpen] = useState(false);
+  const [selectedAppointment, setSelectedAppointment] = useState<typeof appointments[0] | null>(null);
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
 
   const handleDayClick = (date: Date) => {
     setSelectedDate(date);
@@ -45,6 +53,35 @@ export default function Appointments() {
       setSelectedDate(date);
     }
     setAppointmentDialogOpen(true);
+  };
+
+  // Handle viewing an appointment's details
+  const handleViewAppointment = (appointment: typeof appointments[0]) => {
+    setSelectedAppointment(appointment);
+    setDetailDialogOpen(true);
+    setDayDialogOpen(false);
+  };
+
+  // Handle completing an appointment
+  const handleCompleteAppointment = (appointmentId: string) => {
+    const success = completeAppointment(appointmentId);
+    if (success) {
+      toast.success('Appointment completed');
+    }
+  };
+
+  // Handle canceling an appointment
+  const handleCancelAppointment = (appointmentId: string) => {
+    const success = cancelAppointment(appointmentId);
+    if (success) {
+      toast.success('Appointment cancelled');
+    }
+  };
+
+  // Navigate to invoices page
+  const handleNavigateToInvoices = () => {
+    setDetailDialogOpen(false);
+    navigate('/invoices');
   };
 
   const handleSaveAppointment = async (data: {
@@ -211,8 +248,19 @@ export default function Appointments() {
           date={selectedDate}
           appointments={getAppointmentsForDate(selectedDate)}
           onAddAppointment={() => handleAddAppointment(selectedDate)}
+          onViewAppointment={handleViewAppointment}
         />
       )}
+
+      {/* Appointment Detail Dialog with Invoice Management */}
+      <AppointmentDetailDialog
+        open={detailDialogOpen}
+        onOpenChange={setDetailDialogOpen}
+        appointment={selectedAppointment}
+        onComplete={handleCompleteAppointment}
+        onCancel={handleCancelAppointment}
+        onNavigateToInvoices={handleNavigateToInvoices}
+      />
     </div>
   );
 }

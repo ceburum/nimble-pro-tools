@@ -11,6 +11,7 @@ import { useAppState } from '@/hooks/useAppState';
 import { useInvoices } from '@/hooks/useInvoices';
 import { useClients } from '@/hooks/useClients';
 import { useBusinessProfile } from '@/hooks/useBusinessProfile';
+import { useAppointmentInvoice } from '@/hooks/useAppointmentInvoice';
 import { AppState } from '@/lib/appState';
 import { ServiceCard } from '@/components/services/ServiceCard';
 import { ServiceEditDialog } from '@/components/services/ServiceEditDialog';
@@ -42,10 +43,16 @@ export default function ServiceMenu() {
   } = useServices();
   
   const { updateFlag } = useFeatureFlags();
-  const { state, capabilities } = useAppState();
+  const { state, capabilities, setupProgress } = useAppState();
   const { addInvoice, invoices } = useInvoices();
   const { clients } = useClients();
   const { profile } = useBusinessProfile();
+  const { 
+    activeAppointmentId, 
+    activeInvoice, 
+    addServiceToAppointmentInvoice,
+    isStationaryBusiness,
+  } = useAppointmentInvoice();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingService, setEditingService] = useState<Service | null>(null);
   const [enabling, setEnabling] = useState(false);
@@ -160,7 +167,7 @@ export default function ServiceMenu() {
   };
 
   // Handle adding a service to an invoice
-  const handleAddToInvoice = useCallback((service: Service) => {
+  const handleAddToInvoice = useCallback(async (service: Service) => {
     if (!canAddToInvoice) {
       toast({
         title: 'Feature not available',
@@ -170,6 +177,16 @@ export default function ServiceMenu() {
       return;
     }
 
+    // For stationary businesses with an active appointment, add directly to appointment invoice
+    if (isStationaryBusiness && activeAppointmentId && activeInvoice) {
+      const success = await addServiceToAppointmentInvoice(service);
+      if (success) {
+        // Toast already shown by the hook
+        return;
+      }
+    }
+
+    // Otherwise, open the invoice dialog for manual invoice creation
     // Check if there are any clients
     if (clients.length === 0) {
       toast({
@@ -184,7 +201,7 @@ export default function ServiceMenu() {
     // Store the pending service and open invoice dialog
     setPendingService(service);
     setInvoiceDialogOpen(true);
-  }, [canAddToInvoice, clients, navigate, toast]);
+  }, [canAddToInvoice, isStationaryBusiness, activeAppointmentId, activeInvoice, addServiceToAppointmentInvoice, clients, navigate, toast]);
 
   // Handle invoice creation with the pending service
   const handleCreateInvoice = useCallback(async (invoiceData: {
