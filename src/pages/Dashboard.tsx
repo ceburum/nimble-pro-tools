@@ -1,4 +1,4 @@
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { Users, Receipt, DollarSign, FolderKanban, Settings } from 'lucide-react';
 import { StatCard } from '@/components/dashboard/StatCard';
@@ -8,6 +8,8 @@ import { DashboardAvatar } from '@/components/dashboard/DashboardAvatar';
 import { ReferralRewardCard } from '@/components/dashboard/ReferralRewardCard';
 import { BusinessProfileDialog } from '@/components/settings/BusinessProfileDialog';
 import { PartnerSuggestions } from '@/components/reports/PartnerSuggestions';
+import { ClientDialog } from '@/components/clients/ClientDialog';
+import { ProjectDialog } from '@/components/projects/ProjectDialog';
 import { Button } from '@/components/ui/button';
 import { mockClients, mockInvoices } from '@/lib/mockData';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
@@ -21,8 +23,8 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const [localClients] = useLocalStorage<Client[]>('ceb-clients', mockClients);
   const [localInvoices] = useLocalStorage<Invoice[]>('ceb-invoices', mockInvoices);
-  const { projects } = useProjects();
-  const { clients: dbClients } = useClients();
+  const { projects, addProject } = useProjects();
+  const { clients: dbClients, addClient } = useClients();
   
   // Use DB clients if available, otherwise fall back to local
   const clients = dbClients.length > 0 ? dbClients : localClients;
@@ -32,6 +34,10 @@ export default function Dashboard() {
   const [dashboardLogoUrl, setDashboardLogoUrl] = useState<string | null>(null);
   const [isLoadingAvatar, setIsLoadingAvatar] = useState(true);
   const [showBusinessProfile, setShowBusinessProfile] = useState(false);
+  
+  // Dialog states for quick actions
+  const [clientDialogOpen, setClientDialogOpen] = useState(false);
+  const [projectDialogOpen, setProjectDialogOpen] = useState(false);
 
   // Fetch dashboard logo on mount
   useEffect(() => {
@@ -137,6 +143,44 @@ export default function Dashboard() {
     }
   };
 
+  const handleSaveClient = async (data: { name: string; email: string; phone: string; address: string }) => {
+    const result = await addClient(data);
+    if (result) {
+      toast({
+        title: "Client added",
+        description: `${data.name} has been added to your clients.`
+      });
+      setClientDialogOpen(false);
+    }
+  };
+
+  const handleSaveProject = async (data: Partial<Project>) => {
+    if (!data.title || !data.clientId) {
+      toast({
+        title: "Missing fields",
+        description: "Please provide a title and select a client.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    const result = await addProject({
+      title: data.title,
+      description: data.description || '',
+      clientId: data.clientId,
+      status: 'draft',
+      items: [],
+    });
+    
+    if (result) {
+      toast({
+        title: "Project created",
+        description: `${data.title} has been created.`
+      });
+      setProjectDialogOpen(false);
+    }
+  };
+
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
@@ -165,22 +209,28 @@ export default function Dashboard() {
       {/* Referral Reward Card */}
       <ReferralRewardCard />
 
-      {/* Quick Actions - moved to top */}
+      {/* Quick Actions - now with dialogs */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Link to="/clients" className="flex items-center gap-3 p-4 rounded-lg border border-border bg-card hover:border-primary/50 hover:bg-primary/5 transition-all duration-200">
+        <button 
+          onClick={() => setClientDialogOpen(true)}
+          className="flex items-center gap-3 p-4 rounded-lg border border-border bg-card hover:border-primary/50 hover:bg-primary/5 transition-all duration-200 w-full text-left"
+        >
           <Users className="text-primary w-8 h-8" />
           <div>
             <p className="text-card-foreground font-bold text-sm">Add Client</p>
             <p className="text-sm text-muted-foreground">Create new contact</p>
           </div>
-        </Link>
-        <Link to="/projects" className="flex items-center gap-3 p-4 rounded-lg border border-border bg-card hover:border-primary/50 hover:bg-primary/5 transition-all duration-200">
+        </button>
+        <button 
+          onClick={() => setProjectDialogOpen(true)}
+          className="flex items-center gap-3 p-4 rounded-lg border border-border bg-card hover:border-primary/50 hover:bg-primary/5 transition-all duration-200 w-full text-left"
+        >
           <FolderKanban className="text-primary w-8 h-8" />
           <div>
             <p className="text-card-foreground text-sm font-bold">New Project</p>
             <p className="text-sm text-muted-foreground">Create quote/job</p>
           </div>
-        </Link>
+        </button>
         <button 
           onClick={() => navigate('/invoices', { state: { openNewInvoice: true } })} 
           className="flex items-center gap-3 p-4 rounded-lg border border-border bg-card hover:border-primary/50 hover:bg-primary/5 transition-all duration-200 w-full text-left"
@@ -191,13 +241,16 @@ export default function Dashboard() {
             <p className="text-sm text-muted-foreground">Bill a client</p>
           </div>
         </button>
-        <Link to="/invoices" className="flex items-center gap-3 p-4 rounded-lg border border-border bg-card hover:border-success/50 hover:bg-success/5 transition-all duration-200">
+        <button 
+          onClick={() => navigate('/invoices')}
+          className="flex items-center gap-3 p-4 rounded-lg border border-border bg-card hover:border-success/50 hover:bg-success/5 transition-all duration-200 w-full text-left"
+        >
           <DollarSign className="text-success w-8 h-8" />
           <div>
             <p className="text-card-foreground text-sm font-bold">Record Payment</p>
             <p className="text-sm text-muted-foreground">Mark invoice paid</p>
           </div>
-        </Link>
+        </button>
       </div>
 
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
@@ -207,7 +260,7 @@ export default function Dashboard() {
         <StatCard title="Total Revenue" value={`$${totalRevenue.toLocaleString()}`} icon={DollarSign} variant="success" trend={{
           value: 12,
           isPositive: true
-        }} href="/invoices" />
+        }} href="/financials" />
       </div>
 
       {overdueCount > 0 && <OverdueAlerts invoices={invoices} clients={clients} onSendReminder={handleSendReminder} />}
@@ -220,6 +273,21 @@ export default function Dashboard() {
       <BusinessProfileDialog 
         open={showBusinessProfile} 
         onOpenChange={setShowBusinessProfile} 
+      />
+
+      {/* Quick Action Dialogs */}
+      <ClientDialog
+        open={clientDialogOpen}
+        onOpenChange={setClientDialogOpen}
+        onSave={handleSaveClient}
+      />
+
+      <ProjectDialog
+        open={projectDialogOpen}
+        onOpenChange={setProjectDialogOpen}
+        project={null}
+        clients={clients}
+        onSave={handleSaveProject}
       />
     </div>
   );

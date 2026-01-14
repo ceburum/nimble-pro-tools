@@ -11,6 +11,7 @@ import { TaxExportDialog } from '@/components/tax-pro/TaxExportDialog';
 import { TaxDisclaimer } from '@/components/tax-pro/TaxDisclaimer';
 import { ScheduleCBreakdown } from '@/components/tax-pro/ScheduleCBreakdown';
 import { UncategorizedExpensesList } from '@/components/tax-pro/UncategorizedExpensesList';
+import { QuickExpenseEntry } from '@/components/tax-pro/QuickExpenseEntry';
 import { FeatureNotice } from '@/components/ui/feature-notice';
 import { useTaxPro } from '@/hooks/useTaxPro';
 import { Calculator } from 'lucide-react';
@@ -86,9 +87,11 @@ export default function TaxPro() {
         />
       )}
 
-      {/* Show content when enabled */}
       {isEnabled && (
         <>
+          {/* Quick Expense Entry */}
+          <QuickExpenseEntry />
+          
           <Tabs value={currentTab} onValueChange={(value) => setSearchParams({ tab: value })} className="space-y-6">
             <TabsList className="grid w-full grid-cols-3 sm:grid-cols-6 lg:w-auto lg:inline-grid">
               <TabsTrigger value="overview">Overview</TabsTrigger>
