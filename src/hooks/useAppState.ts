@@ -6,7 +6,8 @@ import {
   FeatureKey, 
   getStateCapabilities, 
   hasFeatureAccess,
-  StateCapabilities 
+  StateCapabilities,
+  getNextState
 } from '@/lib/appState';
 
 interface TrialInfo {
@@ -15,6 +16,13 @@ interface TrialInfo {
 }
 
 type TrialRecord = Record<string, TrialInfo>;
+
+interface SetupProgress {
+  companyName: string | null;
+  businessType: string | null;
+  businessSector: string | null;
+  setupCompleted: boolean;
+}
 
 interface AppStateData {
   // Current authoritative state
@@ -26,6 +34,9 @@ interface AppStateData {
   // Capabilities based on current state
   capabilities: StateCapabilities;
   
+  // Setup progress (for onboarding UI)
+  setupProgress: SetupProgress;
+  
   // Convenience checks
   isAdmin: boolean;
   isSetupComplete: boolean;
@@ -35,9 +46,15 @@ interface AppStateData {
   // Feature access check
   hasAccess: (feature: FeatureKey) => boolean;
   
-  // Actions
+  // State transition actions
+  transitionTo: (action: 'complete_setup' | 'start_trial' | 'subscribe' | 'trial_expired' | 'reset') => Promise<boolean>;
+  
+  // Specific actions
   resetToInstall: () => Promise<boolean>;
   refreshState: () => Promise<void>;
+  
+  // Setup step persistence (for immediate feedback during onboarding)
+  persistSetupStep: (step: 'business_type' | 'business_sector', value: string) => Promise<boolean>;
 }
 
 /**
@@ -57,17 +74,28 @@ export function useAppState(): AppStateData {
   const { user, loading: authLoading } = useAuth();
   
   const [isAdmin, setIsAdmin] = useState(false);
-  const [setupCompleted, setSetupCompleted] = useState<boolean | null>(null);
+  const [setupProgress, setSetupProgress] = useState<SetupProgress>({
+    companyName: null,
+    businessType: null,
+    businessSector: null,
+    setupCompleted: false,
+  });
   const [trials, setTrials] = useState<TrialRecord>({});
   const [paidFeatures, setPaidFeatures] = useState<Record<string, boolean>>({});
   const [dataLoading, setDataLoading] = useState(true);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   // Fetch all state-related data from database
   useEffect(() => {
     async function fetchStateData() {
       if (!user?.id) {
         setIsAdmin(false);
-        setSetupCompleted(null);
+        setSetupProgress({
+          companyName: null,
+          businessType: null,
+          businessSector: null,
+          setupCompleted: false,
+        });
         setTrials({});
         setPaidFeatures({});
         setDataLoading(false);
@@ -90,6 +118,9 @@ export function useAppState(): AppStateData {
             .from('user_settings')
             .select(`
               setup_completed,
+              company_name,
+              business_type,
+              business_sector,
               trial_started_at,
               scheduling_pro_enabled,
               financial_tool_enabled,
@@ -105,8 +136,13 @@ export function useAppState(): AppStateData {
         // Set admin status
         setIsAdmin(!!roleResult.data);
 
-        // Set setup status
-        setSetupCompleted(settingsResult.data?.setup_completed ?? false);
+        // Set setup progress
+        setSetupProgress({
+          companyName: settingsResult.data?.company_name ?? null,
+          businessType: settingsResult.data?.business_type ?? null,
+          businessSector: settingsResult.data?.business_sector ?? null,
+          setupCompleted: settingsResult.data?.setup_completed ?? false,
+        });
 
         // Set trials
         if (settingsResult.data?.trial_started_at && typeof settingsResult.data.trial_started_at === 'object') {
@@ -133,7 +169,7 @@ export function useAppState(): AppStateData {
     }
 
     fetchStateData();
-  }, [user?.id]);
+  }, [user?.id, refreshTrigger]);
 
   // Check if any trial is currently active
   const isTrialActive = useMemo(() => {
@@ -156,18 +192,23 @@ export function useAppState(): AppStateData {
       return AppState.INSTALL;
     }
 
-    // No user - INSTALL state
+    // No user - INSTALL state (will redirect to auth)
     if (!user) {
       return AppState.INSTALL;
     }
 
     // Admin users get ADMIN_PREVIEW - bypasses all paywalls
+    // If setup not completed, admins still see setup wizard but can access everything
     if (isAdmin) {
+      // Even admins need to complete setup before accessing full app
+      if (!setupProgress.setupCompleted) {
+        return AppState.ADMIN_PREVIEW; // But capabilities still allow setup access
+      }
       return AppState.ADMIN_PREVIEW;
     }
 
-    // Setup not completed
-    if (!setupCompleted) {
+    // Setup not completed - must complete before accessing app
+    if (!setupProgress.setupCompleted) {
       return AppState.SETUP_INCOMPLETE;
     }
 
@@ -183,7 +224,7 @@ export function useAppState(): AppStateData {
 
     // Default: setup complete, no pro features
     return AppState.READY_BASE;
-  }, [authLoading, dataLoading, user, isAdmin, setupCompleted, isPaidPro, isTrialActive]);
+  }, [authLoading, dataLoading, user, isAdmin, setupProgress.setupCompleted, isPaidPro, isTrialActive]);
 
   // Get capabilities for current state
   const capabilities = useMemo(() => getStateCapabilities(state), [state]);
@@ -193,9 +234,66 @@ export function useAppState(): AppStateData {
     return hasFeatureAccess(state, feature);
   }, [state]);
 
-  // Reset to install state (admin only)
-  const resetToInstall = useCallback(async (): Promise<boolean> => {
-    if (!user?.id || state !== AppState.ADMIN_PREVIEW) {
+  // Persist a setup step immediately (for visible progress during onboarding)
+  const persistSetupStep = useCallback(async (step: 'business_type' | 'business_sector', value: string): Promise<boolean> => {
+    if (!user?.id) return false;
+
+    try {
+      const { error } = await supabase
+        .from('user_settings')
+        .upsert({
+          user_id: user.id,
+          [step]: value,
+          updated_at: new Date().toISOString(),
+        } as { user_id: string; business_type?: string; business_sector?: string; updated_at: string }, 
+        { onConflict: 'user_id' });
+
+      if (error) {
+        console.error('Error persisting setup step:', error);
+        return false;
+      }
+
+      // Update local state immediately
+      setSetupProgress(prev => ({
+        ...prev,
+        [step === 'business_type' ? 'businessType' : 'businessSector']: value,
+      }));
+
+      return true;
+    } catch (err) {
+      console.error('Error:', err);
+      return false;
+    }
+  }, [user?.id]);
+
+  // Generic state transition
+  const transitionTo = useCallback(async (action: 'complete_setup' | 'start_trial' | 'subscribe' | 'trial_expired' | 'reset'): Promise<boolean> => {
+    const nextState = getNextState(state, action);
+    
+    if (nextState === state) {
+      // No transition needed
+      return true;
+    }
+
+    // Handle the transition based on action
+    switch (action) {
+      case 'reset':
+        // Use resetToInstall logic
+        return await resetToInstallInternal();
+      default:
+        // Refresh state to pick up changes
+        setRefreshTrigger(t => t + 1);
+        return true;
+    }
+  }, [state]);
+
+  // Internal reset function
+  const resetToInstallInternal = async (): Promise<boolean> => {
+    if (!user?.id) return false;
+    
+    // Only ADMIN_PREVIEW can reset
+    if (state !== AppState.ADMIN_PREVIEW) {
+      console.warn('Only admins can reset to install state');
       return false;
     }
 
@@ -222,19 +320,29 @@ export function useAppState(): AppStateData {
       localStorage.removeItem('nimble_service_menu_settings');
       localStorage.removeItem('nimble_feature_flags');
 
-      setSetupCompleted(false);
+      // Update local state
+      setSetupProgress({
+        companyName: null,
+        businessType: null,
+        businessSector: null,
+        setupCompleted: false,
+      });
+
       return true;
     } catch (err) {
       console.error('Error:', err);
       return false;
     }
+  };
+
+  // Reset to install state (admin only)
+  const resetToInstall = useCallback(async (): Promise<boolean> => {
+    return await resetToInstallInternal();
   }, [user?.id, state]);
 
   // Refresh state from database
   const refreshState = useCallback(async (): Promise<void> => {
-    setDataLoading(true);
-    // Re-trigger the effect by changing a dependency
-    // The effect will run again due to user?.id dependency
+    setRefreshTrigger(t => t + 1);
   }, []);
 
   const loading = authLoading || dataLoading;
@@ -243,12 +351,15 @@ export function useAppState(): AppStateData {
     state,
     loading,
     capabilities,
+    setupProgress,
     isAdmin,
-    isSetupComplete: setupCompleted ?? false,
+    isSetupComplete: setupProgress.setupCompleted,
     isTrialActive,
     isPaidPro,
     hasAccess,
+    transitionTo,
     resetToInstall,
     refreshState,
+    persistSetupStep,
   };
 }

@@ -50,6 +50,10 @@ export interface StateCapabilities {
   // Admin features
   canResetSetup: boolean;
   showUpgradePrompts: boolean;
+  
+  // Navigation permissions
+  canAccessSetup: boolean;
+  canAccessApp: boolean;
 }
 
 /**
@@ -77,16 +81,28 @@ export function getStateCapabilities(state: AppState): StateCapabilities {
     // Admin
     canResetSetup: false,
     showUpgradePrompts: false,
+    
+    // Navigation
+    canAccessSetup: false,
+    canAccessApp: false,
   };
 
   switch (state) {
     case AppState.INSTALL:
-      // No features during install
-      return baseCapabilities;
+      // Only setup access, no app access
+      return {
+        ...baseCapabilities,
+        canAccessSetup: true,
+        canAccessApp: false,
+      };
 
     case AppState.SETUP_INCOMPLETE:
-      // Still no features during setup
-      return baseCapabilities;
+      // Only setup access, no app access
+      return {
+        ...baseCapabilities,
+        canAccessSetup: true,
+        canAccessApp: false,
+      };
 
     case AppState.READY_BASE:
       return {
@@ -98,6 +114,9 @@ export function getStateCapabilities(state: AppState): StateCapabilities {
         notepad: true,
         // Show upgrade prompts for pro features
         showUpgradePrompts: true,
+        // Can access full app, not setup
+        canAccessSetup: false,
+        canAccessApp: true,
       };
 
     case AppState.TRIAL_PRO:
@@ -119,6 +138,9 @@ export function getStateCapabilities(state: AppState): StateCapabilities {
         // No upgrade prompts during trial
         canResetSetup: false,
         showUpgradePrompts: false,
+        // Can access full app, not setup
+        canAccessSetup: false,
+        canAccessApp: true,
       };
 
     case AppState.PAID_PRO:
@@ -138,6 +160,9 @@ export function getStateCapabilities(state: AppState): StateCapabilities {
         // Admin
         canResetSetup: false,
         showUpgradePrompts: false,
+        // Can access full app, not setup
+        canAccessSetup: false,
+        canAccessApp: true,
       };
 
     case AppState.ADMIN_PREVIEW:
@@ -157,6 +182,9 @@ export function getStateCapabilities(state: AppState): StateCapabilities {
         // Admin can reset, never sees upgrade prompts
         canResetSetup: true,
         showUpgradePrompts: false,
+        // Admin can access both setup AND app
+        canAccessSetup: true,
+        canAccessApp: true,
       };
 
     default:
@@ -200,4 +228,59 @@ export function shouldShowUpgradePrompts(state: AppState): boolean {
  */
 export function canPerformAdminReset(state: AppState): boolean {
   return getStateCapabilities(state).canResetSetup;
+}
+
+/**
+ * Check if the state allows accessing the main app
+ */
+export function canAccessMainApp(state: AppState): boolean {
+  return getStateCapabilities(state).canAccessApp;
+}
+
+/**
+ * Check if the state allows accessing setup screens
+ */
+export function canAccessSetupScreens(state: AppState): boolean {
+  return getStateCapabilities(state).canAccessSetup;
+}
+
+/**
+ * Determine the next state after a user action
+ */
+export function getNextState(currentState: AppState, action: 'complete_setup' | 'start_trial' | 'subscribe' | 'trial_expired' | 'reset'): AppState {
+  switch (action) {
+    case 'complete_setup':
+      if (currentState === AppState.SETUP_INCOMPLETE || currentState === AppState.INSTALL) {
+        return AppState.READY_BASE;
+      }
+      return currentState;
+      
+    case 'start_trial':
+      if (currentState === AppState.READY_BASE) {
+        return AppState.TRIAL_PRO;
+      }
+      return currentState;
+      
+    case 'subscribe':
+      if (currentState === AppState.READY_BASE || currentState === AppState.TRIAL_PRO) {
+        return AppState.PAID_PRO;
+      }
+      return currentState;
+      
+    case 'trial_expired':
+      if (currentState === AppState.TRIAL_PRO) {
+        return AppState.READY_BASE;
+      }
+      return currentState;
+      
+    case 'reset':
+      // Only admins can reset
+      if (currentState === AppState.ADMIN_PREVIEW) {
+        return AppState.INSTALL;
+      }
+      return currentState;
+      
+    default:
+      return currentState;
+  }
 }
