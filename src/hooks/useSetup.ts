@@ -30,9 +30,9 @@ interface SetupState {
  * - Initialize service menu (editable)
  * - Initialize invoice system linked to menu
  * 
- * Contractor / Generic (contractor_trades, blank_minimal):
+ * Other / Blank:
  * - Initialize project board only
- * - No appointment calendar or service menu
+ * - No appointment calendar or service menu by default
  */
 
 export function useSetup() {
@@ -94,7 +94,7 @@ export function useSetup() {
   }) => {
     const isMobile = data.businessType === 'mobile_job';
     const isStationary = data.businessType === 'stationary_appointment';
-    const isContractor = data.businessSector === 'contractor_trades' || data.businessSector === 'blank_minimal';
+    const isBlankOrOther = data.businessSector === 'other';
 
     // Initialize Appointment Calendar data structure
     // Both mobile and stationary get appointments, but with different defaults
@@ -133,8 +133,8 @@ export function useSetup() {
       localStorage.setItem(MENU_SETTINGS_KEY, JSON.stringify(menuSettings));
     }
 
-    // Initialize Project Board for contractor/mobile businesses
-    if (isMobile || isContractor) {
+    // Initialize Project Board for mobile businesses or blank/other
+    if (isMobile || isBlankOrOther) {
       const existingProjects = localStorage.getItem(PROJECTS_STORAGE_KEY);
       if (!existingProjects) {
         // Initialize empty projects array (DB will handle actual storage)
@@ -146,7 +146,7 @@ export function useSetup() {
     console.log(`[Setup] Initialized features for ${data.businessType} / ${data.businessSector}:`, {
       appointments: isMobile || isStationary,
       serviceMenu: isStationary,
-      projects: isMobile || isContractor,
+      projects: isMobile || isBlankOrOther,
     });
   }, []);
 

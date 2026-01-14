@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import { BusinessSector, BusinessType, SECTOR_PRESETS, SECTOR_OPTIONS } from '@/config/sectorPresets';
 import { cn } from '@/lib/utils';
-import { getServicesForSector, getThemeForSector, PreviewService, SECTOR_TO_PRESET_MAP } from '@/lib/serviceUtils';
+import { getServicesForSector, getThemeForSector, PreviewService, getSectorPresetId } from '@/lib/serviceUtils';
 import { ServicePreviewCard } from './ServicePreviewCard';
 import { MenuUpsellStep } from './MenuUpsellStep';
 import { useAppState } from '@/hooks/useAppState';
@@ -70,8 +70,8 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
 
   // Check if stationary business should see menu upsell
   const isStationaryBusiness = businessType === 'stationary_appointment';
-  const hasMenuPreset = businessSector ? SECTOR_TO_PRESET_MAP[businessSector] !== null : false;
-  const presetId = businessSector ? SECTOR_TO_PRESET_MAP[businessSector] : null;
+  const presetId = businessSector ? getSectorPresetId(businessSector) : null;
+  const hasMenuPreset = presetId !== null;
   const presetConfig = presetId ? MENU_PRESETS_CONFIG[presetId as keyof typeof MENU_PRESETS_CONFIG] : null;
   const showMenuUpsell = isStationaryBusiness && hasMenuPreset && presetId;
 
@@ -140,7 +140,7 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
     // For non-stationary or non-preset sectors, load services now
     // For stationary with preset, services will be loaded based on menu upsell choice
     const isStationary = businessType === 'stationary_appointment' || preset?.defaultBusinessType === 'stationary_appointment';
-    const sectorPresetId = SECTOR_TO_PRESET_MAP[sector];
+    const sectorPresetId = getSectorPresetId(sector);
     
     if (!isStationary || !sectorPresetId) {
       // Load basic sector services

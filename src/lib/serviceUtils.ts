@@ -95,5 +95,8 @@ export function isValidPresetForSector(presetId: string, sector: BusinessSector)
   return presetId === sector;
 }
 
+// Alias for backwards compatibility
+export const getSectorPresetId = getPresetIdForSector;
+
 // Re-export for backwards compatibility
 export { SECTOR_PRESETS } from '@/config/sectorPresets';
