@@ -33,11 +33,19 @@ const baseNavigation = [
 ];
 
 // Add-ons (paid features) - access determined by AppState
-const addOnsNavigation = [
-  { name: 'Scheduling Pro', href: '/scheduling', icon: CalendarDays, featureKey: 'scheduling' as const },
-  { name: 'Financial Tool', href: '/reports', icon: BarChart3, featureKey: 'financial' as const },
-  { name: 'Mileage Pro', href: '/mileage', icon: Car, featureKey: 'mileage' as const },
-  { name: 'Service Menu', href: '/services', icon: Scissors, featureKey: 'serviceMenu' as const },
+// When purchased/trial active, these move to main navigation automatically
+type FeatureKeyType = 'scheduling' | 'financial' | 'mileage' | 'serviceMenu';
+const addOnsNavigation: Array<{ 
+  name: string; 
+  href: string; 
+  icon: typeof CalendarDays; 
+  featureKey: FeatureKeyType;
+  stationaryOnly?: boolean;
+}> = [
+  { name: 'Scheduling Pro', href: '/scheduling', icon: CalendarDays, featureKey: 'scheduling' },
+  { name: 'Financial Tool', href: '/reports', icon: BarChart3, featureKey: 'financial' },
+  { name: 'Mileage Pro', href: '/mileage', icon: Car, featureKey: 'mileage' },
+  { name: 'Service Menu', href: '/services', icon: Scissors, featureKey: 'serviceMenu', stationaryOnly: true },
 ];
 
 // Affiliate links
@@ -203,39 +211,92 @@ export function AppLayout({ children }: AppLayoutProps) {
               );
             })}
 
-          {/* Separator */}
-          <div className="my-4 border-t border-sidebar-border" />
-          
-          {/* Add-ons Label */}
-          <p className="px-4 py-2 text-xs font-semibold text-sidebar-foreground/50 uppercase tracking-wider">
-            Add-ons
-          </p>
+          {/* Unlocked Add-ons in Main Nav - show purchased/trial add-ons here */}
+          {addOnsNavigation
+            .filter(item => {
+              const isStationary = setupProgress.businessType === 'stationary_appointment';
+              const isUnlocked = hasAccess(item.featureKey);
+              
+              // Only show unlocked add-ons in main nav
+              if (!isUnlocked) return false;
+              
+              // Filter by business type
+              if (item.stationaryOnly && !isStationary) return false;
+              
+              return true;
+            })
+            .map(item => {
+              const isActive = location.pathname === item.href;
+              return (
+                <NavLink 
+                  key={item.name} 
+                  to={item.href} 
+                  onClick={() => setSidebarOpen(false)} 
+                  className={cn(
+                    "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200", 
+                    isActive 
+                      ? "bg-sidebar-accent text-sidebar-primary" 
+                      : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                  )}
+                >
+                  <item.icon className="h-5 w-5" />
+                  {item.name}
+                </NavLink>
+              );
+            })}
 
-          {/* Add-on Features - Lock icon shown based on AppState */}
-          {addOnsNavigation.map(item => {
-            const isActive = location.pathname === item.href;
+          {/* Separator - only show if there are locked add-ons */}
+          {addOnsNavigation.some(item => {
+            const isStationary = setupProgress.businessType === 'stationary_appointment';
             const isUnlocked = hasAccess(item.featureKey);
-            
-            return (
-              <NavLink 
-                key={item.name} 
-                to={item.href} 
-                onClick={() => setSidebarOpen(false)} 
-                className={cn(
-                  "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200", 
-                  isActive 
-                    ? "bg-sidebar-accent text-sidebar-primary" 
-                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                )}
-              >
-                <item.icon className="h-5 w-5" />
-                <span className="flex-1">{item.name}</span>
-                {!isUnlocked && (
-                  <Lock className="h-3.5 w-3.5 text-sidebar-foreground/40" />
-                )}
-              </NavLink>
-            );
-          })}
+            if (item.stationaryOnly && !isStationary) return false;
+            return !isUnlocked;
+          }) && (
+            <>
+              <div className="my-4 border-t border-sidebar-border" />
+              
+              {/* Add-ons Label */}
+              <p className="px-4 py-2 text-xs font-semibold text-sidebar-foreground/50 uppercase tracking-wider">
+                Add-ons
+              </p>
+
+              {/* Add-on Features - only show LOCKED items here */}
+              {addOnsNavigation
+                .filter(item => {
+                  const isStationary = setupProgress.businessType === 'stationary_appointment';
+                  const isUnlocked = hasAccess(item.featureKey);
+                  
+                  // Only show locked add-ons in add-ons section
+                  if (isUnlocked) return false;
+                  
+                  // Filter by business type
+                  if (item.stationaryOnly && !isStationary) return false;
+                  
+                  return true;
+                })
+                .map(item => {
+                  const isActive = location.pathname === item.href;
+                  
+                  return (
+                    <NavLink 
+                      key={item.name} 
+                      to={item.href} 
+                      onClick={() => setSidebarOpen(false)} 
+                      className={cn(
+                        "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200", 
+                        isActive 
+                          ? "bg-sidebar-accent text-sidebar-primary" 
+                          : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                      )}
+                    >
+                      <item.icon className="h-5 w-5" />
+                      <span className="flex-1">{item.name}</span>
+                      <Lock className="h-3.5 w-3.5 text-sidebar-foreground/40" />
+                    </NavLink>
+                  );
+                })}
+            </>
+          )}
 
           {/* Separator */}
           <div className="my-4 border-t border-sidebar-border" />
