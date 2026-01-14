@@ -4,8 +4,15 @@ export interface Service {
   name: string;
   price: number;
   duration?: number; // in minutes
-  thumbnailUrl?: string; // optional image for service card
-  bgColor?: string; // optional background color for service card
+  thumbnailUrl?: string; // optional image for service card (base64 or URL)
+  bgColor?: string; // optional background color for service card (HSL format)
+  sortOrder?: number; // for manual reordering
   createdAt: Date;
   updatedAt: Date;
+}
+
+export interface ServiceMenuSettings {
+  globalBgColor: string; // Default tile color (HSL format)
+  presetId?: string; // Which preset was used (if any)
+  isUnlocked: boolean; // False until purchased/unlocked
 }

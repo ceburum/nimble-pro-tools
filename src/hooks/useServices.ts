@@ -1,14 +1,17 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Service } from '@/types/services';
+import { Service, ServiceMenuSettings } from '@/types/services';
 import { generateLocalId } from '@/lib/localDb';
 import { useFeatureFlags } from './useFeatureFlags';
+import { SERVICE_PRESETS } from '@/config/servicePresets';
 
-// Storage key for services
+// Storage keys
 const SERVICES_STORAGE_KEY = 'nimble_services';
+const PREVIEW_SERVICES_KEY = 'nimble_services_preview';
+const MENU_SETTINGS_KEY = 'nimble_service_menu_settings';
 
-function getStoredServices(): Service[] {
+function getStoredServices(key: string = SERVICES_STORAGE_KEY): Service[] {
   try {
-    const stored = localStorage.getItem(SERVICES_STORAGE_KEY);
+    const stored = localStorage.getItem(key);
     if (stored) {
       const parsed = JSON.parse(stored);
       return parsed.map((s: any) => ({
@@ -23,97 +26,277 @@ function getStoredServices(): Service[] {
   return [];
 }
 
-function saveStoredServices(services: Service[]): void {
+function saveStoredServices(services: Service[], key: string = SERVICES_STORAGE_KEY): void {
   try {
-    localStorage.setItem(SERVICES_STORAGE_KEY, JSON.stringify(services));
+    localStorage.setItem(key, JSON.stringify(services));
   } catch (error) {
     console.error('Error saving services:', error);
   }
 }
 
+function getMenuSettings(): ServiceMenuSettings {
+  try {
+    const stored = localStorage.getItem(MENU_SETTINGS_KEY);
+    if (stored) {
+      return JSON.parse(stored);
+    }
+  } catch (error) {
+    console.error('Error reading menu settings:', error);
+  }
+  return { globalBgColor: '', isUnlocked: false };
+}
+
+function saveMenuSettings(settings: ServiceMenuSettings): void {
+  try {
+    localStorage.setItem(MENU_SETTINGS_KEY, JSON.stringify(settings));
+  } catch (error) {
+    console.error('Error saving menu settings:', error);
+  }
+}
+
 export function useServices() {
   const [services, setServices] = useState<Service[]>([]);
+  const [previewServices, setPreviewServices] = useState<Service[]>([]);
+  const [menuSettings, setMenuSettings] = useState<ServiceMenuSettings>(getMenuSettings);
   const [loading, setLoading] = useState(true);
+  const [isPreviewMode, setIsPreviewMode] = useState(false);
   const { flags } = useFeatureFlags();
 
   const isEnabled = flags.service_menu_enabled ?? false;
 
-  // Load services
+  // Load services on mount
   useEffect(() => {
     if (isEnabled) {
       const storedServices = getStoredServices();
-      setServices(storedServices.sort((a, b) => a.name.localeCompare(b.name)));
+      const storedPreview = getStoredServices(PREVIEW_SERVICES_KEY);
+      const settings = getMenuSettings();
+      
+      setServices(storedServices.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0)));
+      setPreviewServices(storedPreview.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0)));
+      setMenuSettings(settings);
+      setIsPreviewMode(storedPreview.length > 0 && !settings.isUnlocked);
     }
     setLoading(false);
   }, [isEnabled]);
 
+  // Get the active services list (preview or permanent)
+  const activeServices = isPreviewMode ? previewServices : services;
+
+  // Load a preset into preview mode
+  const loadPreset = useCallback((presetId: string) => {
+    const preset = SERVICE_PRESETS[presetId];
+    if (!preset) return false;
+
+    const now = new Date();
+    const presetServices: Service[] = preset.services.map((s, index) => ({
+      id: generateLocalId(),
+      name: s.name,
+      price: s.price,
+      duration: s.duration,
+      sortOrder: index,
+      createdAt: now,
+      updatedAt: now,
+    }));
+
+    // Save to preview storage
+    saveStoredServices(presetServices, PREVIEW_SERVICES_KEY);
+    setPreviewServices(presetServices);
+    
+    // Update settings with preset info
+    const newSettings: ServiceMenuSettings = {
+      globalBgColor: preset.themeColor,
+      presetId: presetId,
+      isUnlocked: false,
+    };
+    saveMenuSettings(newSettings);
+    setMenuSettings(newSettings);
+    
+    setIsPreviewMode(true);
+    return true;
+  }, []);
+
+  // Start with a blank menu (no preset)
+  const startBlank = useCallback(() => {
+    // Clear any preview data
+    localStorage.removeItem(PREVIEW_SERVICES_KEY);
+    setPreviewServices([]);
+    
+    // Mark as unlocked with blank settings
+    const newSettings: ServiceMenuSettings = {
+      globalBgColor: '',
+      isUnlocked: true,
+    };
+    saveMenuSettings(newSettings);
+    setMenuSettings(newSettings);
+    
+    setIsPreviewMode(false);
+  }, []);
+
+  // Commit preview to permanent storage (after unlock/purchase)
+  const commitPreview = useCallback(() => {
+    if (previewServices.length === 0) return false;
+    
+    // Move preview services to permanent storage
+    saveStoredServices(previewServices, SERVICES_STORAGE_KEY);
+    setServices(previewServices);
+    
+    // Clear preview storage
+    localStorage.removeItem(PREVIEW_SERVICES_KEY);
+    setPreviewServices([]);
+    
+    // Mark as unlocked
+    const newSettings = { ...menuSettings, isUnlocked: true };
+    saveMenuSettings(newSettings);
+    setMenuSettings(newSettings);
+    
+    setIsPreviewMode(false);
+    return true;
+  }, [previewServices, menuSettings]);
+
+  // Discard preview and return to init state
+  const discardPreview = useCallback(() => {
+    localStorage.removeItem(PREVIEW_SERVICES_KEY);
+    localStorage.removeItem(MENU_SETTINGS_KEY);
+    setPreviewServices([]);
+    setMenuSettings({ globalBgColor: '', isUnlocked: false });
+    setIsPreviewMode(false);
+  }, []);
+
   // Add a new service
-  const addService = useCallback((data: { name: string; price: number; duration?: number }): Service | null => {
+  const addService = useCallback((data: { 
+    name: string; 
+    price: number; 
+    duration?: number;
+    thumbnailUrl?: string;
+    bgColor?: string;
+  }): Service | null => {
     if (!isEnabled) return null;
 
     const now = new Date();
+    const targetServices = isPreviewMode ? previewServices : services;
+    const maxOrder = targetServices.reduce((max, s) => Math.max(max, s.sortOrder ?? 0), -1);
+    
     const newService: Service = {
       id: generateLocalId(),
       name: data.name.trim(),
       price: data.price,
       duration: data.duration,
+      thumbnailUrl: data.thumbnailUrl,
+      bgColor: data.bgColor,
+      sortOrder: maxOrder + 1,
       createdAt: now,
       updatedAt: now,
     };
 
-    const allServices = getStoredServices();
-    const updatedServices = [...allServices, newService];
-    saveStoredServices(updatedServices);
+    if (isPreviewMode) {
+      const updated = [...previewServices, newService];
+      saveStoredServices(updated, PREVIEW_SERVICES_KEY);
+      setPreviewServices(updated);
+    } else {
+      const updated = [...services, newService];
+      saveStoredServices(updated, SERVICES_STORAGE_KEY);
+      setServices(updated);
+    }
     
-    setServices(prev => [...prev, newService].sort((a, b) => a.name.localeCompare(b.name)));
     return newService;
-  }, [isEnabled]);
+  }, [isEnabled, isPreviewMode, previewServices, services]);
 
   // Update an existing service
   const updateService = useCallback((serviceId: string, updates: Partial<Omit<Service, 'id' | 'createdAt'>>): boolean => {
     if (!isEnabled) return false;
 
-    const allServices = getStoredServices();
-    const serviceIndex = allServices.findIndex(s => s.id === serviceId);
-    
+    const targetServices = isPreviewMode ? previewServices : services;
+    const storageKey = isPreviewMode ? PREVIEW_SERVICES_KEY : SERVICES_STORAGE_KEY;
+    const setTarget = isPreviewMode ? setPreviewServices : setServices;
+
+    const serviceIndex = targetServices.findIndex(s => s.id === serviceId);
     if (serviceIndex === -1) return false;
 
     const updatedService = {
-      ...allServices[serviceIndex],
+      ...targetServices[serviceIndex],
       ...updates,
       updatedAt: new Date(),
     };
 
-    allServices[serviceIndex] = updatedService;
-    saveStoredServices(allServices);
-
-    setServices(prev => 
-      prev.map(s => s.id === serviceId ? { ...updatedService, createdAt: new Date(updatedService.createdAt), updatedAt: new Date(updatedService.updatedAt) } : s)
-        .sort((a, b) => a.name.localeCompare(b.name))
-    );
+    const updated = [...targetServices];
+    updated[serviceIndex] = updatedService;
+    
+    saveStoredServices(updated, storageKey);
+    setTarget(updated);
     return true;
-  }, [isEnabled]);
+  }, [isEnabled, isPreviewMode, previewServices, services]);
 
   // Delete a service
   const deleteService = useCallback((serviceId: string): boolean => {
     if (!isEnabled) return false;
 
-    const allServices = getStoredServices();
-    const filtered = allServices.filter(s => s.id !== serviceId);
-    
-    if (filtered.length === allServices.length) return false;
+    const targetServices = isPreviewMode ? previewServices : services;
+    const storageKey = isPreviewMode ? PREVIEW_SERVICES_KEY : SERVICES_STORAGE_KEY;
+    const setTarget = isPreviewMode ? setPreviewServices : setServices;
 
-    saveStoredServices(filtered);
-    setServices(prev => prev.filter(s => s.id !== serviceId));
+    const filtered = targetServices.filter(s => s.id !== serviceId);
+    if (filtered.length === targetServices.length) return false;
+
+    saveStoredServices(filtered, storageKey);
+    setTarget(filtered);
     return true;
-  }, [isEnabled]);
+  }, [isEnabled, isPreviewMode, previewServices, services]);
+
+  // Reorder a service (move up or down)
+  const reorderService = useCallback((serviceId: string, direction: 'up' | 'down'): boolean => {
+    if (!isEnabled) return false;
+
+    const targetServices = isPreviewMode ? previewServices : services;
+    const storageKey = isPreviewMode ? PREVIEW_SERVICES_KEY : SERVICES_STORAGE_KEY;
+    const setTarget = isPreviewMode ? setPreviewServices : setServices;
+
+    const sorted = [...targetServices].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+    const currentIndex = sorted.findIndex(s => s.id === serviceId);
+    
+    if (currentIndex === -1) return false;
+    if (direction === 'up' && currentIndex === 0) return false;
+    if (direction === 'down' && currentIndex === sorted.length - 1) return false;
+
+    const swapIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+    
+    // Swap sort orders
+    const tempOrder = sorted[currentIndex].sortOrder;
+    sorted[currentIndex] = { ...sorted[currentIndex], sortOrder: sorted[swapIndex].sortOrder, updatedAt: new Date() };
+    sorted[swapIndex] = { ...sorted[swapIndex], sortOrder: tempOrder, updatedAt: new Date() };
+
+    saveStoredServices(sorted, storageKey);
+    setTarget(sorted);
+    return true;
+  }, [isEnabled, isPreviewMode, previewServices, services]);
+
+  // Update global background color
+  const updateGlobalColor = useCallback((color: string) => {
+    const newSettings = { ...menuSettings, globalBgColor: color };
+    saveMenuSettings(newSettings);
+    setMenuSettings(newSettings);
+  }, [menuSettings]);
+
+  // Check if we need to show the init dialog
+  const needsInit = isEnabled && 
+    services.length === 0 && 
+    previewServices.length === 0 && 
+    !menuSettings.isUnlocked;
 
   return {
-    services,
+    services: activeServices,
     loading,
     isEnabled,
+    isPreviewMode,
+    menuSettings,
+    needsInit,
     addService,
     updateService,
     deleteService,
+    reorderService,
+    updateGlobalColor,
+    loadPreset,
+    startBlank,
+    commitPreview,
+    discardPreview,
   };
 }
