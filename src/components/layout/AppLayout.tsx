@@ -127,7 +127,8 @@ export function AppLayout({
           title: 'Setup reset', 
           description: 'Returning to onboarding wizard...' 
         });
-        navigate('/');
+        // Use hard reload to force all hooks to re-fetch fresh state from database
+        window.location.href = '/';
       }
     }
   };
