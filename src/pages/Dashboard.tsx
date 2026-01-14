@@ -1,16 +1,19 @@
 import { useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import { Users, Receipt, DollarSign, FolderKanban, Settings, Loader2 } from 'lucide-react';
+import { Users, Receipt, DollarSign, FolderKanban, Settings, Loader2, Calendar, CalendarPlus } from 'lucide-react';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { RecentActivity } from '@/components/dashboard/RecentActivity';
 import { OverdueAlerts } from '@/components/dashboard/OverdueAlerts';
 import { DashboardAvatar } from '@/components/dashboard/DashboardAvatar';
 import { ReferralRewardCard } from '@/components/dashboard/ReferralRewardCard';
+import { TodaySchedule } from '@/components/dashboard/TodaySchedule';
+import { UpcomingAppointments } from '@/components/dashboard/UpcomingAppointments';
 import { BusinessProfileDialog } from '@/components/settings/BusinessProfileDialog';
 import { PartnerSuggestions } from '@/components/reports/PartnerSuggestions';
 import { ClientDialog } from '@/components/clients/ClientDialog';
 import { ProjectDialog } from '@/components/projects/ProjectDialog';
 import { InvoiceDialog } from '@/components/invoices/InvoiceDialog';
+import { AppointmentDialog } from '@/components/scheduling/AppointmentDialog';
 import { SetupWizard } from '@/components/setup/SetupWizard';
 import { Button } from '@/components/ui/button';
 import { mockClients, mockInvoices } from '@/lib/mockData';
@@ -18,6 +21,8 @@ import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useProjects } from '@/hooks/useProjects';
 import { useClients } from '@/hooks/useClients';
 import { useInvoices } from '@/hooks/useInvoices';
+import { useAppointments } from '@/hooks/useAppointments';
+import { useServices } from '@/hooks/useServices';
 import { useSetup } from '@/hooks/useSetup';
 import { useAppState } from '@/hooks/useAppState';
 import { AppState } from '@/lib/appState';
@@ -32,8 +37,10 @@ export default function Dashboard() {
   const { projects, addProject } = useProjects();
   const { clients: dbClients, addClient } = useClients();
   const { addInvoice } = useInvoices();
+  const { appointments, addAppointment, isStationaryBusiness } = useAppointments();
+  const { services } = useServices();
   const { completeSetup, loading: setupLoading } = useSetup();
-  const { state, loading: appStateLoading, isSetupComplete, refreshState } = useAppState();
+  const { state, loading: appStateLoading, isSetupComplete, refreshState, setupProgress } = useAppState();
   
   // Use DB clients if available, otherwise fall back to local
   const clients = dbClients.length > 0 ? dbClients : localClients;
@@ -48,6 +55,10 @@ export default function Dashboard() {
   const [clientDialogOpen, setClientDialogOpen] = useState(false);
   const [projectDialogOpen, setProjectDialogOpen] = useState(false);
   const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false);
+  const [appointmentDialogOpen, setAppointmentDialogOpen] = useState(false);
+
+  // Business type detection
+  const isMobileOrContractor = !isStationaryBusiness;
 
   // Fetch dashboard logo on mount
   useEffect(() => {
@@ -202,6 +213,33 @@ export default function Dashboard() {
     }
   };
 
+  // Handle appointment creation for stationary businesses
+  const handleSaveAppointment = async (data: {
+    clientId: string;
+    serviceId?: string;
+    date: Date;
+    startTime: string;
+    duration: number;
+    notes?: string;
+  }) => {
+    const service = data.serviceId ? services.find(s => s.id === data.serviceId) : undefined;
+    
+    const result = await addAppointment({
+      ...data,
+      createProject: true,
+      serviceName: service?.name,
+      servicePrice: service?.price,
+    });
+    
+    if (result) {
+      toast({
+        title: "Appointment booked!",
+        description: `Appointment scheduled for ${data.date.toLocaleDateString()}.`
+      });
+      setAppointmentDialogOpen(false);
+    }
+  };
+
   // Handle setup completion - refresh app state after
   const handleSetupComplete = async (data: Parameters<typeof completeSetup>[0]) => {
     const success = await completeSetup(data);
@@ -258,7 +296,7 @@ export default function Dashboard() {
       {/* Referral Reward Card */}
       <ReferralRewardCard />
 
-      {/* Quick Actions - now with dialogs */}
+      {/* Quick Actions - business-type-aware */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <button 
           onClick={() => setClientDialogOpen(true)}
@@ -270,16 +308,32 @@ export default function Dashboard() {
             <p className="text-sm text-muted-foreground">Create new contact</p>
           </div>
         </button>
-        <button 
-          onClick={() => setProjectDialogOpen(true)}
-          className="flex items-center gap-3 p-4 rounded-lg border border-border bg-card hover:border-primary/50 hover:bg-primary/5 transition-all duration-200 w-full text-left"
-        >
-          <FolderKanban className="text-primary w-8 h-8" />
-          <div>
-            <p className="text-card-foreground text-sm font-bold">New Project</p>
-            <p className="text-sm text-muted-foreground">Create quote/job</p>
-          </div>
-        </button>
+        
+        {/* Conditional: Project for mobile/contractor, Appointment for stationary */}
+        {isMobileOrContractor ? (
+          <button 
+            onClick={() => setProjectDialogOpen(true)}
+            className="flex items-center gap-3 p-4 rounded-lg border border-border bg-card hover:border-primary/50 hover:bg-primary/5 transition-all duration-200 w-full text-left"
+          >
+            <FolderKanban className="text-primary w-8 h-8" />
+            <div>
+              <p className="text-card-foreground text-sm font-bold">New Project</p>
+              <p className="text-sm text-muted-foreground">Create quote/job</p>
+            </div>
+          </button>
+        ) : (
+          <button 
+            onClick={() => setAppointmentDialogOpen(true)}
+            className="flex items-center gap-3 p-4 rounded-lg border border-border bg-card hover:border-primary/50 hover:bg-primary/5 transition-all duration-200 w-full text-left"
+          >
+            <CalendarPlus className="text-primary w-8 h-8" />
+            <div>
+              <p className="text-card-foreground text-sm font-bold">New Appointment</p>
+              <p className="text-sm text-muted-foreground">Book a client</p>
+            </div>
+          </button>
+        )}
+        
         <button 
           onClick={() => setInvoiceDialogOpen(true)} 
           className="flex items-center gap-3 p-4 rounded-lg border border-border bg-card hover:border-primary/50 hover:bg-primary/5 transition-all duration-200 w-full text-left"
@@ -302,9 +356,14 @@ export default function Dashboard() {
         </button>
       </div>
 
+      {/* Business-type-aware stat cards */}
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard title="Total Clients" value={clients.length} icon={Users} variant="default" href="/clients" />
-        <StatCard title="Active Projects" value={projects.filter(p => p.status === 'draft' || p.status === 'sent' || p.status === 'accepted' || p.status === 'in_progress').length} icon={FolderKanban} variant="primary" href="/projects" />
+        {isMobileOrContractor ? (
+          <StatCard title="Active Projects" value={projects.filter(p => p.status === 'draft' || p.status === 'sent' || p.status === 'accepted' || p.status === 'in_progress').length} icon={FolderKanban} variant="primary" href="/projects" />
+        ) : (
+          <StatCard title="Upcoming Appointments" value={appointments.filter(a => a.status === 'scheduled').length} icon={Calendar} variant="primary" href="/appointments" />
+        )}
         <StatCard title="Pending Invoices" value={`$${pendingAmount.toLocaleString()}`} icon={Receipt} variant={overdueCount > 0 ? "danger" : "warning"} href="/invoices" />
         <StatCard title="Total Revenue" value={`$${totalRevenue.toLocaleString()}`} icon={DollarSign} variant="success" trend={{
           value: 12,
@@ -344,6 +403,15 @@ export default function Dashboard() {
         onOpenChange={setInvoiceDialogOpen}
         clients={clients}
         onSave={handleSaveInvoice}
+      />
+
+      {/* Appointment Dialog for stationary businesses */}
+      <AppointmentDialog
+        open={appointmentDialogOpen}
+        onOpenChange={setAppointmentDialogOpen}
+        clients={clients}
+        services={services}
+        onSave={handleSaveAppointment}
       />
     </div>
   );
