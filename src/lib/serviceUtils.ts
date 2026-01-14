@@ -3,7 +3,18 @@
 import { BusinessSector, SECTOR_PRESETS, PreloadedService } from '@/config/sectorPresets';
 import { SERVICE_PRESETS, PresetService } from '@/config/servicePresets';
 
-// Map sectors to their richer service preset (if available)
+/**
+ * SERVICE MENU SOURCE OF TRUTH
+ * 
+ * Maps business sectors to their corresponding service presets.
+ * This ensures each profession gets its relevant service list:
+ * - Barber → barber_shop preset
+ * - Mobile mechanic → contractor_general preset
+ * - Salon → salon_beauty preset (when available)
+ * 
+ * FALLBACK: If the profession's pre-populated menu is not purchased,
+ * show the blank editable menu. Never show another profession's menu.
+ */
 export const SECTOR_TO_PRESET_MAP: Record<BusinessSector, string | null> = {
   'salon_beauty': 'barber_shop',           // Full 50-item barber list
   'contractor_trades': 'contractor_general', // Contractor services list
@@ -27,8 +38,18 @@ function generatePreviewId(): string {
 }
 
 /**
+ * Get the preset ID for a given business sector.
+ * Returns null if no preset is available for the sector.
+ */
+export function getPresetIdForSector(sector: BusinessSector): string | null {
+  return SECTOR_TO_PRESET_MAP[sector] || null;
+}
+
+/**
  * Get services for a given business sector.
  * Checks for a richer preset first, then falls back to sector's preloaded services.
+ * 
+ * This is the source of truth for which services a business should see.
  */
 export function getServicesForSector(sector: BusinessSector): PreviewService[] {
   // Check if there's a full preset (like barber_shop for salon_beauty)
@@ -92,4 +113,21 @@ export function shouldEnableAppointments(businessType: string): boolean {
  */
 export function isProjectFocusedSector(sector: string): boolean {
   return sector === 'contractor_trades' || sector === 'blank_minimal';
+}
+
+/**
+ * Validate that a preset ID matches the expected sector.
+ * Returns true if the preset is valid for the sector, false otherwise.
+ * This prevents showing another profession's menu.
+ */
+export function isValidPresetForSector(presetId: string, sector: BusinessSector): boolean {
+  const expectedPresetId = SECTOR_TO_PRESET_MAP[sector];
+  
+  // If no preset expected for this sector, only allow null/empty
+  if (!expectedPresetId) {
+    return !presetId;
+  }
+  
+  // Otherwise, must match exactly
+  return presetId === expectedPresetId;
 }

@@ -124,9 +124,11 @@ export function useSetup() {
       }
       
       // Initialize menu settings (always for stationary, even without services)
+      // Include businessSector as source of truth for which profession's menu to show
       const menuSettings = {
         globalBgColor: data.themeColor || '',
         isUnlocked: true, // Stationary businesses always have menu unlocked
+        businessSector: data.businessSector, // Store sector as source of truth
       };
       localStorage.setItem(MENU_SETTINGS_KEY, JSON.stringify(menuSettings));
     }
