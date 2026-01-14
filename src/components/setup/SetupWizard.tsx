@@ -23,9 +23,12 @@ import {
 } from 'lucide-react';
 import { BusinessSector, BusinessType, SECTOR_PRESETS, SECTOR_OPTIONS } from '@/config/sectorPresets';
 import { cn } from '@/lib/utils';
-import { getServicesForSector, getThemeForSector, PreviewService } from '@/lib/serviceUtils';
+import { getServicesForSector, getThemeForSector, PreviewService, SECTOR_TO_PRESET_MAP } from '@/lib/serviceUtils';
 import { ServicePreviewCard } from './ServicePreviewCard';
+import { MenuUpsellStep } from './MenuUpsellStep';
 import { useAppState } from '@/hooks/useAppState';
+import { SERVICE_PRESETS } from '@/config/servicePresets';
+import { MENU_PRESETS_CONFIG } from '@/config/pricing';
 
 interface SetupWizardProps {
   onComplete: (data: {
@@ -34,6 +37,7 @@ interface SetupWizardProps {
     businessSector: BusinessSector;
     services?: PreviewService[];
     themeColor?: string | null;
+    menuPresetPurchased?: boolean;
   }) => Promise<boolean>;
 }
 
@@ -46,10 +50,12 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   FileText,
 };
 
+type WizardStep = 'name' | 'type' | 'sector' | 'menu_upsell' | 'review';
+
 export function SetupWizard({ onComplete }: SetupWizardProps) {
   const { persistSetupStep, setupProgress } = useAppState();
   
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState<WizardStep>('name');
   const [companyName, setCompanyName] = useState(setupProgress.companyName || '');
   const [businessType, setBusinessType] = useState<BusinessType | null>(
     (setupProgress.businessType as BusinessType) || null
@@ -58,25 +64,53 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
     (setupProgress.businessSector as BusinessSector) || null
   );
   const [previewServices, setPreviewServices] = useState<PreviewService[]>([]);
+  const [menuPresetPurchased, setMenuPresetPurchased] = useState(false);
   const [loading, setLoading] = useState(false);
   const [stepSaving, setStepSaving] = useState(false);
 
-  // Dynamic step count: 4 if we have services to review, otherwise 3
-  const hasServices = previewServices.length > 0;
-  const totalSteps = hasServices ? 4 : 3;
-  const progress = (step / totalSteps) * 100;
+  // Check if stationary business should see menu upsell
+  const isStationaryBusiness = businessType === 'stationary_appointment';
+  const hasMenuPreset = businessSector ? SECTOR_TO_PRESET_MAP[businessSector] !== null : false;
+  const presetId = businessSector ? SECTOR_TO_PRESET_MAP[businessSector] : null;
+  const presetConfig = presetId ? MENU_PRESETS_CONFIG[presetId as keyof typeof MENU_PRESETS_CONFIG] : null;
+  const showMenuUpsell = isStationaryBusiness && hasMenuPreset && presetId;
+
+  // Get step order based on business type
+  const getStepOrder = (): WizardStep[] => {
+    const steps: WizardStep[] = ['name', 'type', 'sector'];
+    
+    // Add menu upsell step for stationary businesses with presets
+    if (isStationaryBusiness && hasMenuPreset) {
+      steps.push('menu_upsell');
+    }
+    
+    // Add review step if there are services
+    if (previewServices.length > 0) {
+      steps.push('review');
+    }
+    
+    return steps;
+  };
+
+  const stepOrder = getStepOrder();
+  const currentStepIndex = stepOrder.indexOf(step);
+  const totalSteps = stepOrder.length;
+  const progress = ((currentStepIndex + 1) / totalSteps) * 100;
+  const isFinalStep = currentStepIndex === totalSteps - 1;
 
   const handleNext = useCallback(() => {
-    if (step < totalSteps) {
-      setStep(step + 1);
+    const nextIndex = currentStepIndex + 1;
+    if (nextIndex < stepOrder.length) {
+      setStep(stepOrder[nextIndex]);
     }
-  }, [step, totalSteps]);
+  }, [currentStepIndex, stepOrder]);
 
   const handleBack = useCallback(() => {
-    if (step > 1) {
-      setStep(step - 1);
+    const prevIndex = currentStepIndex - 1;
+    if (prevIndex >= 0) {
+      setStep(stepOrder[prevIndex]);
     }
-  }, [step]);
+  }, [currentStepIndex, stepOrder]);
 
   // Handle business type selection with immediate persistence
   const handleBusinessTypeSelect = useCallback(async (type: BusinessType) => {
@@ -103,12 +137,69 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
     // Persist sector selection immediately
     await persistSetupStep('business_sector', sector);
     
-    // Load services for this sector into preview (visible immediately)
-    const services = getServicesForSector(sector);
-    setPreviewServices(services);
+    // For non-stationary or non-preset sectors, load services now
+    // For stationary with preset, services will be loaded based on menu upsell choice
+    const isStationary = businessType === 'stationary_appointment' || preset?.defaultBusinessType === 'stationary_appointment';
+    const sectorPresetId = SECTOR_TO_PRESET_MAP[sector];
+    
+    if (!isStationary || !sectorPresetId) {
+      // Load basic sector services
+      const services = getServicesForSector(sector);
+      setPreviewServices(services);
+    }
     
     setStepSaving(false);
   }, [businessType, persistSetupStep]);
+
+  // Handle menu upsell - user chooses pre-populated menu
+  const handleChoosePreset = useCallback(async () => {
+    if (!presetId) return;
+    
+    setLoading(true);
+    
+    // Load the full preset services
+    const preset = SERVICE_PRESETS[presetId];
+    if (preset) {
+      const services: PreviewService[] = preset.services.map((s, index) => ({
+        id: `preset_${Date.now()}_${index}`,
+        name: s.name,
+        price: s.price,
+        duration: s.duration,
+      }));
+      setPreviewServices(services);
+      setMenuPresetPurchased(true);
+    }
+    
+    setLoading(false);
+    
+    // Move to next step (review if services, or complete)
+    if (stepOrder.includes('review')) {
+      setStep('review');
+    } else {
+      handleComplete();
+    }
+  }, [presetId, stepOrder]);
+
+  // Handle menu upsell - user chooses blank menu
+  const handleChooseBlank = useCallback(async () => {
+    setLoading(true);
+    
+    // Clear any preset services, start with blank
+    setPreviewServices([]);
+    setMenuPresetPurchased(false);
+    
+    setLoading(false);
+    
+    // Complete setup without services
+    handleComplete();
+  }, []);
+
+  // Skip menu entirely
+  const handleSkipMenu = useCallback(() => {
+    setPreviewServices([]);
+    setMenuPresetPurchased(false);
+    handleComplete();
+  }, []);
 
   const handleDeleteService = useCallback((serviceId: string) => {
     setPreviewServices(prev => prev.filter(s => s.id !== serviceId));
@@ -125,31 +216,61 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
       businessSector,
       services: previewServices.length > 0 ? previewServices : undefined,
       themeColor,
+      menuPresetPurchased,
     });
     setLoading(false);
     
     if (!success) {
       // Handle error - could show toast
     }
-  }, [companyName, businessType, businessSector, previewServices, onComplete]);
+  }, [companyName, businessType, businessSector, previewServices, menuPresetPurchased, onComplete]);
 
   const canProceed = () => {
     switch (step) {
-      case 1:
+      case 'name':
         return companyName.trim().length > 0;
-      case 2:
+      case 'type':
         return businessType !== null;
-      case 3:
+      case 'sector':
         return businessSector !== null;
-      case 4:
-        return true; // Can always proceed from service review (even with 0 services)
+      case 'menu_upsell':
+        return true; // Can always proceed (handled by specific buttons)
+      case 'review':
+        return true; // Can always proceed from service review
       default:
         return false;
     }
   };
 
-  // Check if we're on the final step
-  const isFinalStep = step === totalSteps;
+  const getStepTitle = () => {
+    switch (step) {
+      case 'name':
+        return 'Your Business Name';
+      case 'type':
+        return 'How Do You Operate?';
+      case 'sector':
+        return 'What Best Describes Your Business?';
+      case 'menu_upsell':
+        return 'Set Up Your Service Menu';
+      case 'review':
+        return 'Review Your Services';
+    }
+  };
+
+  const getStepDescription = () => {
+    switch (step) {
+      case 'name':
+        return 'This will appear on your invoices and quotes';
+      case 'type':
+        return 'Choose how you typically serve your customers';
+      case 'sector':
+        return "We'll suggest features and services based on your industry";
+      case 'menu_upsell':
+        return 'Start with a pre-built menu or create your own';
+      case 'review':
+        return `We've prepared ${previewServices.length} services for you. Remove any you don't need.`;
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 flex items-center justify-center p-4">
@@ -165,23 +286,13 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
         <Progress value={progress} className="mb-6 h-2" />
 
         <Card className="border-2">
-        <CardHeader>
-            <CardTitle>
-              {step === 1 && 'Your Business Name'}
-              {step === 2 && 'How Do You Operate?'}
-              {step === 3 && 'What Best Describes Your Business?'}
-              {step === 4 && 'Review Your Services'}
-            </CardTitle>
-            <CardDescription>
-              {step === 1 && 'This will appear on your invoices and quotes'}
-              {step === 2 && 'Choose how you typically serve your customers'}
-              {step === 3 && 'We\'ll suggest features and services based on your industry'}
-              {step === 4 && `We've prepared ${previewServices.length} services for you. Remove any you don't need.`}
-            </CardDescription>
+          <CardHeader>
+            <CardTitle>{getStepTitle()}</CardTitle>
+            <CardDescription>{getStepDescription()}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* Step 1: Business Name */}
-            {step === 1 && (
+            {/* Step: Business Name */}
+            {step === 'name' && (
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="companyName">Business Name</Label>
@@ -197,8 +308,8 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
               </div>
             )}
 
-            {/* Step 2: Business Type */}
-            {step === 2 && (
+            {/* Step: Business Type */}
+            {step === 'type' && (
               <div className="grid gap-4 md:grid-cols-2">
                 <button
                   onClick={() => handleBusinessTypeSelect('mobile_job')}
@@ -258,8 +369,8 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
               </div>
             )}
 
-            {/* Step 3: Business Sector */}
-            {step === 3 && (
+            {/* Step: Business Sector */}
+            {step === 'sector' && (
               <div className="grid gap-3 md:grid-cols-2">
                 {SECTOR_OPTIONS.map((option) => {
                   const IconComponent = ICON_MAP[option.icon] || FileText;
@@ -297,8 +408,26 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
               </div>
             )}
 
-            {/* Step 4: Service Review (conditional) */}
-            {step === 4 && (
+            {/* Step: Menu Upsell (for stationary businesses with presets) */}
+            {step === 'menu_upsell' && presetId && (
+              <MenuUpsellStep
+                services={SERVICE_PRESETS[presetId]?.services.map((s, i) => ({
+                  id: `preview_${i}`,
+                  name: s.name,
+                  price: s.price,
+                  duration: s.duration,
+                })) || []}
+                presetName={presetConfig?.name || 'Service'}
+                price={presetConfig?.price || 1.99}
+                onSelectPurchase={handleChoosePreset}
+                onSelectFree={handleChooseBlank}
+                onSkip={handleSkipMenu}
+                loading={loading}
+              />
+            )}
+
+            {/* Step: Service Review */}
+            {step === 'review' && (
               <div className="space-y-4">
                 {previewServices.length > 0 ? (
                   <>
@@ -333,35 +462,37 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
               </div>
             )}
 
-            {/* Navigation */}
-            <div className="flex justify-between pt-4">
-              <Button
-                variant="outline"
-                onClick={handleBack}
-                disabled={step === 1}
-              >
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back
-              </Button>
+            {/* Navigation (except for menu_upsell which has its own buttons) */}
+            {step !== 'menu_upsell' && (
+              <div className="flex justify-between pt-4">
+                <Button
+                  variant="outline"
+                  onClick={handleBack}
+                  disabled={currentStepIndex === 0}
+                >
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back
+                </Button>
 
-              {!isFinalStep ? (
-                <Button onClick={handleNext} disabled={!canProceed()}>
-                  Next
-                  <ArrowRight className="h-4 w-4 ml-2" />
-                </Button>
-              ) : (
-                <Button onClick={handleComplete} disabled={!canProceed() || loading}>
-                  {loading ? (
-                    'Setting up...'
-                  ) : (
-                    <>
-                      <Check className="h-4 w-4 mr-2" />
-                      Complete Setup
-                    </>
-                  )}
-                </Button>
-              )}
-            </div>
+                {!isFinalStep ? (
+                  <Button onClick={handleNext} disabled={!canProceed()}>
+                    Next
+                    <ArrowRight className="h-4 w-4 ml-2" />
+                  </Button>
+                ) : (
+                  <Button onClick={handleComplete} disabled={!canProceed() || loading}>
+                    {loading ? (
+                      'Setting up...'
+                    ) : (
+                      <>
+                        <Check className="h-4 w-4 mr-2" />
+                        Complete Setup
+                      </>
+                    )}
+                  </Button>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
 
