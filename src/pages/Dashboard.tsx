@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import { Users, Receipt, DollarSign, FolderKanban, Settings } from 'lucide-react';
+import { Users, Receipt, DollarSign, FolderKanban, Settings, Loader2 } from 'lucide-react';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { RecentActivity } from '@/components/dashboard/RecentActivity';
 import { OverdueAlerts } from '@/components/dashboard/OverdueAlerts';
@@ -11,12 +11,14 @@ import { PartnerSuggestions } from '@/components/reports/PartnerSuggestions';
 import { ClientDialog } from '@/components/clients/ClientDialog';
 import { ProjectDialog } from '@/components/projects/ProjectDialog';
 import { InvoiceDialog } from '@/components/invoices/InvoiceDialog';
+import { SetupWizard } from '@/components/setup/SetupWizard';
 import { Button } from '@/components/ui/button';
 import { mockClients, mockInvoices } from '@/lib/mockData';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useProjects } from '@/hooks/useProjects';
 import { useClients } from '@/hooks/useClients';
 import { useInvoices } from '@/hooks/useInvoices';
+import { useSetup } from '@/hooks/useSetup';
 import { Client, Invoice, Project } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -28,6 +30,7 @@ export default function Dashboard() {
   const { projects, addProject } = useProjects();
   const { clients: dbClients, addClient } = useClients();
   const { addInvoice } = useInvoices();
+  const { setupCompleted, loading: setupLoading, completeSetup } = useSetup();
   
   // Use DB clients if available, otherwise fall back to local
   const clients = dbClients.length > 0 ? dbClients : localClients;
@@ -195,6 +198,20 @@ export default function Dashboard() {
       setInvoiceDialogOpen(false);
     }
   };
+
+  // Show loading while checking setup state
+  if (setupLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  // Show setup wizard for new users
+  if (!setupCompleted) {
+    return <SetupWizard onComplete={completeSetup} />;
+  }
 
   return (
     <div className="space-y-8">

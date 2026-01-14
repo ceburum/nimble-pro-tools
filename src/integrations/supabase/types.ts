@@ -1056,7 +1056,10 @@ export type Database = {
           ai_scans_subscription_customer_id: string | null
           ai_scans_subscription_status: string | null
           ai_scans_used: number
+          business_sector: string | null
           business_type: string | null
+          cloud_storage_tier: string | null
+          cloud_storage_used_bytes: number | null
           company_address: string | null
           company_email: string | null
           company_name: string | null
@@ -1064,6 +1067,7 @@ export type Database = {
           created_at: string
           dashboard_logo_url: string | null
           financial_pro_enabled: boolean | null
+          financial_tool_enabled: boolean | null
           id: string
           invoice_prefix: string | null
           irs_mileage_rate: number | null
@@ -1072,9 +1076,11 @@ export type Database = {
           partner_suggestions_dismissed: boolean | null
           payment_instructions: string | null
           scheduling_pro_enabled: boolean | null
+          setup_completed: boolean | null
           tagline: string | null
           tax_pro_enabled: boolean | null
           tax_rate_estimate: number | null
+          trial_started_at: Json | null
           updated_at: string
           user_id: string
         }
@@ -1083,7 +1089,10 @@ export type Database = {
           ai_scans_subscription_customer_id?: string | null
           ai_scans_subscription_status?: string | null
           ai_scans_used?: number
+          business_sector?: string | null
           business_type?: string | null
+          cloud_storage_tier?: string | null
+          cloud_storage_used_bytes?: number | null
           company_address?: string | null
           company_email?: string | null
           company_name?: string | null
@@ -1091,6 +1100,7 @@ export type Database = {
           created_at?: string
           dashboard_logo_url?: string | null
           financial_pro_enabled?: boolean | null
+          financial_tool_enabled?: boolean | null
           id?: string
           invoice_prefix?: string | null
           irs_mileage_rate?: number | null
@@ -1099,9 +1109,11 @@ export type Database = {
           partner_suggestions_dismissed?: boolean | null
           payment_instructions?: string | null
           scheduling_pro_enabled?: boolean | null
+          setup_completed?: boolean | null
           tagline?: string | null
           tax_pro_enabled?: boolean | null
           tax_rate_estimate?: number | null
+          trial_started_at?: Json | null
           updated_at?: string
           user_id: string
         }
@@ -1110,7 +1122,10 @@ export type Database = {
           ai_scans_subscription_customer_id?: string | null
           ai_scans_subscription_status?: string | null
           ai_scans_used?: number
+          business_sector?: string | null
           business_type?: string | null
+          cloud_storage_tier?: string | null
+          cloud_storage_used_bytes?: number | null
           company_address?: string | null
           company_email?: string | null
           company_name?: string | null
@@ -1118,6 +1133,7 @@ export type Database = {
           created_at?: string
           dashboard_logo_url?: string | null
           financial_pro_enabled?: boolean | null
+          financial_tool_enabled?: boolean | null
           id?: string
           invoice_prefix?: string | null
           irs_mileage_rate?: number | null
@@ -1126,9 +1142,11 @@ export type Database = {
           partner_suggestions_dismissed?: boolean | null
           payment_instructions?: string | null
           scheduling_pro_enabled?: boolean | null
+          setup_completed?: boolean | null
           tagline?: string | null
           tax_pro_enabled?: boolean | null
           tax_rate_estimate?: number | null
+          trial_started_at?: Json | null
           updated_at?: string
           user_id?: string
         }

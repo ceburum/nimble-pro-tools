@@ -26,6 +26,7 @@ import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsOfService from "./pages/TermsOfService";
 import Affiliates from "./pages/Affiliates";
 import AffiliateAdmin from "./pages/AffiliateAdmin";
+import Upgrade from "./pages/Upgrade";
 import { useReferralTracking } from "@/hooks/useReferralTracking";
 
 // Component to track referral codes from URL
@@ -99,6 +100,14 @@ const App = () => {
                 element={
                   <ProtectedRoute>
                     <AppLayout><Financials /></AppLayout>
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/upgrade" 
+                element={
+                  <ProtectedRoute>
+                    <AppLayout><Upgrade /></AppLayout>
                   </ProtectedRoute>
                 } 
               />

@@ -61,12 +61,18 @@ export function useFeatureFlags() {
     disableProFeature,
     toggleDevMode,
     // Convenience getters
-    isTaxProEnabled: flags.tax_pro_enabled,
+    isTaxProEnabled: flags.tax_pro_enabled || flags.financial_tool_enabled,
     isSchedulingProEnabled: flags.scheduling_pro_enabled,
     isMileageProEnabled: flags.mileage_pro_enabled,
-    isFinancialProEnabled: flags.financial_pro_enabled,
+    isFinancialProEnabled: flags.financial_pro_enabled || flags.financial_tool_enabled,
+    isFinancialToolEnabled: flags.financial_tool_enabled,
     isServiceMenuEnabled: flags.service_menu_enabled,
     isDevModeEnabled: flags.dev_mode_enabled,
     hasMigrationCompleted: flags.migration_completed,
+    isSetupCompleted: flags.setup_completed,
+    businessType: flags.business_type,
+    businessSector: flags.business_sector,
+    cloudStorageTier: flags.cloud_storage_tier,
+    isScannerActive: flags.scanner_subscription_active,
   };
 }
