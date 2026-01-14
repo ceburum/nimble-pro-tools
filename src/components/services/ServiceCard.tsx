@@ -1,4 +1,4 @@
-import { Pencil, Trash2, Clock, DollarSign, GripVertical, ChevronUp, ChevronDown } from 'lucide-react';
+import { Pencil, Trash2, Clock, DollarSign, ChevronUp, ChevronDown, Plus } from 'lucide-react';
 import { Service } from '@/types/services';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -8,11 +8,13 @@ interface ServiceCardProps {
   globalBgColor?: string;
   onEdit: (service: Service) => void;
   onDelete: (service: Service) => void;
+  onAddToInvoice?: (service: Service) => void;
   onMoveUp?: () => void;
   onMoveDown?: () => void;
   isFirst?: boolean;
   isLast?: boolean;
   isPreviewMode?: boolean;
+  canAddToInvoice?: boolean;
 }
 
 export function ServiceCard({
@@ -20,11 +22,13 @@ export function ServiceCard({
   globalBgColor,
   onEdit,
   onDelete,
+  onAddToInvoice,
   onMoveUp,
   onMoveDown,
   isFirst,
   isLast,
   isPreviewMode,
+  canAddToInvoice = true,
 }: ServiceCardProps) {
   // Use service-specific color or fall back to global color
   const bgColor = service.bgColor || globalBgColor;
@@ -33,17 +37,26 @@ export function ServiceCard({
   // Determine if we need light text (only based on background color)
   const useLightText = !!bgColor;
 
+  // Handle card click for adding to invoice
+  const handleCardClick = () => {
+    if (canAddToInvoice && onAddToInvoice) {
+      onAddToInvoice(service);
+    }
+  };
+
   return (
     <div
       className={cn(
         'relative rounded-lg overflow-hidden group transition-all hover:shadow-lg',
         'border border-border',
         !bgColor && 'bg-card',
-        isPreviewMode && 'ring-2 ring-primary/20'
+        isPreviewMode && 'ring-2 ring-primary/20',
+        canAddToInvoice && onAddToInvoice && 'cursor-pointer hover:ring-2 hover:ring-primary/40'
       )}
       style={{
         backgroundColor: bgColor ? `hsl(${bgColor})` : undefined,
       }}
+      onClick={handleCardClick}
     >
       {/* Content */}
       <div className={cn(
@@ -87,6 +100,17 @@ export function ServiceCard({
 
         {/* Action buttons */}
         <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          {canAddToInvoice && onAddToInvoice && (
+            <Button
+              variant="secondary"
+              size="icon"
+              className="h-7 w-7"
+              onClick={(e) => { e.stopPropagation(); onAddToInvoice(service); }}
+              title="Add to invoice"
+            >
+              <Plus className="h-3.5 w-3.5" />
+            </Button>
+          )}
           <Button
             variant="secondary"
             size="icon"

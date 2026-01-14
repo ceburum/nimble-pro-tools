@@ -34,9 +34,21 @@ interface InvoiceDialogProps {
   clients: Client[];
   onSave: (invoice: Omit<Invoice, 'id' | 'createdAt'>) => void;
   defaultClientId?: string | null;
+  /** Pre-populated line items (e.g., from service menu) */
+  defaultItems?: LineItem[];
+  /** Pre-generated invoice number */
+  defaultInvoiceNumber?: string;
 }
 
-export function InvoiceDialog({ open, onOpenChange, clients, onSave, defaultClientId }: InvoiceDialogProps) {
+export function InvoiceDialog({ 
+  open, 
+  onOpenChange, 
+  clients, 
+  onSave, 
+  defaultClientId,
+  defaultItems,
+  defaultInvoiceNumber,
+}: InvoiceDialogProps) {
   const [clientId, setClientId] = useState<string>('');
   const [items, setItems] = useState<LineItem[]>([
     { id: '1', description: '', quantity: 1, unitPrice: 0 },
@@ -51,11 +63,22 @@ export function InvoiceDialog({ open, onOpenChange, clients, onSave, defaultClie
   const [receiptDialogOpen, setReceiptDialogOpen] = useState(false);
   const [receiptPreviews, setReceiptPreviews] = useState<Record<string, string>>({});
 
+  // Set default client ID when provided
   useEffect(() => {
     if (defaultClientId) {
       setClientId(defaultClientId);
     }
   }, [defaultClientId]);
+
+  // Set default items when dialog opens (e.g., from service menu)
+  useEffect(() => {
+    if (open && defaultItems && defaultItems.length > 0) {
+      setItems(defaultItems);
+    } else if (open && (!defaultItems || defaultItems.length === 0)) {
+      // Reset to empty item when opening without defaults
+      setItems([{ id: '1', description: '', quantity: 1, unitPrice: 0 }]);
+    }
+  }, [open, defaultItems]);
 
   // Load receipt previews
   useEffect(() => {
@@ -85,7 +108,8 @@ export function InvoiceDialog({ open, onOpenChange, clients, onSave, defaultClie
     e.preventDefault();
     if (!clientId) return;
 
-    const invoiceNumber = `INV-${Date.now().toString().slice(-6)}`;
+    // Use provided invoice number or generate one
+    const invoiceNumber = defaultInvoiceNumber || `INV-${Date.now().toString().slice(-6)}`;
     onSave({
       clientId,
       invoiceNumber,

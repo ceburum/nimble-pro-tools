@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Plus, Scissors, Loader2 } from 'lucide-react';
 import { useServices } from '@/hooks/useServices';
 import { Service } from '@/types/services';
@@ -7,6 +7,11 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { FeatureNotice } from '@/components/ui/feature-notice';
 import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 import { useToast } from '@/hooks/use-toast';
+import { useAppState } from '@/hooks/useAppState';
+import { useInvoices } from '@/hooks/useInvoices';
+import { useClients } from '@/hooks/useClients';
+import { useBusinessProfile } from '@/hooks/useBusinessProfile';
+import { AppState } from '@/lib/appState';
 import { ServiceCard } from '@/components/services/ServiceCard';
 import { ServiceEditDialog } from '@/components/services/ServiceEditDialog';
 import { ServiceMenuInitDialog } from '@/components/services/ServiceMenuInitDialog';
@@ -14,6 +19,7 @@ import { ServiceMenuPreviewBanner } from '@/components/services/ServiceMenuPrevi
 import { ServiceColorPicker } from '@/components/services/ServiceColorPicker';
 import { SERVICE_PRESETS } from '@/config/servicePresets';
 import { useNavigate } from 'react-router-dom';
+import { InvoiceDialog } from '@/components/invoices/InvoiceDialog';
 
 export default function ServiceMenu() {
   const {
@@ -36,12 +42,26 @@ export default function ServiceMenu() {
   } = useServices();
   
   const { updateFlag } = useFeatureFlags();
+  const { state, capabilities } = useAppState();
+  const { addInvoice, invoices } = useInvoices();
+  const { clients } = useClients();
+  const { profile } = useBusinessProfile();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingService, setEditingService] = useState<Service | null>(null);
   const [enabling, setEnabling] = useState(false);
   const [loadingPreset, setLoadingPreset] = useState(false);
+  const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false);
+  const [pendingService, setPendingService] = useState<Service | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  // Check if user can add services to invoices based on AppState
+  const canAddToInvoice = [
+    AppState.READY_BASE,
+    AppState.TRIAL_PRO,
+    AppState.PAID_PRO,
+    AppState.ADMIN_PREVIEW
+  ].includes(state);
 
   const handleEnableServiceMenu = async (): Promise<boolean> => {
     setEnabling(true);
@@ -139,6 +159,83 @@ export default function ServiceMenu() {
     reorderService(serviceId, 'down');
   };
 
+  // Handle adding a service to an invoice
+  const handleAddToInvoice = useCallback((service: Service) => {
+    if (!canAddToInvoice) {
+      toast({
+        title: 'Feature not available',
+        description: 'Complete setup to add services to invoices.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Check if there are any clients
+    if (clients.length === 0) {
+      toast({
+        title: 'No clients found',
+        description: 'Please add a client first before creating an invoice.',
+        variant: 'destructive',
+      });
+      navigate('/clients');
+      return;
+    }
+
+    // Store the pending service and open invoice dialog
+    setPendingService(service);
+    setInvoiceDialogOpen(true);
+  }, [canAddToInvoice, clients, navigate, toast]);
+
+  // Handle invoice creation with the pending service
+  const handleCreateInvoice = useCallback(async (invoiceData: {
+    clientId: string;
+    invoiceNumber: string;
+    items: Array<{ id: string; description: string; quantity: number; unitPrice: number }>;
+    status: 'draft' | 'sent' | 'paid' | 'overdue';
+    dueDate: Date;
+    notes?: string;
+  }) => {
+    const newInvoice = await addInvoice(invoiceData);
+    
+    if (newInvoice) {
+      toast({
+        title: 'Invoice created',
+        description: `Invoice ${newInvoice.invoiceNumber} created with ${pendingService?.name || 'service'}.`,
+      });
+      setInvoiceDialogOpen(false);
+      setPendingService(null);
+      
+      // Navigate to invoices page to view the new invoice
+      navigate('/invoices');
+    }
+  }, [addInvoice, pendingService, navigate, toast]);
+
+  // Generate the next invoice number
+  const getNextInvoiceNumber = useCallback(() => {
+    const prefix = profile.invoicePrefix || 'INV-';
+    const existingNumbers = invoices
+      .map(inv => {
+        const match = inv.invoiceNumber.match(/(\d+)$/);
+        return match ? parseInt(match[1], 10) : 0;
+      })
+      .filter(n => !isNaN(n));
+    
+    const maxNumber = existingNumbers.length > 0 ? Math.max(...existingNumbers) : 0;
+    return `${prefix}${String(maxNumber + 1).padStart(4, '0')}`;
+  }, [invoices, profile.invoicePrefix]);
+
+  // Create initial line items from pending service
+  const getInitialLineItems = useCallback(() => {
+    if (!pendingService) return [];
+    
+    return [{
+      id: crypto.randomUUID(),
+      description: pendingService.name,
+      quantity: 1,
+      unitPrice: pendingService.price,
+    }];
+  }, [pendingService]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -223,11 +320,13 @@ export default function ServiceMenu() {
                   globalBgColor={menuSettings.globalBgColor}
                   onEdit={handleOpenDialog}
                   onDelete={handleDelete}
+                  onAddToInvoice={handleAddToInvoice}
                   onMoveUp={() => handleMoveUp(service.id)}
                   onMoveDown={() => handleMoveDown(service.id)}
                   isFirst={index === 0}
                   isLast={index === services.length - 1}
                   isPreviewMode={isPreviewMode}
+                  canAddToInvoice={canAddToInvoice}
                 />
               ))}
             </div>
@@ -240,6 +339,16 @@ export default function ServiceMenu() {
             onSave={handleSave}
             service={editingService}
             globalBgColor={menuSettings.globalBgColor}
+          />
+
+          {/* Invoice Dialog - opened when adding service to invoice */}
+          <InvoiceDialog
+            open={invoiceDialogOpen}
+            onOpenChange={setInvoiceDialogOpen}
+            clients={clients}
+            onSave={handleCreateInvoice}
+            defaultItems={getInitialLineItems()}
+            defaultInvoiceNumber={getNextInvoiceNumber()}
           />
         </>
       )}
