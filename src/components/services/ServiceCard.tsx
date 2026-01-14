@@ -74,9 +74,9 @@ export function ServiceCard({
           )}
         </div>
 
-        {/* Small thumbnail in upper right corner - fills empty space */}
+        {/* Thumbnail in upper right corner - fills empty space */}
         {hasImage && (
-          <div className="absolute top-3 right-3 h-12 w-12 rounded-md overflow-hidden shadow-md border border-white/20">
+          <div className="absolute top-3 right-3 h-14 w-14 rounded-md overflow-hidden shadow-md border border-white/20">
             <img
               src={service.thumbnailUrl}
               alt={service.name}
