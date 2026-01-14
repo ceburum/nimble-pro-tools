@@ -1,33 +1,46 @@
 import { useState } from 'react';
-import { Plus, Scissors, Trash2, Pencil, Clock, DollarSign, Loader2 } from 'lucide-react';
+import { Plus, Scissors, Loader2 } from 'lucide-react';
 import { useServices } from '@/hooks/useServices';
 import { Service } from '@/types/services';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { FeatureNotice } from '@/components/ui/feature-notice';
 import { useFeatureFlags } from '@/hooks/useFeatureFlags';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
+import { ServiceCard } from '@/components/services/ServiceCard';
+import { ServiceEditDialog } from '@/components/services/ServiceEditDialog';
+import { ServiceMenuInitDialog } from '@/components/services/ServiceMenuInitDialog';
+import { ServiceMenuPreviewBanner } from '@/components/services/ServiceMenuPreviewBanner';
+import { ServiceColorPicker } from '@/components/services/ServiceColorPicker';
+import { SERVICE_PRESETS } from '@/config/servicePresets';
+import { useNavigate } from 'react-router-dom';
 
 export default function ServiceMenu() {
-  const { services, loading, isEnabled, addService, updateService, deleteService } = useServices();
+  const {
+    services,
+    loading,
+    isEnabled,
+    isPreviewMode,
+    menuSettings,
+    needsInit,
+    addService,
+    updateService,
+    deleteService,
+    reorderService,
+    updateGlobalColor,
+    loadPreset,
+    startBlank,
+    commitPreview,
+    discardPreview,
+  } = useServices();
+  
   const { updateFlag } = useFeatureFlags();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingService, setEditingService] = useState<Service | null>(null);
   const [enabling, setEnabling] = useState(false);
+  const [loadingPreset, setLoadingPreset] = useState(false);
   const { toast } = useToast();
-
-  // Form state
-  const [name, setName] = useState('');
-  const [price, setPrice] = useState('');
-  const [duration, setDuration] = useState('');
+  const navigate = useNavigate();
 
   const handleEnableServiceMenu = async (): Promise<boolean> => {
     setEnabling(true);
@@ -40,17 +53,50 @@ export default function ServiceMenu() {
     }
   };
 
+  const handleSelectBlank = () => {
+    setLoadingPreset(true);
+    setTimeout(() => {
+      startBlank();
+      setLoadingPreset(false);
+      toast({ title: 'Service Menu ready', description: 'Start adding your services!' });
+    }, 300);
+  };
+
+  const handleSelectPreset = (presetId: string) => {
+    setLoadingPreset(true);
+    setTimeout(() => {
+      loadPreset(presetId);
+      setLoadingPreset(false);
+      const preset = SERVICE_PRESETS[presetId];
+      toast({ 
+        title: `${preset?.name || 'Preset'} loaded!`,
+        description: 'Preview and customize your menu. Unlock when ready.'
+      });
+    }, 300);
+  };
+
+  const handleUnlock = () => {
+    // In production, this would trigger a payment flow
+    // For now, we'll just commit the preview
+    commitPreview();
+    toast({ 
+      title: 'Service Menu unlocked!',
+      description: 'All your services have been saved.'
+    });
+  };
+
+  const handleDiscard = () => {
+    if (confirm('Start fresh with a blank menu? Your preview changes will be lost.')) {
+      discardPreview();
+      toast({ title: 'Preview cleared' });
+    }
+  };
+
   const handleOpenDialog = (service?: Service) => {
     if (service) {
       setEditingService(service);
-      setName(service.name);
-      setPrice(service.price.toString());
-      setDuration(service.duration?.toString() || '');
     } else {
       setEditingService(null);
-      setName('');
-      setPrice('');
-      setDuration('');
     }
     setDialogOpen(true);
   };
@@ -58,28 +104,22 @@ export default function ServiceMenu() {
   const handleCloseDialog = () => {
     setDialogOpen(false);
     setEditingService(null);
-    setName('');
-    setPrice('');
-    setDuration('');
   };
 
-  const handleSave = () => {
-    const priceNum = parseFloat(price);
-    const durationNum = duration ? parseInt(duration) : undefined;
-
-    if (!name.trim() || isNaN(priceNum) || priceNum < 0) {
-      toast({ title: 'Invalid input', description: 'Please enter a valid name and price', variant: 'destructive' });
-      return;
-    }
-
+  const handleSave = (data: {
+    name: string;
+    price: number;
+    duration?: number;
+    thumbnailUrl?: string;
+    bgColor?: string;
+  }) => {
     if (editingService) {
-      updateService(editingService.id, { name: name.trim(), price: priceNum, duration: durationNum });
+      updateService(editingService.id, data);
       toast({ title: 'Service updated' });
     } else {
-      addService({ name: name.trim(), price: priceNum, duration: durationNum });
+      addService(data);
       toast({ title: 'Service added' });
     }
-
     handleCloseDialog();
   };
 
@@ -88,6 +128,14 @@ export default function ServiceMenu() {
       deleteService(service.id);
       toast({ title: 'Service deleted' });
     }
+  };
+
+  const handleMoveUp = (serviceId: string) => {
+    reorderService(serviceId, 'up');
+  };
+
+  const handleMoveDown = (serviceId: string) => {
+    reorderService(serviceId, 'down');
   };
 
   if (loading) {
@@ -104,11 +152,17 @@ export default function ServiceMenu() {
         title="Service Menu"
         description="Manage your service offerings"
         action={
-          isEnabled ? (
-            <Button className="gap-2" onClick={() => handleOpenDialog()}>
-              <Plus className="h-4 w-4" />
-              Add Service
-            </Button>
+          isEnabled && !needsInit ? (
+            <div className="flex items-center gap-2">
+              <ServiceColorPicker
+                value={menuSettings.globalBgColor}
+                onChange={updateGlobalColor}
+              />
+              <Button className="gap-2" onClick={() => handleOpenDialog()}>
+                <Plus className="h-4 w-4" />
+                Add Service
+              </Button>
+            </div>
           ) : undefined
         }
       />
@@ -122,8 +176,8 @@ export default function ServiceMenu() {
           features={[
             'Create and manage your service offerings',
             'Set prices and optional durations',
+            'Add images and custom colors to tiles',
             'Quick appointment creation from services',
-            'Automatic invoice line items',
           ]}
           onEnable={handleEnableServiceMenu}
           loading={enabling}
@@ -131,9 +185,26 @@ export default function ServiceMenu() {
         />
       )}
 
-      {/* Show content when enabled */}
-      {isEnabled && (
+      {/* Init dialog - choose blank or preset */}
+      <ServiceMenuInitDialog
+        open={isEnabled && needsInit}
+        onSelectBlank={handleSelectBlank}
+        onSelectPreset={handleSelectPreset}
+        loading={loadingPreset}
+      />
+
+      {/* Show content when enabled and initialized */}
+      {isEnabled && !needsInit && (
         <>
+          {/* Preview mode banner */}
+          {isPreviewMode && (
+            <ServiceMenuPreviewBanner
+              onUnlock={handleUnlock}
+              onDiscard={handleDiscard}
+              presetName={menuSettings.presetId ? SERVICE_PRESETS[menuSettings.presetId]?.name : undefined}
+            />
+          )}
+
           {services.length === 0 ? (
             <div className="text-center py-12">
               <Scissors className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
@@ -143,102 +214,32 @@ export default function ServiceMenu() {
               </Button>
             </div>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {services.map((service) => (
-                <div
+            <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+              {services.map((service, index) => (
+                <ServiceCard
                   key={service.id}
-                  className="bg-card border border-border rounded-lg p-4 hover:shadow-md transition-shadow group"
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-medium text-foreground truncate">{service.name}</h3>
-                      <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
-                        <span className="flex items-center gap-1">
-                          <DollarSign className="h-3.5 w-3.5" />
-                          ${service.price.toFixed(2)}
-                        </span>
-                        {service.duration && (
-                          <span className="flex items-center gap-1">
-                            <Clock className="h-3.5 w-3.5" />
-                            {service.duration} min
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => handleOpenDialog(service)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-destructive hover:text-destructive"
-                        onClick={() => handleDelete(service)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </div>
+                  service={service}
+                  globalBgColor={menuSettings.globalBgColor}
+                  onEdit={handleOpenDialog}
+                  onDelete={handleDelete}
+                  onMoveUp={() => handleMoveUp(service.id)}
+                  onMoveDown={() => handleMoveDown(service.id)}
+                  isFirst={index === 0}
+                  isLast={index === services.length - 1}
+                  isPreviewMode={isPreviewMode}
+                />
               ))}
             </div>
           )}
 
-          {/* Add/Edit Dialog */}
-          <Dialog open={dialogOpen} onOpenChange={handleCloseDialog}>
-            <DialogContent className="sm:max-w-[400px]">
-              <DialogHeader>
-                <DialogTitle>{editingService ? 'Edit Service' : 'Add Service'}</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="service-name">Service Name</Label>
-                  <Input
-                    id="service-name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="e.g., Manicure, Haircut"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="service-price">Price ($)</Label>
-                  <Input
-                    id="service-price"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={price}
-                    onChange={(e) => setPrice(e.target.value)}
-                    placeholder="0.00"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="service-duration">Duration (minutes, optional)</Label>
-                  <Input
-                    id="service-duration"
-                    type="number"
-                    min="0"
-                    value={duration}
-                    onChange={(e) => setDuration(e.target.value)}
-                    placeholder="30"
-                  />
-                </div>
-                <div className="flex justify-end gap-2">
-                  <Button variant="outline" onClick={handleCloseDialog}>
-                    Cancel
-                  </Button>
-                  <Button onClick={handleSave}>
-                    {editingService ? 'Save Changes' : 'Add Service'}
-                  </Button>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
+          {/* Edit Dialog */}
+          <ServiceEditDialog
+            open={dialogOpen}
+            onClose={handleCloseDialog}
+            onSave={handleSave}
+            service={editingService}
+            globalBgColor={menuSettings.globalBgColor}
+          />
         </>
       )}
     </div>
