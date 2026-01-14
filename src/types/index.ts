@@ -32,6 +32,9 @@ export interface InvoiceReceiptAttachment {
   amount: number;
 }
 
+// Invoice context types for linking to projects or appointments
+export type InvoiceContextType = 'project' | 'appointment' | 'standalone';
+
 export interface Invoice {
   id: string;
   quoteId?: string;
@@ -46,6 +49,9 @@ export interface Invoice {
   notes?: string;
   paymentToken?: string;
   receiptAttachments?: InvoiceReceiptAttachment[]; // Receipt photos + amounts
+  // Context linking - invoice can be linked to a project or appointment
+  contextType?: InvoiceContextType;
+  contextId?: string; // ID of the linked project or appointment
 }
 
 // Project photos and receipts
