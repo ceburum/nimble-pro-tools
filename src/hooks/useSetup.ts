@@ -1,12 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
-import { BusinessSector, BusinessType } from '@/config/sectorPresets';
+import { BusinessSector, BusinessType, SECTOR_PRESETS } from '@/config/sectorPresets';
 import { PreviewService } from '@/lib/serviceUtils';
 
-// Storage keys (must match useServices.ts)
+// Storage keys (must match other hooks)
 const SERVICES_STORAGE_KEY = 'nimble_services';
 const MENU_SETTINGS_KEY = 'nimble_service_menu_settings';
+const APPOINTMENTS_STORAGE_KEY = 'nimble_appointments';
+const PROJECTS_STORAGE_KEY = 'nimble_projects';
 
 interface SetupState {
   setupCompleted: boolean;
@@ -14,6 +16,24 @@ interface SetupState {
   businessSector: BusinessSector | null;
   companyName: string | null;
 }
+
+/**
+ * Feature Initialization Rules:
+ * 
+ * Mobile Businesses (mobile_job):
+ * - Initialize appointment calendar with location support
+ * - Projects enabled for job tracking
+ * - No service menu by default
+ * 
+ * Stationary Businesses (stationary_appointment):
+ * - Initialize appointment calendar
+ * - Initialize service menu (editable)
+ * - Initialize invoice system linked to menu
+ * 
+ * Contractor / Generic (contractor_trades, blank_minimal):
+ * - Initialize project board only
+ * - No appointment calendar or service menu
+ */
 
 export function useSetup() {
   const { user } = useAuth();
@@ -63,38 +83,32 @@ export function useSetup() {
     fetchSetupState();
   }, [user]);
 
-  const completeSetup = useCallback(async (data: {
-    companyName: string;
+  /**
+   * Initialize default features based on business type and mobility
+   */
+  const initializeDefaultFeatures = useCallback((data: {
     businessType: BusinessType;
     businessSector: BusinessSector;
     services?: PreviewService[];
     themeColor?: string | null;
   }) => {
-    if (!user) return false;
+    const isMobile = data.businessType === 'mobile_job';
+    const isStationary = data.businessType === 'stationary_appointment';
+    const isContractor = data.businessSector === 'contractor_trades' || data.businessSector === 'blank_minimal';
 
-    try {
-      // For stationary businesses, auto-enable scheduling
-      const isStationary = data.businessType === 'stationary_appointment';
-      
-      const { error } = await supabase
-        .from('user_settings')
-        .upsert({
-          user_id: user.id,
-          company_name: data.companyName,
-          business_type: data.businessType,
-          business_sector: data.businessSector,
-          setup_completed: true,
-          // Auto-enable scheduling for stationary businesses
-          scheduling_pro_enabled: isStationary,
-          updated_at: new Date().toISOString(),
-        }, { onConflict: 'user_id' });
-
-      if (error) {
-        console.error('Error completing setup:', error);
-        return false;
+    // Initialize Appointment Calendar data structure
+    // Both mobile and stationary get appointments, but with different defaults
+    if (isMobile || isStationary) {
+      const existingAppointments = localStorage.getItem(APPOINTMENTS_STORAGE_KEY);
+      if (!existingAppointments) {
+        // Initialize empty appointments array
+        localStorage.setItem(APPOINTMENTS_STORAGE_KEY, JSON.stringify([]));
       }
+    }
 
-      // Save services to localStorage if provided
+    // Initialize Service Menu for Stationary businesses
+    if (isStationary) {
+      // Save services if provided
       if (data.services && data.services.length > 0) {
         const now = new Date();
         const servicesToSave = data.services.map((s, index) => ({
@@ -106,24 +120,70 @@ export function useSetup() {
           createdAt: now,
           updatedAt: now,
         }));
-        
         localStorage.setItem(SERVICES_STORAGE_KEY, JSON.stringify(servicesToSave));
-        
-        // Also save menu settings with theme color and mark as unlocked
-        const menuSettings = {
-          globalBgColor: data.themeColor || '',
-          isUnlocked: true,
-        };
-        localStorage.setItem(MENU_SETTINGS_KEY, JSON.stringify(menuSettings));
-      } else if (isStationary) {
-        // For stationary businesses without preloaded services, 
-        // still mark menu as unlocked so they can add services
-        const menuSettings = {
-          globalBgColor: data.themeColor || '',
-          isUnlocked: true,
-        };
-        localStorage.setItem(MENU_SETTINGS_KEY, JSON.stringify(menuSettings));
       }
+      
+      // Initialize menu settings (always for stationary, even without services)
+      const menuSettings = {
+        globalBgColor: data.themeColor || '',
+        isUnlocked: true, // Stationary businesses always have menu unlocked
+      };
+      localStorage.setItem(MENU_SETTINGS_KEY, JSON.stringify(menuSettings));
+    }
+
+    // Initialize Project Board for contractor/mobile businesses
+    if (isMobile || isContractor) {
+      const existingProjects = localStorage.getItem(PROJECTS_STORAGE_KEY);
+      if (!existingProjects) {
+        // Initialize empty projects array (DB will handle actual storage)
+        // This is just a marker that projects feature is initialized
+        localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify([]));
+      }
+    }
+
+    console.log(`[Setup] Initialized features for ${data.businessType} / ${data.businessSector}:`, {
+      appointments: isMobile || isStationary,
+      serviceMenu: isStationary,
+      projects: isMobile || isContractor,
+    });
+  }, []);
+
+  const completeSetup = useCallback(async (data: {
+    companyName: string;
+    businessType: BusinessType;
+    businessSector: BusinessSector;
+    services?: PreviewService[];
+    themeColor?: string | null;
+  }) => {
+    if (!user) return false;
+
+    try {
+      // Determine which pro features to auto-enable based on business type
+      const isStationary = data.businessType === 'stationary_appointment';
+      const isMobile = data.businessType === 'mobile_job';
+      
+      const { error } = await supabase
+        .from('user_settings')
+        .upsert({
+          user_id: user.id,
+          company_name: data.companyName,
+          business_type: data.businessType,
+          business_sector: data.businessSector,
+          setup_completed: true,
+          // Auto-enable scheduling for stationary businesses (appointment calendar)
+          scheduling_pro_enabled: isStationary,
+          // Enable mileage tracking hint for mobile businesses
+          // (actual mileage pro requires purchase, but we track that they're mobile)
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'user_id' });
+
+      if (error) {
+        console.error('Error completing setup:', error);
+        return false;
+      }
+
+      // Initialize default features in localStorage
+      initializeDefaultFeatures(data);
 
       setState({
         setupCompleted: true,
@@ -137,7 +197,22 @@ export function useSetup() {
       console.error('Error:', err);
       return false;
     }
-  }, [user]);
+  }, [user, initializeDefaultFeatures]);
+
+  /**
+   * Clear all default feature data (for admin reset)
+   */
+  const clearDefaultFeatures = useCallback(() => {
+    // Clear all feature-related localStorage items
+    localStorage.removeItem(SERVICES_STORAGE_KEY);
+    localStorage.removeItem(MENU_SETTINGS_KEY);
+    localStorage.removeItem(APPOINTMENTS_STORAGE_KEY);
+    localStorage.removeItem(PROJECTS_STORAGE_KEY);
+    localStorage.removeItem('nimble_services_preview');
+    localStorage.removeItem('nimble_feature_flags');
+    
+    console.log('[Setup] Cleared all default feature data');
+  }, []);
 
   const resetSetup = useCallback(async () => {
     if (!user) return false;
@@ -151,6 +226,8 @@ export function useSetup() {
           business_type: null,
           business_sector: null,
           company_name: null,
+          // Reset pro features to false
+          scheduling_pro_enabled: false,
           updated_at: new Date().toISOString(),
         }, { onConflict: 'user_id' });
 
@@ -158,6 +235,9 @@ export function useSetup() {
         console.error('Error resetting setup:', error);
         return false;
       }
+
+      // Clear all default feature data
+      clearDefaultFeatures();
 
       setState({
         setupCompleted: false,
@@ -171,12 +251,13 @@ export function useSetup() {
       console.error('Error:', err);
       return false;
     }
-  }, [user]);
+  }, [user, clearDefaultFeatures]);
 
   return {
     ...state,
     loading,
     completeSetup,
     resetSetup,
+    clearDefaultFeatures, // Expose for admin reset
   };
 }
