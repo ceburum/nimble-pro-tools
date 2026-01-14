@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
-import { Building2, Mail, Phone, MapPin, FileText, CreditCard, Hash } from 'lucide-react';
+import { Building2, Mail, Phone, MapPin, FileText, CreditCard, Hash, Send } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
 import { useBusinessProfile, BusinessProfile } from '@/hooks/useBusinessProfile';
 import { Skeleton } from '@/components/ui/skeleton';
+import { EmailDeliverySettings } from './EmailDeliverySettings';
 
 interface BusinessProfileDialogProps {
   open: boolean;
@@ -26,6 +28,7 @@ export function BusinessProfileDialog({ open, onOpenChange }: BusinessProfileDia
     paymentInstructions: '',
   });
   const [saving, setSaving] = useState(false);
+  const [emailSettingsOpen, setEmailSettingsOpen] = useState(false);
 
   useEffect(() => {
     if (profile) {
@@ -179,6 +182,28 @@ export function BusinessProfileDialog({ open, onOpenChange }: BusinessProfileDia
               />
             </div>
 
+            <Separator className="my-4" />
+
+            {/* Email Delivery Section */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Send className="h-4 w-4" />
+                Email Delivery
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                Configure how invoices, receipts, and notifications are sent.
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setEmailSettingsOpen(true)}
+                className="w-full justify-start"
+              >
+                <Mail className="h-4 w-4 mr-2" />
+                Configure Email Provider
+              </Button>
+            </div>
+
             <div className="flex justify-end gap-2 pt-4">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancel
@@ -190,6 +215,11 @@ export function BusinessProfileDialog({ open, onOpenChange }: BusinessProfileDia
           </form>
         )}
       </DialogContent>
+
+      <EmailDeliverySettings
+        open={emailSettingsOpen}
+        onOpenChange={setEmailSettingsOpen}
+      />
     </Dialog>
   );
 }
