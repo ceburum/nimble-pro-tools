@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -7,7 +7,7 @@ import {
   Clock, User, Calendar, Receipt, CheckCircle, XCircle, 
   AlertTriangle, FileText, Plus, ExternalLink 
 } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, addMinutes } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Invoice, LineItem } from '@/types';
 import { Service } from '@/types/services';
@@ -15,6 +15,8 @@ import { useAppointmentInvoice } from '@/hooks/useAppointmentInvoice';
 import { useInvoices } from '@/hooks/useInvoices';
 import { useServices } from '@/hooks/useServices';
 import { AppointmentInvoicePanel } from '@/components/appointments/AppointmentInvoicePanel';
+import { AddToCalendarButton } from '@/components/scheduling/AddToCalendarButton';
+import { CalendarEvent } from '@/lib/calendarUtils';
 import { toast } from 'sonner';
 
 interface AppointmentDetailDialogProps {
@@ -146,6 +148,30 @@ export function AppointmentDetailDialog({
   const statusInfo = getStatusInfo(appointment.status);
   const StatusIcon = statusInfo.icon;
 
+  // Create calendar event for export
+  const calendarEvent: CalendarEvent = useMemo(() => {
+    // Calculate end time from start time and duration
+    const [startHour, startMin] = appointment.startTime.split(':').map(Number);
+    const startMinutes = startHour * 60 + startMin;
+    const endMinutes = startMinutes + appointment.duration;
+    const endHour = Math.floor(endMinutes / 60);
+    const endMin = endMinutes % 60;
+    const endTime = `${endHour.toString().padStart(2, '0')}:${endMin.toString().padStart(2, '0')}`;
+
+    return {
+      title: appointment.service?.name || 'Appointment',
+      description: [
+        `Client: ${appointment.client?.name || 'Unknown'}`,
+        appointment.service ? `Service: ${appointment.service.name}` : '',
+        appointment.notes || '',
+      ].filter(Boolean).join('\n'),
+      location: '', // Could be populated from business profile
+      startDate: appointment.date,
+      startTime: appointment.startTime,
+      endTime,
+    };
+  }, [appointment]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
@@ -226,6 +252,7 @@ export function AppointmentDetailDialog({
                   <CheckCircle className="h-4 w-4 mr-1" />
                   Complete
                 </Button>
+                <AddToCalendarButton event={calendarEvent} size="sm" />
                 {invoice && onNavigateToInvoices && (
                   <Button variant="outline" size="sm" onClick={onNavigateToInvoices}>
                     <ExternalLink className="h-4 w-4 mr-1" />
