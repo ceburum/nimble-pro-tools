@@ -73,6 +73,9 @@ export function useSetup() {
     if (!user) return false;
 
     try {
+      // For stationary businesses, auto-enable scheduling
+      const isStationary = data.businessType === 'stationary_appointment';
+      
       const { error } = await supabase
         .from('user_settings')
         .upsert({
@@ -81,6 +84,8 @@ export function useSetup() {
           business_type: data.businessType,
           business_sector: data.businessSector,
           setup_completed: true,
+          // Auto-enable scheduling for stationary businesses
+          scheduling_pro_enabled: isStationary,
           updated_at: new Date().toISOString(),
         }, { onConflict: 'user_id' });
 
@@ -105,6 +110,14 @@ export function useSetup() {
         localStorage.setItem(SERVICES_STORAGE_KEY, JSON.stringify(servicesToSave));
         
         // Also save menu settings with theme color and mark as unlocked
+        const menuSettings = {
+          globalBgColor: data.themeColor || '',
+          isUnlocked: true,
+        };
+        localStorage.setItem(MENU_SETTINGS_KEY, JSON.stringify(menuSettings));
+      } else if (isStationary) {
+        // For stationary businesses without preloaded services, 
+        // still mark menu as unlocked so they can add services
         const menuSettings = {
           globalBgColor: data.themeColor || '',
           isUnlocked: true,

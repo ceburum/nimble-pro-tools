@@ -15,6 +15,7 @@ import Reports from "./pages/Reports";
 import Financials from "./pages/Financials";
 import MileagePro from "./pages/MileagePro";
 import SchedulingPro from "./pages/SchedulingPro";
+import Appointments from "./pages/Appointments";
 import TaxPro from "./pages/TaxPro";
 import ServiceMenu from "./pages/ServiceMenu";
 import Notepad from "./pages/Notepad";
@@ -124,6 +125,14 @@ const App = () => {
                 element={
                   <ProtectedRoute>
                     <AppLayout><SchedulingPro /></AppLayout>
+                  </ProtectedRoute>
+                } 
+              />
+              <Route
+                path="/appointments" 
+                element={
+                  <ProtectedRoute>
+                    <AppLayout><Appointments /></AppLayout>
                   </ProtectedRoute>
                 } 
               />
