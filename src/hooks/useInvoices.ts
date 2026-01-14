@@ -38,6 +38,10 @@ export function useInvoices() {
       ? (rawAttachments as InvoiceReceiptAttachment[])
       : [];
 
+    // Parse context_type and context_id if they exist
+    const contextType = (inv as any).context_type as Invoice['contextType'];
+    const contextId = (inv as any).context_id as string | undefined;
+
     return {
       id: inv.id,
       clientId: inv.client_id,
@@ -50,6 +54,8 @@ export function useInvoices() {
       paidAt: inv.paid_at ? new Date(inv.paid_at) : undefined,
       paymentToken: inv.payment_token || undefined,
       receiptAttachments: receiptAttachments.length > 0 ? receiptAttachments : undefined,
+      contextType: contextType || undefined,
+      contextId: contextId || undefined,
     };
   };
 
@@ -104,6 +110,8 @@ export function useInvoices() {
           notes: data.notes || null,
           user_id: user.id,
           receipt_attachments: (data.receiptAttachments || []) as any, // Cast to any for JSONB
+          context_type: data.contextType || null,
+          context_id: data.contextId || null,
         }])
         .select()
         .single();
