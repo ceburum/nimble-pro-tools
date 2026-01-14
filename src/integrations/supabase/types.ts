@@ -310,6 +310,66 @@ export type Database = {
         }
         Relationships: []
       }
+      email_provider_settings: {
+        Row: {
+          api_key_encrypted: string | null
+          created_at: string
+          from_email: string | null
+          from_name: string | null
+          id: string
+          is_active: boolean
+          last_test_at: string | null
+          last_test_error: string | null
+          last_test_success: boolean | null
+          provider_type: string
+          smtp_host: string | null
+          smtp_password_encrypted: string | null
+          smtp_port: number | null
+          smtp_use_tls: boolean | null
+          smtp_username: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          api_key_encrypted?: string | null
+          created_at?: string
+          from_email?: string | null
+          from_name?: string | null
+          id?: string
+          is_active?: boolean
+          last_test_at?: string | null
+          last_test_error?: string | null
+          last_test_success?: boolean | null
+          provider_type: string
+          smtp_host?: string | null
+          smtp_password_encrypted?: string | null
+          smtp_port?: number | null
+          smtp_use_tls?: boolean | null
+          smtp_username?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          api_key_encrypted?: string | null
+          created_at?: string
+          from_email?: string | null
+          from_name?: string | null
+          id?: string
+          is_active?: boolean
+          last_test_at?: string | null
+          last_test_error?: string | null
+          last_test_success?: boolean | null
+          provider_type?: string
+          smtp_host?: string | null
+          smtp_password_encrypted?: string | null
+          smtp_port?: number | null
+          smtp_use_tls?: boolean | null
+          smtp_username?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       expense_categories: {
         Row: {
           created_at: string

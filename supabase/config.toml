@@ -68,3 +68,6 @@ verify_jwt = false
 
 [functions.user-referral-process]
 verify_jwt = false
+
+[functions.email-provider-manage]
+verify_jwt = false
