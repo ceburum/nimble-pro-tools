@@ -12,9 +12,8 @@ import { Switch } from '@/components/ui/switch';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserLogo } from '@/hooks/useUserLogo';
 import { useSchedulingPro } from '@/hooks/useSchedulingPro';
-import { useFinancialPro } from '@/hooks/useFinancialPro';
+import { useFinancialTool } from '@/hooks/useFinancialTool';
 import { useMileagePro } from '@/hooks/useMileagePro';
-import { useTaxPro } from '@/hooks/useTaxPro';
 import { useServices } from '@/hooks/useServices';
 import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 import { supabase } from '@/integrations/supabase/client';
@@ -36,9 +35,8 @@ const baseNavigation = [
 // Add-ons (paid features)
 const addOnsNavigation = [
   { name: 'Scheduling Pro', href: '/scheduling', icon: CalendarDays, flagKey: 'scheduling_pro_enabled' as const },
-  { name: 'Financial Pro', href: '/reports', icon: BarChart3, flagKey: 'financial_pro_enabled' as const },
+  { name: 'Financial Tool', href: '/reports', icon: BarChart3, flagKey: 'financial_tool_enabled' as const },
   { name: 'Mileage Pro', href: '/mileage', icon: Car, flagKey: 'mileage_pro_enabled' as const },
-  { name: 'Tax Pro', href: '/tax-pro', icon: Calculator, flagKey: 'tax_pro_enabled' as const },
   { name: 'Service Menu', href: '/services', icon: Scissors, flagKey: 'service_menu_enabled' as const },
 ];
 
@@ -82,9 +80,8 @@ export function AppLayout({
   } = useAuth();
   const { logoUrl } = useUserLogo();
   const { isEnabled: schedulingEnabled } = useSchedulingPro();
-  const { isEnabled: financialEnabled } = useFinancialPro();
+  const { isActive: financialToolEnabled } = useFinancialTool();
   const { isEnabled: mileageEnabled } = useMileagePro();
-  const { isEnabled: taxEnabled } = useTaxPro();
   const { isEnabled: servicesEnabled } = useServices();
   const { isDevModeEnabled, toggleDevMode } = useFeatureFlags();
   const [isAdmin, setIsAdmin] = useState(false);
@@ -110,15 +107,13 @@ export function AppLayout({
   // Map of add-on enabled states - dev mode unlocks all
   const addOnEnabledMap: Record<string, boolean> = isDevModeEnabled ? {
     'scheduling_pro_enabled': true,
-    'financial_pro_enabled': true,
+    'financial_tool_enabled': true,
     'mileage_pro_enabled': true,
-    'tax_pro_enabled': true,
     'service_menu_enabled': true,
   } : {
     'scheduling_pro_enabled': schedulingEnabled,
-    'financial_pro_enabled': financialEnabled,
+    'financial_tool_enabled': financialToolEnabled,
     'mileage_pro_enabled': mileageEnabled,
-    'tax_pro_enabled': taxEnabled,
     'service_menu_enabled': servicesEnabled,
   };
 

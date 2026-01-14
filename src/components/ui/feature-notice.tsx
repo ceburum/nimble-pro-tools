@@ -10,6 +10,7 @@ interface FeatureNoticeProps {
   description: string;
   features?: string[];
   onEnable?: () => Promise<boolean> | Promise<void> | void;
+  onStartTrial?: () => Promise<boolean> | Promise<void> | void;
   loading?: boolean;
   className?: string;
   variant?: 'inline' | 'card';
@@ -26,6 +27,7 @@ export function FeatureNotice({
   description,
   features = [],
   onEnable,
+  onStartTrial,
   loading = false,
   className,
   variant = 'card',
@@ -33,6 +35,12 @@ export function FeatureNotice({
   const handleEnable = async () => {
     if (onEnable) {
       await onEnable();
+    }
+  };
+
+  const handleStartTrial = async () => {
+    if (onStartTrial) {
+      await onStartTrial();
     }
   };
 
@@ -89,16 +97,29 @@ export function FeatureNotice({
           </ul>
         )}
 
-        {onEnable && (
-          <Button 
-            onClick={handleEnable} 
-            disabled={loading}
-            className="gap-2"
-          >
-            {loading ? 'Activating...' : `Activate ${title}`}
-            <ArrowRight className="h-4 w-4" />
-          </Button>
-        )}
+        <div className="flex gap-3 justify-center">
+          {onStartTrial && (
+            <Button 
+              onClick={handleStartTrial} 
+              variant="outline"
+              disabled={loading}
+              className="gap-2"
+            >
+              Start Free Trial
+            </Button>
+          )}
+          
+          {onEnable && (
+            <Button 
+              onClick={handleEnable} 
+              disabled={loading}
+              className="gap-2"
+            >
+              {loading ? 'Activating...' : `Activate ${title}`}
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
 
         <p className="text-xs text-muted-foreground mt-4">
           Free during beta. Premium pricing coming soon.

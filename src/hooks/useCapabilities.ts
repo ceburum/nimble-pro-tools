@@ -5,9 +5,8 @@ import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 
 export type FeatureKey = 
   | 'scheduling_pro'
-  | 'financial_pro'
+  | 'financial_tool'
   | 'mileage_pro'
-  | 'tax_pro'
   | 'service_menu'
   | 'ai_scanning';
 
@@ -43,9 +42,8 @@ export function useCapabilities(): UseCapabilitiesReturn {
   // Feature states from user_settings
   const [featureStates, setFeatureStates] = useState<Record<FeatureKey, CapabilityState>>({
     scheduling_pro: { enabled: false, loading: true },
-    financial_pro: { enabled: false, loading: true },
+    financial_tool: { enabled: false, loading: true },
     mileage_pro: { enabled: false, loading: true },
-    tax_pro: { enabled: false, loading: true },
     service_menu: { enabled: false, loading: true },
     ai_scanning: { enabled: false, loading: true },
   });
@@ -94,15 +92,17 @@ export function useCapabilities(): UseCapabilitiesReturn {
       try {
         const { data } = await supabase
           .from('user_settings')
-          .select('scheduling_pro_enabled, financial_pro_enabled, mileage_pro_enabled, tax_pro_enabled, ai_scans_subscription_status')
+          .select('scheduling_pro_enabled, financial_tool_enabled, financial_pro_enabled, tax_pro_enabled, mileage_pro_enabled, ai_scans_subscription_status')
           .eq('user_id', user.id)
           .maybeSingle();
 
+        // Financial tool is enabled if new flag OR either legacy flag is set
+        const financialToolEnabled = data?.financial_tool_enabled ?? data?.financial_pro_enabled ?? data?.tax_pro_enabled ?? false;
+
         setFeatureStates({
           scheduling_pro: { enabled: data?.scheduling_pro_enabled ?? false, loading: false },
-          financial_pro: { enabled: data?.financial_pro_enabled ?? false, loading: false },
+          financial_tool: { enabled: financialToolEnabled, loading: false },
           mileage_pro: { enabled: data?.mileage_pro_enabled ?? false, loading: false },
-          tax_pro: { enabled: data?.tax_pro_enabled ?? false, loading: false },
           service_menu: { enabled: false, loading: false }, // Local flag only
           ai_scanning: { enabled: data?.ai_scans_subscription_status === 'active', loading: false },
         });
@@ -140,9 +140,8 @@ export function useCapabilities(): UseCapabilitiesReturn {
     try {
       const columnMap: Record<FeatureKey, string> = {
         scheduling_pro: 'scheduling_pro_enabled',
-        financial_pro: 'financial_pro_enabled',
+        financial_tool: 'financial_tool_enabled',
         mileage_pro: 'mileage_pro_enabled',
-        tax_pro: 'tax_pro_enabled',
         service_menu: 'service_menu_enabled', // Local only
         ai_scanning: 'ai_scans_subscription_status',
       };

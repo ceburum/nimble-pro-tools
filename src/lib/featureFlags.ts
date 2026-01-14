@@ -89,13 +89,13 @@ export function isProFeatureEnabled(feature: 'tax' | 'scheduling' | 'mileage' | 
   const flags = getFeatureFlags();
   switch (feature) {
     case 'tax':
-      return flags.tax_pro_enabled;
+    case 'financial':
+      // Both tax and financial now resolve to the merged financial_tool flag
+      return flags.financial_tool_enabled;
     case 'scheduling':
       return flags.scheduling_pro_enabled;
     case 'mileage':
       return flags.mileage_pro_enabled;
-    case 'financial':
-      return flags.financial_pro_enabled;
     default:
       return false;
   }
