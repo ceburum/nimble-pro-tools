@@ -321,6 +321,7 @@ export function useAppState(): AppStateData {
       localStorage.removeItem('nimble_services_preview');
       localStorage.removeItem('nimble_service_menu_settings');
       localStorage.removeItem('nimble_feature_flags');
+      localStorage.removeItem('nimble_appointments');
 
       // Update local state
       setSetupProgress({

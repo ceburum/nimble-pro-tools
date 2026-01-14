@@ -112,7 +112,11 @@ export function getStateCapabilities(state: AppState): StateCapabilities {
         projects: true,
         invoices: true,
         notepad: true,
-        // Show upgrade prompts for pro features
+        // Service menu enabled for all users (free tier for stationary businesses)
+        serviceMenu: true,
+        // Scheduling enabled for base users (appointment booking)
+        scheduling: true,
+        // Show upgrade prompts for advanced pro features
         showUpgradePrompts: true,
         // Can access full app, not setup
         canAccessSetup: false,

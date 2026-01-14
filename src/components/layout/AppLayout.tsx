@@ -27,6 +27,7 @@ const baseNavigation = [
   { name: 'Projects', href: '/projects', icon: FolderKanban },
   { name: 'Invoices', href: '/invoices', icon: Receipt },
   { name: 'Notepad', href: '/notepad', icon: StickyNote },
+  { name: 'Appointments', href: '/appointments', icon: CalendarDays, stationaryOnly: true },
 ];
 
 // Add-ons (paid features) - access determined by AppState
@@ -72,7 +73,7 @@ export function AppLayout({ children }: AppLayoutProps) {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const { logoUrl } = useUserLogo();
-  const { state, hasAccess, capabilities, resetToInstall, isAdmin } = useAppState();
+  const { state, hasAccess, capabilities, resetToInstall, isAdmin, setupProgress } = useAppState();
   const { toast } = useToast();
   
   // Use custom logo if set, otherwise fall back to default
@@ -167,25 +168,33 @@ export function AppLayout({ children }: AppLayoutProps) {
 
         <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
           {/* Base App Features */}
-          {baseNavigation.map(item => {
-            const isActive = location.pathname === item.href;
-            return (
-              <NavLink 
-                key={item.name} 
-                to={item.href} 
-                onClick={() => setSidebarOpen(false)} 
-                className={cn(
-                  "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200", 
-                  isActive 
-                    ? "bg-sidebar-accent text-sidebar-primary" 
-                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                )}
-              >
-                <item.icon className="h-5 w-5" />
-                {item.name}
-              </NavLink>
-            );
-          })}
+          {baseNavigation
+            .filter(item => {
+              // Filter out stationary-only items for mobile businesses
+              if ('stationaryOnly' in item && item.stationaryOnly) {
+                return setupProgress.businessType === 'stationary_appointment';
+              }
+              return true;
+            })
+            .map(item => {
+              const isActive = location.pathname === item.href;
+              return (
+                <NavLink 
+                  key={item.name} 
+                  to={item.href} 
+                  onClick={() => setSidebarOpen(false)} 
+                  className={cn(
+                    "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200", 
+                    isActive 
+                      ? "bg-sidebar-accent text-sidebar-primary" 
+                      : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                  )}
+                >
+                  <item.icon className="h-5 w-5" />
+                  {item.name}
+                </NavLink>
+              );
+            })}
 
           {/* Separator */}
           <div className="my-4 border-t border-sidebar-border" />
