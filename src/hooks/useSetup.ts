@@ -85,6 +85,9 @@ export function useSetup() {
 
   /**
    * Initialize default features based on business type, mobility, and menu choice
+   * 
+   * IMPORTANT: All users get a FREE blank editable service menu by default.
+   * Pre-populated menus are UPGRADES that copy services into the user's menu space.
    */
   const initializeDefaultFeatures = useCallback((data: {
     businessType: BusinessType;
@@ -96,6 +99,9 @@ export function useSetup() {
     const isMobile = data.businessType === 'mobile_job';
     const isStationary = data.businessType === 'stationary_appointment';
     const isBlankOrOther = data.businessSector === 'other';
+    
+    // Determine if the user has a menu (blank or prepopulated both enable menu)
+    // Skip means no menu for now
     const hasMenu = data.menuChoice === 'blank' || data.menuChoice === 'prepopulated';
 
     // Initialize Appointment Calendar data structure
@@ -103,35 +109,44 @@ export function useSetup() {
     if (isMobile || isStationary) {
       const existingAppointments = localStorage.getItem(APPOINTMENTS_STORAGE_KEY);
       if (!existingAppointments) {
-        // Initialize empty appointments array
         localStorage.setItem(APPOINTMENTS_STORAGE_KEY, JSON.stringify([]));
       }
     }
 
-    // Initialize Service Menu based on menu choice (for any business type that selected a menu)
+    // Initialize Service Menu
+    // ALL users with a menu choice (blank or prepopulated) get an editable menu
     if (hasMenu) {
-      // Save services if provided (pre-populated option)
-      if (data.services && data.services.length > 0) {
-        const now = new Date();
+      const now = new Date();
+      
+      if (data.menuChoice === 'prepopulated' && data.services && data.services.length > 0) {
+        // Pre-populated: Copy the profession template into user's menu space
         const servicesToSave = data.services.map((s, index) => ({
-          id: s.id,
+          id: s.id || `service_${Date.now()}_${index}`,
           name: s.name,
           price: s.price,
           duration: s.duration,
           sortOrder: index,
-          createdAt: now,
-          updatedAt: now,
+          createdAt: now.toISOString(),
+          updatedAt: now.toISOString(),
         }));
         localStorage.setItem(SERVICES_STORAGE_KEY, JSON.stringify(servicesToSave));
+        console.log(`[Setup] Saved ${servicesToSave.length} pre-populated services to menu`);
+      } else {
+        // Blank menu: Start with empty services array (user will add their own)
+        // Only initialize if not already present
+        const existingServices = localStorage.getItem(SERVICES_STORAGE_KEY);
+        if (!existingServices) {
+          localStorage.setItem(SERVICES_STORAGE_KEY, JSON.stringify([]));
+        }
       }
       
-      // Initialize menu settings
-      // Include businessSector as source of truth for which profession's menu to show
+      // Initialize menu settings - menu is always unlocked and editable
       const menuSettings = {
         globalBgColor: data.themeColor || '',
-        isUnlocked: true, // Menu is unlocked since they purchased
-        businessSector: data.businessSector, // Store sector as source of truth
-        menuChoice: data.menuChoice, // Track which option they chose
+        isUnlocked: true, // Menu is always unlocked and editable
+        businessSector: data.businessSector,
+        menuChoice: data.menuChoice,
+        isPrepopulated: data.menuChoice === 'prepopulated',
       };
       localStorage.setItem(MENU_SETTINGS_KEY, JSON.stringify(menuSettings));
     }
@@ -140,8 +155,6 @@ export function useSetup() {
     if (isMobile || isBlankOrOther) {
       const existingProjects = localStorage.getItem(PROJECTS_STORAGE_KEY);
       if (!existingProjects) {
-        // Initialize empty projects array (DB will handle actual storage)
-        // This is just a marker that projects feature is initialized
         localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify([]));
       }
     }
@@ -149,8 +162,9 @@ export function useSetup() {
     console.log(`[Setup] Initialized features for ${data.businessType} / ${data.businessSector}:`, {
       appointments: isMobile || isStationary,
       serviceMenu: hasMenu,
-      projects: isMobile || isBlankOrOther,
       menuChoice: data.menuChoice,
+      servicesCount: data.services?.length || 0,
+      projects: isMobile || isBlankOrOther,
     });
   }, []);
 

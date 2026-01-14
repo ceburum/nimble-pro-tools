@@ -35,10 +35,12 @@ export function MenuOptionsStep({
   requestSent = false,
 }: MenuOptionsStepProps) {
   const [selectedOption, setSelectedOption] = useState<'blank' | 'prepopulated' | 'skip' | null>(null);
+  
+  const isBlankFree = blankMenuPrice === 0;
 
   return (
     <div className="space-y-4">
-      {/* Option 1: Blank Menu ($3) */}
+      {/* Option 1: Blank Menu (Free) */}
       <Card className={cn(
         "border-2 transition-all cursor-pointer",
         selectedOption === 'blank' ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
@@ -53,21 +55,21 @@ export function MenuOptionsStep({
                 <FileText className="h-5 w-5" />
               </div>
               <div>
-                <CardTitle className="text-lg">Blank Menu</CardTitle>
+                <CardTitle className="text-lg">Continue with Blank Menu</CardTitle>
                 <CardDescription>
                   Fully editable, add your own services
                 </CardDescription>
               </div>
             </div>
-            <Badge variant="secondary" className="text-sm font-semibold">
-              ${blankMenuPrice.toFixed(2)}
+            <Badge variant="outline" className="text-sm font-semibold text-green-600 border-green-600">
+              Free
             </Badge>
           </div>
         </CardHeader>
         <CardContent className="pt-0">
           <p className="text-sm text-muted-foreground mb-4">
-            Start with an empty service menu. Perfect if you want complete control 
-            over your service list. Add, edit, and organize services your way.
+            Start with an empty service menu. Add, edit, and organize services your way.
+            Perfect for building your own custom menu from scratch.
           </p>
           <Button
             onClick={() => {
@@ -81,19 +83,19 @@ export function MenuOptionsStep({
             {loading && selectedOption === 'blank' ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Processing...
+                Setting up...
               </>
             ) : (
               <>
                 <Check className="h-4 w-4" />
-                Get Blank Menu (${blankMenuPrice.toFixed(2)})
+                Continue with Blank Menu
               </>
             )}
           </Button>
         </CardContent>
       </Card>
 
-      {/* Option 2: Pre-Populated List ($2) */}
+      {/* Option 2: Pre-Populated Menu Upgrade ($3) */}
       <Card className={cn(
         "border-2 transition-all",
         !hasPreset && "opacity-80",
@@ -110,7 +112,7 @@ export function MenuOptionsStep({
               </div>
               <div>
                 <CardTitle className="text-lg flex items-center gap-2">
-                  {sectorName} Menu
+                  Skip the typing — {sectorName} Menu
                   {!hasPreset && (
                     <Badge variant="outline" className="text-xs">
                       <Clock className="h-3 w-3 mr-1" />
@@ -120,13 +122,13 @@ export function MenuOptionsStep({
                 </CardTitle>
                 <CardDescription>
                   {hasPreset 
-                    ? `${presetServices.length} pre-configured services (editable)`
+                    ? `${presetServices.length} pre-configured services ready to customize`
                     : 'Industry-specific preset not yet available'
                   }
                 </CardDescription>
               </div>
             </div>
-            <Badge variant="secondary" className="text-sm font-semibold">
+            <Badge variant="secondary" className="text-sm font-semibold bg-primary/10 text-primary">
               ${prePopulatedPrice.toFixed(2)}
             </Badge>
           </div>
@@ -134,19 +136,22 @@ export function MenuOptionsStep({
         <CardContent className="pt-0">
           {hasPreset ? (
             <>
-              <ScrollArea className="h-32 pr-3 mb-4">
+              <p className="text-sm text-muted-foreground mb-3">
+                Get a head start with a full menu template. All services are fully editable — rename, reprice, or remove anything.
+              </p>
+              <ScrollArea className="h-28 pr-3 mb-4 bg-muted/30 rounded-lg p-2">
                 <div className="grid gap-1.5 text-sm">
-                  {presetServices.slice(0, 10).map((service, index) => (
-                    <div key={index} className="flex justify-between items-center py-1.5 border-b border-border/50 last:border-0">
+                  {presetServices.slice(0, 8).map((service, index) => (
+                    <div key={index} className="flex justify-between items-center py-1 border-b border-border/30 last:border-0">
                       <span className="text-foreground">{service.name}</span>
                       <span className="text-muted-foreground font-medium">
                         ${service.price.toFixed(2)}
                       </span>
                     </div>
                   ))}
-                  {presetServices.length > 10 && (
-                    <div className="text-center py-2 text-muted-foreground">
-                      + {presetServices.length - 10} more services...
+                  {presetServices.length > 8 && (
+                    <div className="text-center py-1.5 text-muted-foreground text-xs">
+                      + {presetServices.length - 8} more services...
                     </div>
                   )}
                 </div>
@@ -163,12 +168,12 @@ export function MenuOptionsStep({
                 {loading && selectedOption === 'prepopulated' ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    Processing...
+                    Setting up your menu...
                   </>
                 ) : (
                   <>
-                    <Check className="h-4 w-4" />
-                    Get {sectorName} Menu (${prePopulatedPrice.toFixed(2)})
+                    <ListChecks className="h-4 w-4" />
+                    Get Full {sectorName} Menu (${prePopulatedPrice.toFixed(2)})
                   </>
                 )}
               </Button>
