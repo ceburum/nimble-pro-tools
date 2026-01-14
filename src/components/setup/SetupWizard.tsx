@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
   Hammer, 
   Truck, 
@@ -16,16 +17,21 @@ import {
   ArrowRight,
   ArrowLeft,
   Check,
-  Sparkles
+  Sparkles,
+  ListChecks
 } from 'lucide-react';
 import { BusinessSector, BusinessType, SECTOR_PRESETS, SECTOR_OPTIONS } from '@/config/sectorPresets';
 import { cn } from '@/lib/utils';
+import { getServicesForSector, getThemeForSector, PreviewService } from '@/lib/serviceUtils';
+import { ServicePreviewCard } from './ServicePreviewCard';
 
 interface SetupWizardProps {
   onComplete: (data: {
     companyName: string;
     businessType: BusinessType;
     businessSector: BusinessSector;
+    services?: PreviewService[];
+    themeColor?: string | null;
   }) => Promise<boolean>;
 }
 
@@ -43,9 +49,12 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
   const [companyName, setCompanyName] = useState('');
   const [businessType, setBusinessType] = useState<BusinessType | null>(null);
   const [businessSector, setBusinessSector] = useState<BusinessSector | null>(null);
+  const [previewServices, setPreviewServices] = useState<PreviewService[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const totalSteps = 3;
+  // Dynamic step count: 4 if we have services to review, otherwise 3
+  const hasServices = previewServices.length > 0;
+  const totalSteps = hasServices ? 4 : 3;
   const progress = (step / totalSteps) * 100;
 
   const handleNext = () => {
@@ -57,6 +66,7 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
   const handleBack = () => {
     if (step > 1) {
       setStep(step - 1);
+      // If going back from service review, keep services but allow re-selection
     }
   };
 
@@ -67,16 +77,27 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
     if (preset) {
       setBusinessType(preset.defaultBusinessType);
     }
+    
+    // Load services for this sector into preview
+    const services = getServicesForSector(sector);
+    setPreviewServices(services);
+  };
+
+  const handleDeleteService = (serviceId: string) => {
+    setPreviewServices(prev => prev.filter(s => s.id !== serviceId));
   };
 
   const handleComplete = async () => {
     if (!companyName || !businessType || !businessSector) return;
     
     setLoading(true);
+    const themeColor = getThemeForSector(businessSector);
     const success = await onComplete({
       companyName,
       businessType,
       businessSector,
+      services: previewServices.length > 0 ? previewServices : undefined,
+      themeColor,
     });
     setLoading(false);
     
@@ -93,10 +114,15 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
         return businessType !== null;
       case 3:
         return businessSector !== null;
+      case 4:
+        return true; // Can always proceed from service review (even with 0 services)
       default:
         return false;
     }
   };
+
+  // Check if we're on the final step
+  const isFinalStep = step === totalSteps;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 flex items-center justify-center p-4">
@@ -112,16 +138,18 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
         <Progress value={progress} className="mb-6 h-2" />
 
         <Card className="border-2">
-          <CardHeader>
+        <CardHeader>
             <CardTitle>
               {step === 1 && 'Your Business Name'}
               {step === 2 && 'How Do You Operate?'}
               {step === 3 && 'What Best Describes Your Business?'}
+              {step === 4 && 'Review Your Services'}
             </CardTitle>
             <CardDescription>
               {step === 1 && 'This will appear on your invoices and quotes'}
               {step === 2 && 'Choose how you typically serve your customers'}
               {step === 3 && 'We\'ll suggest features and services based on your industry'}
+              {step === 4 && `We've prepared ${previewServices.length} services for you. Remove any you don't need.`}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -229,6 +257,42 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
               </div>
             )}
 
+            {/* Step 4: Service Review (conditional) */}
+            {step === 4 && (
+              <div className="space-y-4">
+                {previewServices.length > 0 ? (
+                  <>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <ListChecks className="h-4 w-4" />
+                      <span>{previewServices.length} services ready to import</span>
+                    </div>
+                    <ScrollArea className="h-[320px] pr-4">
+                      <div className="space-y-2">
+                        {previewServices.map(service => (
+                          <ServicePreviewCard
+                            key={service.id}
+                            service={service}
+                            onDelete={handleDeleteService}
+                          />
+                        ))}
+                      </div>
+                    </ScrollArea>
+                    <p className="text-xs text-muted-foreground">
+                      You can add more services later from your Service Menu
+                    </p>
+                  </>
+                ) : (
+                  <div className="text-center py-8">
+                    <ListChecks className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
+                    <p className="text-muted-foreground">No services to import</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      You can add services manually after setup
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Navigation */}
             <div className="flex justify-between pt-4">
               <Button
@@ -240,7 +304,7 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
                 Back
               </Button>
 
-              {step < totalSteps ? (
+              {!isFinalStep ? (
                 <Button onClick={handleNext} disabled={!canProceed()}>
                   Next
                   <ArrowRight className="h-4 w-4 ml-2" />

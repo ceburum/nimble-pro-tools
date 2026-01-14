@@ -121,6 +121,11 @@ export function AppLayout({
   // Handle setup reset (admin maintenance - returns to onboarding wizard)
   const handleResetSetup = async () => {
     if (confirm('Reset to initial setup? This will return to the onboarding wizard.')) {
+      // Clear service data for a fresh onboarding test
+      localStorage.removeItem('nimble_services');
+      localStorage.removeItem('nimble_services_preview');
+      localStorage.removeItem('nimble_service_menu_settings');
+      
       const success = await resetSetup();
       if (success) {
         toast({ 
