@@ -30,38 +30,25 @@ export function ServiceCard({
   const bgColor = service.bgColor || globalBgColor;
   const hasImage = !!service.thumbnailUrl;
   
-  // Determine if we need light text (for dark backgrounds or images)
-  const useLightText = bgColor || hasImage;
+  // Determine if we need light text (only based on background color)
+  const useLightText = !!bgColor;
 
   return (
     <div
       className={cn(
         'relative rounded-lg overflow-hidden group transition-all hover:shadow-lg',
         'border border-border',
+        !bgColor && 'bg-card',
         isPreviewMode && 'ring-2 ring-primary/20'
       )}
       style={{
         backgroundColor: bgColor ? `hsl(${bgColor})` : undefined,
       }}
     >
-      {/* Background Image */}
-      {hasImage && (
-        <div className="absolute inset-0">
-          <img
-            src={service.thumbnailUrl}
-            alt={service.name}
-            className="w-full h-full object-cover"
-          />
-          {/* Overlay for text readability */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
-        </div>
-      )}
-
       {/* Content */}
       <div className={cn(
         'relative p-4 min-h-[120px] flex flex-col justify-end',
-        hasImage && 'text-white',
-        bgColor && !hasImage && 'text-white'
+        useLightText && 'text-white'
       )}>
         {/* Reorder buttons */}
         <div className="absolute top-2 left-2 flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -86,6 +73,17 @@ export function ServiceCard({
             </Button>
           )}
         </div>
+
+        {/* Small thumbnail in upper right corner */}
+        {hasImage && (
+          <div className="absolute top-2 right-20 h-10 w-10 rounded-md overflow-hidden shadow-sm border border-white/30">
+            <img
+              src={service.thumbnailUrl}
+              alt={service.name}
+              className="w-full h-full object-cover"
+            />
+          </div>
+        )}
 
         {/* Action buttons */}
         <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
