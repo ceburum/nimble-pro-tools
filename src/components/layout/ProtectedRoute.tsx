@@ -17,10 +17,13 @@ interface ProtectedRouteProps {
  * - SETUP_INCOMPLETE: Only allow access to dashboard (which shows SetupWizard)
  * - READY_BASE, TRIAL_PRO, PAID_PRO: Allow full app access
  * - ADMIN_PREVIEW: Allow full access including setup replay
+ * 
+ * CRITICAL: Navigation enforcement is PASSIVE. No billing redirects.
+ * Feature gating uses disabled UI + explanatory messaging, not redirects.
  */
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { user, loading: authLoading } = useAuth();
-  const { state, loading: stateLoading, capabilities } = useAppState();
+  const { state, loading: stateLoading, isSetupComplete } = useAppState();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -38,30 +41,33 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     // Enforce navigation based on AppState
     switch (state) {
       case AppState.INSTALL:
-        // Should have been caught by !user check, but just in case
+        // No user session detected - redirect to auth
+        // This should rarely happen as !user check above handles it
         navigate('/auth', { replace: true });
         break;
 
       case AppState.SETUP_INCOMPLETE:
         // Only allow access to root (dashboard) which shows SetupWizard
-        // Redirect any other routes back to root
+        // Redirect any other routes back to root for setup completion
         if (location.pathname !== '/') {
           navigate('/', { replace: true });
         }
         break;
 
       case AppState.ADMIN_PREVIEW:
-        // Admins can access everything - including replaying setup at root
-        // No restrictions
+        // Admins can access everything including replaying setup at root
+        // If setup is incomplete, they'll see the wizard at root
+        // Otherwise, full app access - no restrictions
         break;
 
       case AppState.READY_BASE:
       case AppState.TRIAL_PRO:
       case AppState.PAID_PRO:
-        // Full app access - no restrictions after setup complete
+        // Full app access - no navigation restrictions after setup complete
+        // Feature gating is handled by individual pages (disabled UI, not redirects)
         break;
     }
-  }, [user, loading, state, location.pathname, navigate, capabilities]);
+  }, [user, loading, state, location.pathname, navigate, isSetupComplete]);
 
   if (loading) {
     return (

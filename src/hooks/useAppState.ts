@@ -186,43 +186,45 @@ export function useAppState(): AppStateData {
   }, [paidFeatures]);
 
   // Determine the authoritative AppState
+  // CRITICAL: This is the ONLY source of truth for app state
   const state = useMemo((): AppState => {
-    // Still loading - default to INSTALL to prevent flashing
+    // Still loading - default to INSTALL to prevent UI flash
     if (authLoading || dataLoading) {
       return AppState.INSTALL;
     }
 
-    // No user - INSTALL state (will redirect to auth)
+    // No user session - INSTALL state (ProtectedRoute will redirect to /auth)
     if (!user) {
       return AppState.INSTALL;
     }
 
+    // --- User is authenticated from here ---
+
     // Admin users get ADMIN_PREVIEW - bypasses all paywalls
-    // If setup not completed, admins still see setup wizard but can access everything
+    // Admins can replay setup (see wizard if incomplete) but always have full access
     if (isAdmin) {
-      // Even admins need to complete setup before accessing full app
-      if (!setupProgress.setupCompleted) {
-        return AppState.ADMIN_PREVIEW; // But capabilities still allow setup access
-      }
       return AppState.ADMIN_PREVIEW;
     }
 
-    // Setup not completed - must complete before accessing app
+    // Setup not completed - user MUST complete setup before accessing main app
+    // This immediately transitions from INSTALL -> SETUP_INCOMPLETE on first login
     if (!setupProgress.setupCompleted) {
       return AppState.SETUP_INCOMPLETE;
     }
 
-    // Has paid pro features
+    // --- Setup is complete from here ---
+
+    // Has paid pro features (any of the pro add-ons purchased)
     if (isPaidPro) {
       return AppState.PAID_PRO;
     }
 
-    // Has active trial
+    // Has active trial (any trial not yet expired)
     if (isTrialActive) {
       return AppState.TRIAL_PRO;
     }
 
-    // Default: setup complete, no pro features
+    // Default: setup complete, no pro features = base plan
     return AppState.READY_BASE;
   }, [authLoading, dataLoading, user, isAdmin, setupProgress.setupCompleted, isPaidPro, isTrialActive]);
 
