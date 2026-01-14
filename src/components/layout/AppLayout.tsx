@@ -14,7 +14,7 @@ import { useSchedulingPro } from '@/hooks/useSchedulingPro';
 import { useFinancialTool } from '@/hooks/useFinancialTool';
 import { useMileagePro } from '@/hooks/useMileagePro';
 import { useServices } from '@/hooks/useServices';
-import { useFeatureFlags } from '@/hooks/useFeatureFlags';
+import { useSetup } from '@/hooks/useSetup';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import cebLogo from '@/assets/ceb-logo.png';
@@ -82,8 +82,8 @@ export function AppLayout({
   const { isEnabled: schedulingEnabled } = useSchedulingPro();
   const { isActive: financialToolEnabled } = useFinancialTool();
   const { isEnabled: mileageEnabled } = useMileagePro();
-  const { isEnabled: servicesEnabled, resetMenu } = useServices();
-  const { updateFlag } = useFeatureFlags();
+  const { isEnabled: servicesEnabled } = useServices();
+  const { resetSetup } = useSetup();
   const { toast } = useToast();
   const [isAdmin, setIsAdmin] = useState(false);
   
@@ -118,15 +118,17 @@ export function AppLayout({
     'service_menu_enabled': servicesEnabled,
   };
 
-  // Handle Service Menu reset (admin maintenance)
-  const handleResetServiceMenu = () => {
-    if (confirm('Reset the entire Service Menu? This will delete all services and return to the setup screen.')) {
-      resetMenu();
-      updateFlag('service_menu_enabled', false);
-      toast({ 
-        title: 'Service Menu reset', 
-        description: 'You can now reinitialize with a preset or blank menu.' 
-      });
+  // Handle setup reset (admin maintenance - returns to onboarding wizard)
+  const handleResetSetup = async () => {
+    if (confirm('Reset to initial setup? This will return to the onboarding wizard.')) {
+      const success = await resetSetup();
+      if (success) {
+        toast({ 
+          title: 'Setup reset', 
+          description: 'Returning to onboarding wizard...' 
+        });
+        navigate('/');
+      }
     }
   };
 
@@ -285,11 +287,11 @@ export function AppLayout({
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={handleResetServiceMenu}
+                onClick={handleResetSetup}
                 className="w-full justify-start text-sidebar-foreground/70 hover:text-sidebar-foreground h-8"
               >
                 <RotateCcw className="h-4 w-4 mr-2" />
-                Reset Service Menu
+                Reset Setup
               </Button>
             </div>
           )}

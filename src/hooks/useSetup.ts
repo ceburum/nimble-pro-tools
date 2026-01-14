@@ -96,9 +96,44 @@ export function useSetup() {
     }
   }, [user]);
 
+  const resetSetup = useCallback(async () => {
+    if (!user) return false;
+
+    try {
+      const { error } = await supabase
+        .from('user_settings')
+        .upsert({
+          user_id: user.id,
+          setup_completed: false,
+          business_type: null,
+          business_sector: null,
+          company_name: null,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'user_id' });
+
+      if (error) {
+        console.error('Error resetting setup:', error);
+        return false;
+      }
+
+      setState({
+        setupCompleted: false,
+        businessType: null,
+        businessSector: null,
+        companyName: null,
+      });
+
+      return true;
+    } catch (err) {
+      console.error('Error:', err);
+      return false;
+    }
+  }, [user]);
+
   return {
     ...state,
     loading,
     completeSetup,
+    resetSetup,
   };
 }
