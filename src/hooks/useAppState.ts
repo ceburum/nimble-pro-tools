@@ -326,6 +326,7 @@ export function useAppState(): AppStateData {
       
       // Appointments
       localStorage.removeItem('nimble_appointments');
+      localStorage.removeItem('nimble_active_appointment');
       
       // Projects (local cache)
       localStorage.removeItem('nimble_projects');

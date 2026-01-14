@@ -375,6 +375,8 @@ export type Database = {
       invoices: {
         Row: {
           client_id: string
+          context_id: string | null
+          context_type: string | null
           created_at: string
           due_date: string
           id: string
@@ -390,6 +392,8 @@ export type Database = {
         }
         Insert: {
           client_id: string
+          context_id?: string | null
+          context_type?: string | null
           created_at?: string
           due_date: string
           id?: string
@@ -405,6 +409,8 @@ export type Database = {
         }
         Update: {
           client_id?: string
+          context_id?: string | null
+          context_type?: string | null
           created_at?: string
           due_date?: string
           id?: string
