@@ -46,7 +46,8 @@ function getMenuSettings(): ServiceMenuSettings {
   } catch (error) {
     console.error('Error reading menu settings:', error);
   }
-  return { globalBgColor: '', isUnlocked: false };
+  // Default: menu is unlocked and editable (blank menu is free for all)
+  return { globalBgColor: '', isUnlocked: true };
 }
 
 function saveMenuSettings(settings: ServiceMenuSettings): void {
@@ -60,16 +61,15 @@ function saveMenuSettings(settings: ServiceMenuSettings): void {
 /**
  * useServices - Service menu hook using centralized AppState
  * 
- * SERVICE MENU SOURCE OF TRUTH:
- * - Service menus are loaded based on the business's selected profession during setup
- * - Barber → barber service menu, Mobile mechanic → mobile mechanic service menu
- * - This applies globally: Appointment creation, Invoice creation/editing, 
- *   Service Menu page, Dashboard quick actions
+ * SERVICE MENU BEHAVIOR:
+ * - All users get a FREE blank editable service menu by default
+ * - Pre-populated menus are UPGRADES that copy services into the user's menu
+ * - Services attach to: Quotes/Invoices (mobile), Appointments/Invoices (stationary)
+ * - The menu is always editable - users own their service list
  * 
  * FALLBACK:
- * - If the profession's pre-populated menu is not purchased → show blank editable menu
- * - Never show another profession's menu
- * - Never prompt the user to choose again post-setup
+ * - If no services exist, show empty menu with "Add Service" prompt
+ * - Never prompt for initialization if menu is already unlocked
  * 
  * Access is determined by AppState for the serviceMenu feature.
  */
@@ -350,11 +350,14 @@ export function useServices() {
   }, []);
 
   // Check if we need to show the init dialog
-  // If isUnlocked is true (even with no services), user chose blank menu - don't show init
+  // Now we only show init if: enabled, no services, no preview services, AND menu is not unlocked
+  // Since blank menu is free, isUnlocked should be true after setup completes
+  // This means users who completed setup should never see the init dialog again
   const needsInit = isEnabled && 
     services.length === 0 && 
     previewServices.length === 0 && 
-    !menuSettings.isUnlocked;
+    !menuSettings.isUnlocked &&
+    !setupLoading; // Don't show during setup loading
 
   return {
     services: activeServices,

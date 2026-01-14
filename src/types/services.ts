@@ -14,6 +14,8 @@ export interface Service {
 export interface ServiceMenuSettings {
   globalBgColor: string; // Default tile color (HSL format)
   presetId?: string; // Which preset was used (if any)
-  isUnlocked: boolean; // False until purchased/unlocked
-  businessSector?: string; // The business sector this menu was created for (source of truth)
+  isUnlocked: boolean; // True = menu is active and editable (blank menu is free)
+  businessSector?: string; // The business sector this menu was created for
+  menuChoice?: 'blank' | 'prepopulated' | 'skip'; // Which option was selected during setup
+  isPrepopulated?: boolean; // True if user purchased a pre-populated upgrade
 }

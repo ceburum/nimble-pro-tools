@@ -223,9 +223,10 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
     }
   }, [companyName, businessType, businessSector, onComplete]);
 
-  // Handle menu option: Pre-populated list ($2)
+  // Handle menu option: Pre-populated list ($3 upgrade)
+  // This copies the profession template into the user's menu space
   const handleChoosePrePopulated = useCallback(async () => {
-    if (!businessSector) return;
+    if (!companyName || !businessType || !businessSector) return;
     
     setLoading(true);
     setMenuChoice('prepopulated');
@@ -234,25 +235,44 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
     const category = SERVICE_LIBRARY.find(cat => cat.id === businessSector);
     if (category) {
       const services: PreviewService[] = category.services.map((s, index) => ({
-        id: `preset_${Date.now()}_${index}`,
+        id: `service_${Date.now()}_${index}`,
         name: s.name,
         price: s.price,
         duration: s.duration,
       }));
       setPreviewServices(services);
       setMenuPresetPurchased(true);
-    }
-    
-    setLoading(false);
-    
-    // Move to review step if services were loaded
-    if (stepOrder.includes('review')) {
-      setStep('review');
+      
+      // If there's a review step, go there to let user customize
+      if (stepOrder.includes('review')) {
+        setLoading(false);
+        setStep('review');
+        return;
+      }
+      
+      // Otherwise, complete setup with the pre-populated services immediately
+      const themeColor = getThemeForSector(businessSector);
+      const success = await onComplete({
+        companyName,
+        businessType,
+        businessSector,
+        services: services,
+        themeColor,
+        menuPresetPurchased: true,
+        menuChoice: 'prepopulated',
+      });
+      
+      setLoading(false);
+      
+      if (!success) {
+        console.error('Setup completion failed');
+        toast.error('Failed to complete setup');
+      }
     } else {
-      // Complete immediately if no review step
-      handleCompleteWithServices();
+      setLoading(false);
+      toast.error('Could not load service template');
     }
-  }, [businessSector, stepOrder]);
+  }, [companyName, businessType, businessSector, stepOrder, onComplete]);
 
   // Handle menu option: Skip (Free)
   const handleSkipMenu = useCallback(async () => {
