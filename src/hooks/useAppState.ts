@@ -308,6 +308,8 @@ export function useAppState(): AppStateData {
           business_type: null,
           business_sector: null,
           company_name: null,
+          // Reset pro features
+          scheduling_pro_enabled: false,
           updated_at: new Date().toISOString(),
         }, { onConflict: 'user_id' });
 
@@ -316,12 +318,20 @@ export function useAppState(): AppStateData {
         return false;
       }
 
-      // Clear local storage items
+      // Clear ALL local storage items related to features
+      // Services & Menu
       localStorage.removeItem('nimble_services');
       localStorage.removeItem('nimble_services_preview');
       localStorage.removeItem('nimble_service_menu_settings');
-      localStorage.removeItem('nimble_feature_flags');
+      
+      // Appointments
       localStorage.removeItem('nimble_appointments');
+      
+      // Projects (local cache)
+      localStorage.removeItem('nimble_projects');
+      
+      // Feature flags and other settings
+      localStorage.removeItem('nimble_feature_flags');
 
       // Update local state
       setSetupProgress({
@@ -330,6 +340,8 @@ export function useAppState(): AppStateData {
         businessSector: null,
         setupCompleted: false,
       });
+
+      console.log('[AppState] Reset to INSTALL - cleared all setup progress and feature data');
 
       return true;
     } catch (err) {

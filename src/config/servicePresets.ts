@@ -76,10 +76,54 @@ export const SERVICE_PRESETS: Record<string, ServicePreset> = {
       { name: 'Quick Trim', price: 15, duration: 15 },
     ],
   },
+  contractor_general: {
+    id: 'contractor_general',
+    name: 'General Contractor',
+    description: 'Common contractor services for trades and handyman work',
+    themeColor: '25 70% 45%',     // Warm orange (#c86b23)
+    altColor: '20 25% 30%',       // Dark brown
+    services: [
+      { name: 'Service Call', price: 75, duration: 60 },
+      { name: 'Hourly Labor', price: 85, duration: 60 },
+      { name: 'Emergency Rate', price: 125, duration: 60 },
+      { name: 'Diagnostic Fee', price: 50, duration: 30 },
+      { name: 'Estimate / Quote', price: 0, duration: 60 },
+      { name: 'Consultation', price: 50, duration: 45 },
+      { name: 'Minor Repair', price: 100, duration: 60 },
+      { name: 'Major Repair', price: 250, duration: 180 },
+      { name: 'Installation - Small', price: 150, duration: 90 },
+      { name: 'Installation - Large', price: 350, duration: 240 },
+      { name: 'Replacement', price: 200, duration: 120 },
+      { name: 'Maintenance Visit', price: 95, duration: 60 },
+      { name: 'Inspection', price: 75, duration: 45 },
+      { name: 'Cleanup', price: 50, duration: 30 },
+      { name: 'Travel Fee', price: 25, duration: 0 },
+    ],
+  },
+  mobile_service: {
+    id: 'mobile_service',
+    name: 'Mobile Services',
+    description: 'Common services for mobile businesses like detailing, grooming, cleaning',
+    themeColor: '200 60% 40%',    // Bright blue
+    altColor: '200 30% 30%',      // Dark blue
+    services: [
+      { name: 'Basic Package', price: 50, duration: 45 },
+      { name: 'Standard Package', price: 75, duration: 60 },
+      { name: 'Premium Package', price: 100, duration: 90 },
+      { name: 'Deluxe Package', price: 150, duration: 120 },
+      { name: 'Add-On Service', price: 25, duration: 15 },
+      { name: 'Express Service', price: 40, duration: 30 },
+      { name: 'Deep Clean', price: 120, duration: 90 },
+      { name: 'Detail Service', price: 200, duration: 180 },
+      { name: 'Specialty Treatment', price: 75, duration: 45 },
+      { name: 'Travel Fee', price: 15, duration: 0 },
+      { name: 'Same-Day Service', price: 20, duration: 0 },
+      { name: 'Weekend Premium', price: 15, duration: 0 },
+    ],
+  },
   // Future presets can be added here
   // salon: { ... },
   // spa: { ... },
-  // mobile_services: { ... },
 };
 
 // Color theme presets for custom color picker

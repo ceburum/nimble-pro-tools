@@ -5,12 +5,12 @@ import { SERVICE_PRESETS, PresetService } from '@/config/servicePresets';
 
 // Map sectors to their richer service preset (if available)
 export const SECTOR_TO_PRESET_MAP: Record<BusinessSector, string | null> = {
-  'salon_beauty': 'barber_shop',      // Full 50-item barber list
-  'contractor_trades': null,          // Uses sectorPresets.preloadedServices
-  'mobile_services': null,            // Uses sectorPresets.preloadedServices
-  'appointment_services': null,       // Uses sectorPresets.preloadedServices
-  'retail_sales': null,               // Uses sectorPresets.preloadedServices
-  'blank_minimal': null,              // No services
+  'salon_beauty': 'barber_shop',           // Full 50-item barber list
+  'contractor_trades': 'contractor_general', // Contractor services list
+  'mobile_services': 'mobile_service',      // Mobile service business list
+  'appointment_services': null,             // Uses sectorPresets.preloadedServices
+  'retail_sales': null,                     // Uses sectorPresets.preloadedServices
+  'blank_minimal': null,                    // No services
 };
 
 export interface PreviewService {
@@ -70,4 +70,26 @@ export function getThemeForSector(sector: BusinessSector): string | null {
   }
   
   return null;
+}
+
+/**
+ * Check if a business type should have service menu enabled by default
+ */
+export function shouldEnableServiceMenu(businessType: string): boolean {
+  return businessType === 'stationary_appointment';
+}
+
+/**
+ * Check if a business type should have appointment calendar enabled
+ */
+export function shouldEnableAppointments(businessType: string): boolean {
+  // Both mobile and stationary get appointments
+  return businessType === 'stationary_appointment' || businessType === 'mobile_job';
+}
+
+/**
+ * Check if a business sector is project-focused (contractors, generic)
+ */
+export function isProjectFocusedSector(sector: string): boolean {
+  return sector === 'contractor_trades' || sector === 'blank_minimal';
 }
