@@ -9,6 +9,12 @@ export const PRICING = {
   FINANCIAL_TOOL_PRICE: 34.99,
   FULL_BUNDLE_PRICE: 99.99,
 
+  // Pre-populated menu presets (one-time)
+  MENU_PRESET_BARBER: 1.99,
+  MENU_PRESET_SALON: 1.99,
+  MENU_PRESET_SPA: 1.99,
+  MENU_PRESET_DEFAULT: 1.99,
+
   // Subscriptions (monthly)
   SCANNER_PRICE: 5.99,
   CLOUD_STANDARD_PRICE: 2.99,
@@ -40,5 +46,25 @@ export const FEATURE_NAMES = {
   cloud_premium: 'Cloud Storage (Premium)',
 } as const;
 
+// Menu preset configurations for upsell
+export const MENU_PRESETS_CONFIG = {
+  barber_shop: {
+    name: 'Barber Shop',
+    price: 1.99,
+    serviceCount: 50,
+  },
+  salon: {
+    name: 'Salon & Beauty',
+    price: 1.99,
+    serviceCount: 45,
+  },
+  spa: {
+    name: 'Spa & Wellness',
+    price: 1.99,
+    serviceCount: 40,
+  },
+} as const;
+
 export type CloudStorageTier = 'standard' | 'premium' | null;
 export type TrialableFeature = 'mileage' | 'financial_tool' | 'cloud_storage';
+export type MenuPresetType = keyof typeof MENU_PRESETS_CONFIG;
