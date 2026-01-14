@@ -60,11 +60,11 @@ export function useFeatureFlags() {
     enableProFeature,
     disableProFeature,
     toggleDevMode,
-    // Convenience getters
-    isTaxProEnabled: flags.tax_pro_enabled || flags.financial_tool_enabled,
+    // Convenience getters - Tax and Financial Pro both resolve to Financial Tool
+    isTaxProEnabled: flags.financial_tool_enabled,
     isSchedulingProEnabled: flags.scheduling_pro_enabled,
     isMileageProEnabled: flags.mileage_pro_enabled,
-    isFinancialProEnabled: flags.financial_pro_enabled || flags.financial_tool_enabled,
+    isFinancialProEnabled: flags.financial_tool_enabled,
     isFinancialToolEnabled: flags.financial_tool_enabled,
     isServiceMenuEnabled: flags.service_menu_enabled,
     isDevModeEnabled: flags.dev_mode_enabled,
