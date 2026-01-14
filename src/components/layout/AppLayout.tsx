@@ -4,11 +4,10 @@ import {
   LayoutDashboard, Users, FolderKanban, Receipt, Menu, LogOut, 
   Car, CalendarDays, Calculator, Lock, Scissors, StickyNote,
   Sparkles, BarChart3, CreditCard, Shield, BookOpen, ExternalLink,
-  UserPlus, Settings
+  UserPlus, Settings, RotateCcw
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserLogo } from '@/hooks/useUserLogo';
 import { useSchedulingPro } from '@/hooks/useSchedulingPro';
@@ -17,6 +16,7 @@ import { useMileagePro } from '@/hooks/useMileagePro';
 import { useServices } from '@/hooks/useServices';
 import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 import cebLogo from '@/assets/ceb-logo.png';
 
 interface AppLayoutProps {
@@ -82,8 +82,9 @@ export function AppLayout({
   const { isEnabled: schedulingEnabled } = useSchedulingPro();
   const { isActive: financialToolEnabled } = useFinancialTool();
   const { isEnabled: mileageEnabled } = useMileagePro();
-  const { isEnabled: servicesEnabled } = useServices();
-  const { isDevModeEnabled, toggleDevMode } = useFeatureFlags();
+  const { isEnabled: servicesEnabled, resetMenu } = useServices();
+  const { updateFlag } = useFeatureFlags();
+  const { toast } = useToast();
   const [isAdmin, setIsAdmin] = useState(false);
   
   // Check if user is admin
@@ -104,8 +105,8 @@ export function AppLayout({
   // Use custom logo if set, otherwise fall back to default
   const displayLogo = logoUrl || cebLogo;
   
-  // Map of add-on enabled states - dev mode unlocks all
-  const addOnEnabledMap: Record<string, boolean> = isDevModeEnabled ? {
+  // Map of add-on enabled states - admin users get all add-ons unlocked
+  const addOnEnabledMap: Record<string, boolean> = isAdmin ? {
     'scheduling_pro_enabled': true,
     'financial_tool_enabled': true,
     'mileage_pro_enabled': true,
@@ -115,6 +116,18 @@ export function AppLayout({
     'financial_tool_enabled': financialToolEnabled,
     'mileage_pro_enabled': mileageEnabled,
     'service_menu_enabled': servicesEnabled,
+  };
+
+  // Handle Service Menu reset (admin maintenance)
+  const handleResetServiceMenu = () => {
+    if (confirm('Reset the entire Service Menu? This will delete all services and return to the setup screen.')) {
+      resetMenu();
+      updateFlag('service_menu_enabled', false);
+      toast({ 
+        title: 'Service Menu reset', 
+        description: 'You can now reinitialize with a preset or blank menu.' 
+      });
+    }
   };
 
   const handleSignOut = async () => {
@@ -263,17 +276,21 @@ export function AppLayout({
           )}
         </nav>
 
-        {/* Footer with Dev Mode Toggle + Sign Out */}
+        {/* Footer with Admin Tools + Sign Out */}
         <div className="px-4 py-4 border-t border-sidebar-border space-y-2">
-          {/* Dev Mode Toggle - Admin Only */}
+          {/* Admin Maintenance Section */}
           {isAdmin && (
-            <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-sidebar-accent/50">
-              <span className="text-xs font-medium text-sidebar-foreground/70">Dev Mode</span>
-              <Switch 
-                checked={isDevModeEnabled} 
-                onCheckedChange={toggleDevMode}
-                className="scale-90"
-              />
+            <div className="px-3 py-2 rounded-lg bg-sidebar-accent/50 space-y-2">
+              <span className="text-xs font-semibold text-sidebar-foreground/50 uppercase">Admin</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleResetServiceMenu}
+                className="w-full justify-start text-sidebar-foreground/70 hover:text-sidebar-foreground h-8"
+              >
+                <RotateCcw className="h-4 w-4 mr-2" />
+                Reset Service Menu
+              </Button>
             </div>
           )}
           

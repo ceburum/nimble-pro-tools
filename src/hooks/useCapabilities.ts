@@ -121,12 +121,12 @@ export function useCapabilities(): UseCapabilitiesReturn {
 
   // Check if user has capability for a feature
   const hasCapability = useCallback((feature: FeatureKey): boolean => {
-    // Dev mode overrides all feature gates (but NOT admin status)
-    if (isDevModeEnabled) {
+    // Admin users have access to all features
+    if (isAdmin) {
       return true;
     }
     return featureStates[feature]?.enabled ?? false;
-  }, [featureStates, isDevModeEnabled]);
+  }, [featureStates, isAdmin]);
 
   // Check if a feature is still loading
   const isLoading = useCallback((feature: FeatureKey): boolean => {
