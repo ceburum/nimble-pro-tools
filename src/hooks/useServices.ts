@@ -2,7 +2,10 @@ import { useState, useEffect, useCallback } from 'react';
 import { Service, ServiceMenuSettings } from '@/types/services';
 import { generateLocalId } from '@/lib/localDb';
 import { useAppState } from './useAppState';
+import { useSetup } from './useSetup';
 import { SERVICE_PRESETS } from '@/config/servicePresets';
+import { getPresetIdForSector, isValidPresetForSector } from '@/lib/serviceUtils';
+import { BusinessSector } from '@/config/sectorPresets';
 
 // Storage keys
 const SERVICES_STORAGE_KEY = 'nimble_services';
@@ -57,6 +60,17 @@ function saveMenuSettings(settings: ServiceMenuSettings): void {
 /**
  * useServices - Service menu hook using centralized AppState
  * 
+ * SERVICE MENU SOURCE OF TRUTH:
+ * - Service menus are loaded based on the business's selected profession during setup
+ * - Barber → barber service menu, Mobile mechanic → mobile mechanic service menu
+ * - This applies globally: Appointment creation, Invoice creation/editing, 
+ *   Service Menu page, Dashboard quick actions
+ * 
+ * FALLBACK:
+ * - If the profession's pre-populated menu is not purchased → show blank editable menu
+ * - Never show another profession's menu
+ * - Never prompt the user to choose again post-setup
+ * 
  * Access is determined by AppState for the serviceMenu feature.
  */
 export function useServices() {
@@ -67,30 +81,66 @@ export function useServices() {
   const [isPreviewMode, setIsPreviewMode] = useState(false);
   
   const { hasAccess, loading: stateLoading } = useAppState();
+  const { businessSector, loading: setupLoading } = useSetup();
   
   // Access determined by AppState
   const isEnabled = hasAccess('serviceMenu');
+  
+  // Get the valid preset ID for the current business sector
+  const validPresetId = businessSector ? getPresetIdForSector(businessSector as BusinessSector) : null;
 
   // Load services on mount
   useEffect(() => {
-    if (isEnabled) {
+    if (isEnabled && !setupLoading) {
       const storedServices = getStoredServices();
       const storedPreview = getStoredServices(PREVIEW_SERVICES_KEY);
       const settings = getMenuSettings();
       
+      // Validate that stored preset matches current sector
+      // If mismatch (e.g., sector changed), clear the preset services
+      if (settings.presetId && businessSector) {
+        const isValidPreset = isValidPresetForSector(settings.presetId, businessSector as BusinessSector);
+        if (!isValidPreset) {
+          console.log('[useServices] Preset mismatch for sector, clearing invalid preset');
+          // Clear invalid preset data - user should see blank menu
+          localStorage.removeItem(PREVIEW_SERVICES_KEY);
+          const cleanSettings = { ...settings, presetId: undefined };
+          saveMenuSettings(cleanSettings);
+          setMenuSettings(cleanSettings);
+          setPreviewServices([]);
+          setIsPreviewMode(false);
+        } else {
+          setPreviewServices(storedPreview.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0)));
+          setMenuSettings(settings);
+          setIsPreviewMode(storedPreview.length > 0 && !settings.isUnlocked);
+        }
+      } else {
+        setPreviewServices(storedPreview.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0)));
+        setMenuSettings(settings);
+        setIsPreviewMode(storedPreview.length > 0 && !settings.isUnlocked);
+      }
+      
       setServices(storedServices.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0)));
-      setPreviewServices(storedPreview.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0)));
-      setMenuSettings(settings);
-      setIsPreviewMode(storedPreview.length > 0 && !settings.isUnlocked);
     }
-    setLoading(false);
-  }, [isEnabled]);
+    if (!setupLoading) {
+      setLoading(false);
+    }
+  }, [isEnabled, setupLoading, businessSector]);
 
   // Get the active services list (preview or permanent)
   const activeServices = isPreviewMode ? previewServices : services;
 
-  // Load a preset into preview mode
+  /**
+   * Load a preset into preview mode.
+   * Validates that the preset matches the current business sector.
+   */
   const loadPreset = useCallback((presetId: string) => {
+    // Validate preset matches current sector
+    if (businessSector && !isValidPresetForSector(presetId, businessSector as BusinessSector)) {
+      console.warn('[useServices] Attempted to load invalid preset for sector:', presetId, businessSector);
+      return false;
+    }
+    
     const preset = SERVICE_PRESETS[presetId];
     if (!preset) return false;
 
@@ -109,18 +159,19 @@ export function useServices() {
     saveStoredServices(presetServices, PREVIEW_SERVICES_KEY);
     setPreviewServices(presetServices);
     
-    // Update settings with preset info
+    // Update settings with preset info and sector reference
     const newSettings: ServiceMenuSettings = {
       globalBgColor: preset.themeColor,
       presetId: presetId,
       isUnlocked: false,
+      businessSector: businessSector || undefined,
     };
     saveMenuSettings(newSettings);
     setMenuSettings(newSettings);
     
     setIsPreviewMode(true);
     return true;
-  }, []);
+  }, [businessSector]);
 
   // Start with a blank menu (no preset)
   const startBlank = useCallback(() => {
@@ -128,16 +179,17 @@ export function useServices() {
     localStorage.removeItem(PREVIEW_SERVICES_KEY);
     setPreviewServices([]);
     
-    // Mark as unlocked with blank settings
+    // Mark as unlocked with blank settings, including sector reference
     const newSettings: ServiceMenuSettings = {
       globalBgColor: '',
       isUnlocked: true,
+      businessSector: businessSector || undefined,
     };
     saveMenuSettings(newSettings);
     setMenuSettings(newSettings);
     
     setIsPreviewMode(false);
-  }, []);
+  }, [businessSector]);
 
   // Commit preview to permanent storage (after unlock/purchase)
   const commitPreview = useCallback(() => {
@@ -306,11 +358,13 @@ export function useServices() {
 
   return {
     services: activeServices,
-    loading: loading || stateLoading,
+    loading: loading || stateLoading || setupLoading,
     isEnabled,
     isPreviewMode,
     menuSettings,
     needsInit,
+    businessSector, // Expose current sector for components
+    validPresetId, // Expose valid preset for current sector
     addService,
     updateService,
     deleteService,
