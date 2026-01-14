@@ -14,6 +14,7 @@ import { useUserLogo } from '@/hooks/useUserLogo';
 import { useAppState } from '@/hooks/useAppState';
 import { AppState } from '@/lib/appState';
 import { useToast } from '@/hooks/use-toast';
+import { UnlockedFeaturesBox } from './UnlockedFeaturesBox';
 import cebLogo from '@/assets/ceb-logo.png';
 
 interface AppLayoutProps {
@@ -245,7 +246,8 @@ export function AppLayout({ children }: AppLayoutProps) {
               );
             })}
 
-          {/* Separator - only show if there are locked add-ons */}
+          {/* Unlocked Features Box - shows active trials/purchased features */}
+          <UnlockedFeaturesBox />
           {addOnsNavigation.some(item => {
             const isStationary = setupProgress.businessType === 'stationary_appointment';
             const isUnlocked = hasAccess(item.featureKey);
