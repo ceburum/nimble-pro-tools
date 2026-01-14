@@ -84,17 +84,19 @@ export function useSetup() {
   }, [user]);
 
   /**
-   * Initialize default features based on business type and mobility
+   * Initialize default features based on business type, mobility, and menu choice
    */
   const initializeDefaultFeatures = useCallback((data: {
     businessType: BusinessType;
     businessSector: BusinessSector;
     services?: PreviewService[];
     themeColor?: string | null;
+    menuChoice?: 'blank' | 'prepopulated' | 'skip';
   }) => {
     const isMobile = data.businessType === 'mobile_job';
     const isStationary = data.businessType === 'stationary_appointment';
     const isBlankOrOther = data.businessSector === 'other';
+    const hasMenu = data.menuChoice === 'blank' || data.menuChoice === 'prepopulated';
 
     // Initialize Appointment Calendar data structure
     // Both mobile and stationary get appointments, but with different defaults
@@ -106,9 +108,9 @@ export function useSetup() {
       }
     }
 
-    // Initialize Service Menu for Stationary businesses
-    if (isStationary) {
-      // Save services if provided
+    // Initialize Service Menu based on menu choice (for any business type that selected a menu)
+    if (hasMenu) {
+      // Save services if provided (pre-populated option)
       if (data.services && data.services.length > 0) {
         const now = new Date();
         const servicesToSave = data.services.map((s, index) => ({
@@ -123,12 +125,13 @@ export function useSetup() {
         localStorage.setItem(SERVICES_STORAGE_KEY, JSON.stringify(servicesToSave));
       }
       
-      // Initialize menu settings (always for stationary, even without services)
+      // Initialize menu settings
       // Include businessSector as source of truth for which profession's menu to show
       const menuSettings = {
         globalBgColor: data.themeColor || '',
-        isUnlocked: true, // Stationary businesses always have menu unlocked
+        isUnlocked: true, // Menu is unlocked since they purchased
         businessSector: data.businessSector, // Store sector as source of truth
+        menuChoice: data.menuChoice, // Track which option they chose
       };
       localStorage.setItem(MENU_SETTINGS_KEY, JSON.stringify(menuSettings));
     }
@@ -145,8 +148,9 @@ export function useSetup() {
 
     console.log(`[Setup] Initialized features for ${data.businessType} / ${data.businessSector}:`, {
       appointments: isMobile || isStationary,
-      serviceMenu: isStationary,
+      serviceMenu: hasMenu,
       projects: isMobile || isBlankOrOther,
+      menuChoice: data.menuChoice,
     });
   }, []);
 
@@ -156,6 +160,7 @@ export function useSetup() {
     businessSector: BusinessSector;
     services?: PreviewService[];
     themeColor?: string | null;
+    menuChoice?: 'blank' | 'prepopulated' | 'skip';
   }) => {
     if (!user) return false;
 

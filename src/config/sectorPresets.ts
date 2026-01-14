@@ -72,8 +72,17 @@ export const SECTOR_OPTIONS = Object.entries(SECTOR_PRESETS).map(([key, preset])
   icon: preset.icon,
   serviceCount: preset.serviceCount,
   businessType: preset.defaultBusinessType,
+  hasPreset: preset.serviceCount > 0, // Determines if pre-populated list is available
 }));
 
-// Group sectors by business type for UI
+// Group sectors by business type for UI filtering
 export const MOBILE_SECTORS = SECTOR_OPTIONS.filter(s => s.businessType === 'mobile_job');
 export const STATIONARY_SECTORS = SECTOR_OPTIONS.filter(s => s.businessType === 'stationary_appointment');
+
+// Get sectors available for a specific business type
+export function getSectorsForBusinessType(businessType: BusinessType): typeof SECTOR_OPTIONS {
+  if (businessType === 'mobile_job') {
+    return MOBILE_SECTORS;
+  }
+  return STATIONARY_SECTORS;
+}

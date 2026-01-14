@@ -80,3 +80,6 @@ verify_jwt = false
 
 [functions.appointment-response]
 verify_jwt = false
+
+[functions.request-service-list]
+verify_jwt = false

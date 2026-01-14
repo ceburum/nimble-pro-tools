@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -19,16 +19,19 @@ import {
   Check,
   Sparkles,
   ListChecks,
-  Loader2
+  Loader2,
+  Search
 } from 'lucide-react';
-import { BusinessSector, BusinessType, SECTOR_PRESETS, SECTOR_OPTIONS } from '@/config/sectorPresets';
+import { BusinessSector, BusinessType, SECTOR_PRESETS, getSectorsForBusinessType } from '@/config/sectorPresets';
 import { cn } from '@/lib/utils';
 import { getServicesForSector, getThemeForSector, PreviewService, getSectorPresetId } from '@/lib/serviceUtils';
 import { ServicePreviewCard } from './ServicePreviewCard';
-import { MenuUpsellStep } from './MenuUpsellStep';
+import { MenuOptionsStep } from './MenuOptionsStep';
 import { useAppState } from '@/hooks/useAppState';
-import { SERVICE_PRESETS } from '@/config/servicePresets';
-import { MENU_PRESETS_CONFIG } from '@/config/pricing';
+import { SERVICE_LIBRARY } from '@/config/serviceLibrary';
+import { PRICING, MENU_PRESETS_CONFIG } from '@/config/pricing';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface SetupWizardProps {
   onComplete: (data: {
@@ -38,6 +41,7 @@ interface SetupWizardProps {
     services?: PreviewService[];
     themeColor?: string | null;
     menuPresetPurchased?: boolean;
+    menuChoice?: 'blank' | 'prepopulated' | 'skip';
   }) => Promise<boolean>;
 }
 
@@ -50,7 +54,7 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   FileText,
 };
 
-type WizardStep = 'name' | 'type' | 'sector' | 'menu_upsell' | 'review';
+type WizardStep = 'name' | 'type' | 'sector' | 'menu_options' | 'review';
 
 export function SetupWizard({ onComplete }: SetupWizardProps) {
   const { persistSetupStep, setupProgress } = useAppState();
@@ -65,27 +69,62 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
   );
   const [previewServices, setPreviewServices] = useState<PreviewService[]>([]);
   const [menuPresetPurchased, setMenuPresetPurchased] = useState(false);
+  const [menuChoice, setMenuChoice] = useState<'blank' | 'prepopulated' | 'skip' | null>(null);
   const [loading, setLoading] = useState(false);
   const [stepSaving, setStepSaving] = useState(false);
+  const [sectorSearch, setSectorSearch] = useState('');
+  const [requestSent, setRequestSent] = useState(false);
 
-  // Check if stationary business should see menu upsell
-  const isStationaryBusiness = businessType === 'stationary_appointment';
+  // Get filtered sectors based on business type
+  const filteredSectors = useMemo(() => {
+    if (!businessType) return [];
+    
+    const sectorsForType = getSectorsForBusinessType(businessType);
+    
+    // Apply search filter
+    if (sectorSearch.trim()) {
+      const searchLower = sectorSearch.toLowerCase();
+      return sectorsForType.filter(s => 
+        s.label.toLowerCase().includes(searchLower) ||
+        s.description.toLowerCase().includes(searchLower)
+      );
+    }
+    
+    return sectorsForType;
+  }, [businessType, sectorSearch]);
+
+  // Get preset configuration for selected sector
   const presetId = businessSector ? getSectorPresetId(businessSector) : null;
-  const hasMenuPreset = presetId !== null;
   const presetConfig = presetId ? MENU_PRESETS_CONFIG[presetId as keyof typeof MENU_PRESETS_CONFIG] : null;
-  const showMenuUpsell = isStationaryBusiness && hasMenuPreset && presetId;
+  const hasMenuPreset = presetConfig?.hasPreset ?? false;
 
-  // Get step order based on business type
+  // Load services from the library for preview
+  const presetServices = useMemo(() => {
+    if (!businessSector || businessSector === 'other') return [];
+    
+    const category = SERVICE_LIBRARY.find(cat => cat.id === businessSector);
+    if (category) {
+      return category.services.map((s, i) => ({
+        id: `preview_${Date.now()}_${i}`,
+        name: s.name,
+        price: s.price,
+        duration: s.duration,
+      }));
+    }
+    return [];
+  }, [businessSector]);
+
+  // Get step order - all business types now get menu options
   const getStepOrder = (): WizardStep[] => {
     const steps: WizardStep[] = ['name', 'type', 'sector'];
     
-    // Add menu upsell step for stationary businesses with presets
-    if (isStationaryBusiness && hasMenuPreset) {
-      steps.push('menu_upsell');
+    // Add menu options step for all sectors except 'other'
+    if (businessSector && businessSector !== 'other') {
+      steps.push('menu_options');
     }
     
-    // Add review step if there are services
-    if (previewServices.length > 0) {
+    // Add review step if there are services to review
+    if (previewServices.length > 0 && menuChoice === 'prepopulated') {
       steps.push('review');
     }
     
@@ -117,15 +156,28 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
     setBusinessType(type);
     setStepSaving(true);
     
+    // Clear sector and services when business type changes
+    setBusinessSector(null);
+    setPreviewServices([]);
+    setMenuChoice(null);
+    setMenuPresetPurchased(false);
+    setSectorSearch('');
+    
     // Persist to database immediately for visible progress
     await persistSetupStep('business_type', type);
     setStepSaving(false);
   }, [persistSetupStep]);
 
-  // Handle sector selection with immediate persistence and service loading
+  // Handle sector selection with immediate persistence
   const handleSectorSelect = useCallback(async (sector: BusinessSector) => {
     setBusinessSector(sector);
     setStepSaving(true);
+    
+    // Clear any previous preview services and menu state
+    setPreviewServices([]);
+    setMenuPresetPurchased(false);
+    setMenuChoice(null);
+    setRequestSent(false);
     
     // Auto-set business type based on sector default if not already set
     const preset = SECTOR_PRESETS[sector];
@@ -137,30 +189,51 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
     // Persist sector selection immediately
     await persistSetupStep('business_sector', sector);
     
-    // For non-stationary or non-preset sectors, load services now
-    // For stationary with preset, services will be loaded based on menu upsell choice
-    const isStationary = businessType === 'stationary_appointment' || preset?.defaultBusinessType === 'stationary_appointment';
-    const sectorPresetId = getSectorPresetId(sector);
-    
-    if (!isStationary || !sectorPresetId) {
-      // Load basic sector services
-      const services = getServicesForSector(sector);
-      setPreviewServices(services);
-    }
-    
     setStepSaving(false);
   }, [businessType, persistSetupStep]);
 
-  // Handle menu upsell - user chooses pre-populated menu
-  const handleChoosePreset = useCallback(async () => {
-    if (!presetId) return;
+  // Handle menu option: Blank Menu ($3)
+  const handleChooseBlankMenu = useCallback(async () => {
+    if (!companyName || !businessType || !businessSector) return;
     
     setLoading(true);
+    setMenuChoice('blank');
     
-    // Load the full preset services
-    const preset = SERVICE_PRESETS[presetId];
-    if (preset) {
-      const services: PreviewService[] = preset.services.map((s, index) => ({
+    // Clear any preset services
+    setPreviewServices([]);
+    setMenuPresetPurchased(false);
+    
+    // Complete setup with blank menu
+    const themeColor = getThemeForSector(businessSector);
+    const success = await onComplete({
+      companyName,
+      businessType,
+      businessSector,
+      services: undefined,
+      themeColor,
+      menuPresetPurchased: false,
+      menuChoice: 'blank',
+    });
+    
+    setLoading(false);
+    
+    if (!success) {
+      console.error('Setup completion failed');
+      toast.error('Failed to complete setup');
+    }
+  }, [companyName, businessType, businessSector, onComplete]);
+
+  // Handle menu option: Pre-populated list ($2)
+  const handleChoosePrePopulated = useCallback(async () => {
+    if (!businessSector) return;
+    
+    setLoading(true);
+    setMenuChoice('prepopulated');
+    
+    // Load the full preset services from library
+    const category = SERVICE_LIBRARY.find(cat => cat.id === businessSector);
+    if (category) {
+      const services: PreviewService[] = category.services.map((s, index) => ({
         id: `preset_${Date.now()}_${index}`,
         name: s.name,
         price: s.price,
@@ -172,69 +245,82 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
     
     setLoading(false);
     
-    // Move to next step (review if services, or complete)
+    // Move to review step if services were loaded
     if (stepOrder.includes('review')) {
       setStep('review');
     } else {
-      handleComplete();
+      // Complete immediately if no review step
+      handleCompleteWithServices();
     }
-  }, [presetId, stepOrder]);
+  }, [businessSector, stepOrder]);
 
-  // Handle menu upsell - user chooses blank menu
-  const handleChooseBlank = useCallback(async () => {
-    if (!companyName || !businessType || !businessSector) return;
-    
-    setLoading(true);
-    
-    // Clear any preset services, start with blank
-    setPreviewServices([]);
-    setMenuPresetPurchased(false);
-    
-    // Complete setup immediately with blank menu
-    const themeColor = getThemeForSector(businessSector);
-    const success = await onComplete({
-      companyName,
-      businessType,
-      businessSector,
-      services: undefined, // No services - blank menu
-      themeColor,
-      menuPresetPurchased: false,
-    });
-    
-    setLoading(false);
-    
-    if (!success) {
-      console.error('Setup completion failed');
-    }
-  }, [companyName, businessType, businessSector, onComplete]);
-
-  // Skip menu entirely
+  // Handle menu option: Skip (Free)
   const handleSkipMenu = useCallback(async () => {
     if (!companyName || !businessType || !businessSector) return;
     
     setLoading(true);
+    setMenuChoice('skip');
     setPreviewServices([]);
     setMenuPresetPurchased(false);
     
-    // Complete setup
+    // Complete setup without menu
     const themeColor = getThemeForSector(businessSector);
-    await onComplete({
+    const success = await onComplete({
       companyName,
       businessType,
       businessSector,
       services: undefined,
       themeColor,
       menuPresetPurchased: false,
+      menuChoice: 'skip',
     });
     
     setLoading(false);
+    
+    if (!success) {
+      console.error('Setup completion failed');
+      toast.error('Failed to complete setup');
+    }
   }, [companyName, businessType, businessSector, onComplete]);
+
+  // Handle request for missing list
+  const handleRequestMissingList = useCallback(async () => {
+    if (!businessSector) return;
+    
+    setLoading(true);
+    
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      const response = await supabase.functions.invoke('request-service-list', {
+        body: {
+          sectorId: businessSector,
+          sectorName: presetConfig?.name || businessSector,
+        },
+        headers: session?.access_token ? {
+          Authorization: `Bearer ${session.access_token}`,
+        } : undefined,
+      });
+      
+      if (response.error) {
+        throw new Error(response.error.message);
+      }
+      
+      setRequestSent(true);
+      toast.success('Request submitted! We\'ll notify you when the list is available.');
+    } catch (error) {
+      console.error('Failed to submit request:', error);
+      toast.error('Failed to submit request. Please try again.');
+    }
+    
+    setLoading(false);
+  }, [businessSector, presetConfig]);
 
   const handleDeleteService = useCallback((serviceId: string) => {
     setPreviewServices(prev => prev.filter(s => s.id !== serviceId));
   }, []);
 
-  const handleComplete = useCallback(async () => {
+  const handleCompleteWithServices = useCallback(async () => {
     if (!companyName || !businessType || !businessSector) return;
     
     setLoading(true);
@@ -246,13 +332,14 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
       services: previewServices.length > 0 ? previewServices : undefined,
       themeColor,
       menuPresetPurchased,
+      menuChoice: menuChoice || undefined,
     });
     setLoading(false);
     
     if (!success) {
-      // Handle error - could show toast
+      toast.error('Failed to complete setup');
     }
-  }, [companyName, businessType, businessSector, previewServices, menuPresetPurchased, onComplete]);
+  }, [companyName, businessType, businessSector, previewServices, menuPresetPurchased, menuChoice, onComplete]);
 
   const canProceed = () => {
     switch (step) {
@@ -262,10 +349,10 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
         return businessType !== null;
       case 'sector':
         return businessSector !== null;
-      case 'menu_upsell':
-        return true; // Can always proceed (handled by specific buttons)
+      case 'menu_options':
+        return true; // Handled by specific buttons
       case 'review':
-        return true; // Can always proceed from service review
+        return true;
       default:
         return false;
     }
@@ -279,7 +366,7 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
         return 'How Do You Operate?';
       case 'sector':
         return 'What Best Describes Your Business?';
-      case 'menu_upsell':
+      case 'menu_options':
         return 'Set Up Your Service Menu';
       case 'review':
         return 'Review Your Services';
@@ -294,8 +381,8 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
         return 'Choose how you typically serve your customers';
       case 'sector':
         return "We'll suggest features and services based on your industry";
-      case 'menu_upsell':
-        return 'Start with a pre-built menu or create your own';
+      case 'menu_options':
+        return 'Choose how you want to set up your service menu';
       case 'review':
         return `We've prepared ${previewServices.length} services for you. Remove any you don't need.`;
     }
@@ -398,60 +485,88 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
               </div>
             )}
 
-            {/* Step: Business Sector */}
-            {step === 'sector' && (
-              <div className="grid gap-3 md:grid-cols-2">
-                {SECTOR_OPTIONS.map((option) => {
-                  const IconComponent = ICON_MAP[option.icon] || FileText;
-                  const isSelected = businessSector === option.value;
-                  return (
-                    <button
-                      key={option.value}
-                      onClick={() => handleSectorSelect(option.value)}
-                      disabled={stepSaving}
-                      className={cn(
-                        "p-4 rounded-lg border-2 text-left transition-all relative",
-                        isSelected
-                          ? "border-primary bg-primary/5"
-                          : "border-border hover:border-primary/50"
-                      )}
-                    >
-                      {stepSaving && isSelected && (
-                        <Loader2 className="absolute top-3 right-3 h-4 w-4 animate-spin" />
-                      )}
-                      <div className="flex items-center gap-3 mb-2">
-                        <div className={cn(
-                          "p-2 rounded-full",
-                          isSelected ? "bg-primary text-primary-foreground" : "bg-muted"
-                        )}>
-                          <IconComponent className="h-4 w-4" />
-                        </div>
-                        <span className="font-medium">{option.label}</span>
+            {/* Step: Business Sector with Search */}
+            {step === 'sector' && businessType && (
+              <div className="space-y-4">
+                {/* Search Input */}
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search professions..."
+                    value={sectorSearch}
+                    onChange={(e) => setSectorSearch(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+
+                {/* Sector Grid */}
+                <ScrollArea className="h-[320px] pr-2">
+                  <div className="grid gap-3 md:grid-cols-2">
+                    {filteredSectors.map((option) => {
+                      const IconComponent = ICON_MAP[option.icon] || FileText;
+                      const isSelected = businessSector === option.value;
+                      return (
+                        <button
+                          key={option.value}
+                          onClick={() => handleSectorSelect(option.value)}
+                          disabled={stepSaving}
+                          className={cn(
+                            "p-4 rounded-lg border-2 text-left transition-all relative",
+                            isSelected
+                              ? "border-primary bg-primary/5"
+                              : "border-border hover:border-primary/50"
+                          )}
+                        >
+                          {stepSaving && isSelected && (
+                            <Loader2 className="absolute top-3 right-3 h-4 w-4 animate-spin" />
+                          )}
+                          <div className="flex items-center gap-3 mb-2">
+                            <div className={cn(
+                              "p-2 rounded-full",
+                              isSelected ? "bg-primary text-primary-foreground" : "bg-muted"
+                            )}>
+                              <IconComponent className="h-4 w-4" />
+                            </div>
+                            <div className="flex-1 flex items-center justify-between">
+                              <span className="font-medium">{option.label}</span>
+                              {option.serviceCount > 0 && (
+                                <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                                  {option.serviceCount} services
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <p className="text-xs text-muted-foreground line-clamp-2">
+                            {option.description}
+                          </p>
+                        </button>
+                      );
+                    })}
+                    
+                    {filteredSectors.length === 0 && (
+                      <div className="col-span-2 text-center py-8 text-muted-foreground">
+                        No professions found matching "{sectorSearch}"
                       </div>
-                      <p className="text-xs text-muted-foreground line-clamp-2">
-                        {option.description}
-                      </p>
-                    </button>
-                  );
-                })}
+                    )}
+                  </div>
+                </ScrollArea>
               </div>
             )}
 
-            {/* Step: Menu Upsell (for stationary businesses with presets) */}
-            {step === 'menu_upsell' && presetId && (
-              <MenuUpsellStep
-                services={SERVICE_PRESETS[presetId]?.services.map((s, i) => ({
-                  id: `preview_${i}`,
-                  name: s.name,
-                  price: s.price,
-                  duration: s.duration,
-                })) || []}
-                presetName={presetConfig?.name || 'Service'}
-                price={presetConfig?.price || 1.99}
-                onSelectPurchase={handleChoosePreset}
-                onSelectFree={handleChooseBlank}
-                onSkip={handleSkipMenu}
+            {/* Step: Menu Options (3 choices for all business types) */}
+            {step === 'menu_options' && businessSector && (
+              <MenuOptionsStep
+                sectorName={presetConfig?.name || businessSector}
+                hasPreset={hasMenuPreset}
+                presetServices={presetServices}
+                blankMenuPrice={PRICING.BLANK_MENU_PRICE}
+                prePopulatedPrice={PRICING.PREPOPULATED_MENU_PRICE}
+                onSelectBlankMenu={handleChooseBlankMenu}
+                onSelectPrePopulated={handleChoosePrePopulated}
+                onSelectNoMenu={handleSkipMenu}
+                onRequestMissingList={handleRequestMissingList}
                 loading={loading}
+                requestSent={requestSent}
               />
             )}
 
@@ -491,8 +606,8 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
               </div>
             )}
 
-            {/* Navigation (except for menu_upsell which has its own buttons) */}
-            {step !== 'menu_upsell' && (
+            {/* Navigation (except for menu_options which has its own buttons) */}
+            {step !== 'menu_options' && (
               <div className="flex justify-between pt-4">
                 <Button
                   variant="outline"
@@ -509,7 +624,7 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
                     <ArrowRight className="h-4 w-4 ml-2" />
                   </Button>
                 ) : (
-                  <Button onClick={handleComplete} disabled={!canProceed() || loading}>
+                  <Button onClick={handleCompleteWithServices} disabled={!canProceed() || loading}>
                     {loading ? (
                       'Setting up...'
                     ) : (
