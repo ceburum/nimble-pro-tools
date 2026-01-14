@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Service, ServiceMenuSettings } from '@/types/services';
 import { generateLocalId } from '@/lib/localDb';
-import { useFeatureFlags } from './useFeatureFlags';
+import { useAppState } from './useAppState';
 import { SERVICE_PRESETS } from '@/config/servicePresets';
 
 // Storage keys
@@ -54,15 +54,22 @@ function saveMenuSettings(settings: ServiceMenuSettings): void {
   }
 }
 
+/**
+ * useServices - Service menu hook using centralized AppState
+ * 
+ * Access is determined by AppState for the serviceMenu feature.
+ */
 export function useServices() {
   const [services, setServices] = useState<Service[]>([]);
   const [previewServices, setPreviewServices] = useState<Service[]>([]);
   const [menuSettings, setMenuSettings] = useState<ServiceMenuSettings>(getMenuSettings);
   const [loading, setLoading] = useState(true);
   const [isPreviewMode, setIsPreviewMode] = useState(false);
-  const { flags } = useFeatureFlags();
-
-  const isEnabled = flags.service_menu_enabled ?? false;
+  
+  const { hasAccess, loading: stateLoading } = useAppState();
+  
+  // Access determined by AppState
+  const isEnabled = hasAccess('serviceMenu');
 
   // Load services on mount
   useEffect(() => {
@@ -298,7 +305,7 @@ export function useServices() {
 
   return {
     services: activeServices,
-    loading,
+    loading: loading || stateLoading,
     isEnabled,
     isPreviewMode,
     menuSettings,

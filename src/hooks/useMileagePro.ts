@@ -1,46 +1,27 @@
-import { useState, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
+import { useAppState } from './useAppState';
 
+/**
+ * useMileagePro - Mileage feature hook using centralized AppState
+ * 
+ * Access is determined by AppState. This hook provides:
+ * - Read access to enabled status (from AppState)
+ * - Actions to enable/disable the feature (persists to DB)
+ */
 export function useMileagePro() {
   const { user } = useAuth();
-  const [isEnabled, setIsEnabled] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const { hasAccess, loading: stateLoading } = useAppState();
+  const [actionLoading, setActionLoading] = useState(false);
 
-  useEffect(() => {
-    if (!user) {
-      setIsEnabled(false);
-      setLoading(false);
-      return;
-    }
+  // Access determined by AppState - NOT by individual DB flag
+  const isEnabled = hasAccess('mileage');
+  const loading = stateLoading;
 
-    const fetchMileageProStatus = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('user_settings')
-          .select('mileage_pro_enabled')
-          .eq('user_id', user.id)
-          .maybeSingle();
-
-        if (error) {
-          console.error('Error fetching mileage pro status:', error);
-          setIsEnabled(false);
-        } else {
-          setIsEnabled(data?.mileage_pro_enabled ?? false);
-        }
-      } catch (err) {
-        console.error('Error:', err);
-        setIsEnabled(false);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchMileageProStatus();
-  }, [user]);
-
-  const enableMileagePro = async () => {
+  const enableMileagePro = useCallback(async (): Promise<boolean> => {
     if (!user) return false;
+    setActionLoading(true);
 
     try {
       const { error } = await supabase
@@ -56,21 +37,27 @@ export function useMileagePro() {
         return false;
       }
 
-      setIsEnabled(true);
+      // Note: State will update on next AppState refresh
       return true;
     } catch (err) {
       console.error('Error:', err);
       return false;
+    } finally {
+      setActionLoading(false);
     }
-  };
+  }, [user]);
 
-  const disableMileagePro = async () => {
+  const disableMileagePro = useCallback(async (): Promise<boolean> => {
     if (!user) return false;
+    setActionLoading(true);
 
     try {
       const { error } = await supabase
         .from('user_settings')
-        .update({ mileage_pro_enabled: false, updated_at: new Date().toISOString() })
+        .update({ 
+          mileage_pro_enabled: false, 
+          updated_at: new Date().toISOString() 
+        })
         .eq('user_id', user.id);
 
       if (error) {
@@ -78,17 +65,19 @@ export function useMileagePro() {
         return false;
       }
 
-      setIsEnabled(false);
       return true;
     } catch (err) {
       console.error('Error:', err);
       return false;
+    } finally {
+      setActionLoading(false);
     }
-  };
+  }, [user]);
 
   return {
     isEnabled,
     loading,
+    actionLoading,
     enableMileagePro,
     disableMileagePro
   };
