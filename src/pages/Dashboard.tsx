@@ -10,11 +10,13 @@ import { BusinessProfileDialog } from '@/components/settings/BusinessProfileDial
 import { PartnerSuggestions } from '@/components/reports/PartnerSuggestions';
 import { ClientDialog } from '@/components/clients/ClientDialog';
 import { ProjectDialog } from '@/components/projects/ProjectDialog';
+import { InvoiceDialog } from '@/components/invoices/InvoiceDialog';
 import { Button } from '@/components/ui/button';
 import { mockClients, mockInvoices } from '@/lib/mockData';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useProjects } from '@/hooks/useProjects';
 import { useClients } from '@/hooks/useClients';
+import { useInvoices } from '@/hooks/useInvoices';
 import { Client, Invoice, Project } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -25,6 +27,7 @@ export default function Dashboard() {
   const [localInvoices] = useLocalStorage<Invoice[]>('ceb-invoices', mockInvoices);
   const { projects, addProject } = useProjects();
   const { clients: dbClients, addClient } = useClients();
+  const { addInvoice } = useInvoices();
   
   // Use DB clients if available, otherwise fall back to local
   const clients = dbClients.length > 0 ? dbClients : localClients;
@@ -38,6 +41,7 @@ export default function Dashboard() {
   // Dialog states for quick actions
   const [clientDialogOpen, setClientDialogOpen] = useState(false);
   const [projectDialogOpen, setProjectDialogOpen] = useState(false);
+  const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false);
 
   // Fetch dashboard logo on mount
   useEffect(() => {
@@ -181,6 +185,17 @@ export default function Dashboard() {
     }
   };
 
+  const handleSaveInvoice = async (data: Omit<Invoice, 'id' | 'createdAt'>) => {
+    const result = await addInvoice(data);
+    if (result) {
+      toast({
+        title: "Invoice created",
+        description: `Invoice ${data.invoiceNumber} has been created.`
+      });
+      setInvoiceDialogOpen(false);
+    }
+  };
+
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
@@ -232,7 +247,7 @@ export default function Dashboard() {
           </div>
         </button>
         <button 
-          onClick={() => navigate('/invoices', { state: { openNewInvoice: true } })} 
+          onClick={() => setInvoiceDialogOpen(true)} 
           className="flex items-center gap-3 p-4 rounded-lg border border-border bg-card hover:border-primary/50 hover:bg-primary/5 transition-all duration-200 w-full text-left"
         >
           <Receipt className="text-accent w-8 h-8" />
@@ -288,6 +303,13 @@ export default function Dashboard() {
         project={null}
         clients={clients}
         onSave={handleSaveProject}
+      />
+
+      <InvoiceDialog
+        open={invoiceDialogOpen}
+        onOpenChange={setInvoiceDialogOpen}
+        clients={clients}
+        onSave={handleSaveInvoice}
       />
     </div>
   );
