@@ -276,6 +276,20 @@ export function useServices() {
     setMenuSettings(newSettings);
   }, [menuSettings]);
 
+  // Reset the entire menu (admin function for maintenance)
+  const resetMenu = useCallback(() => {
+    // Clear all service menu storage
+    localStorage.removeItem(SERVICES_STORAGE_KEY);
+    localStorage.removeItem(PREVIEW_SERVICES_KEY);
+    localStorage.removeItem(MENU_SETTINGS_KEY);
+    
+    // Reset state
+    setServices([]);
+    setPreviewServices([]);
+    setMenuSettings({ globalBgColor: '', isUnlocked: false });
+    setIsPreviewMode(false);
+  }, []);
+
   // Check if we need to show the init dialog
   const needsInit = isEnabled && 
     services.length === 0 && 
@@ -298,5 +312,6 @@ export function useServices() {
     startBlank,
     commitPreview,
     discardPreview,
+    resetMenu,
   };
 }

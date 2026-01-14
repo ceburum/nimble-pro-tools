@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Plus, Scissors, Loader2 } from 'lucide-react';
+import { Plus, Scissors, Loader2, RotateCcw } from 'lucide-react';
 import { useServices } from '@/hooks/useServices';
+import { useCapabilities } from '@/hooks/useCapabilities';
 import { Service } from '@/types/services';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -32,15 +33,28 @@ export default function ServiceMenu() {
     startBlank,
     commitPreview,
     discardPreview,
+    resetMenu,
   } = useServices();
   
   const { updateFlag } = useFeatureFlags();
+  const { isAdmin } = useCapabilities();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingService, setEditingService] = useState<Service | null>(null);
   const [enabling, setEnabling] = useState(false);
   const [loadingPreset, setLoadingPreset] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  const handleResetMenu = () => {
+    if (confirm('Reset the entire Service Menu? This will delete all services and return to the setup screen.')) {
+      resetMenu();
+      updateFlag('service_menu_enabled', false);
+      toast({ 
+        title: 'Service Menu reset', 
+        description: 'You can now reinitialize with a preset or blank menu.' 
+      });
+    }
+  };
 
   const handleEnableServiceMenu = async (): Promise<boolean> => {
     setEnabling(true);
@@ -154,6 +168,17 @@ export default function ServiceMenu() {
         action={
           isEnabled && !needsInit ? (
             <div className="flex items-center gap-2">
+              {isAdmin && (
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={handleResetMenu}
+                  className="text-muted-foreground"
+                >
+                  <RotateCcw className="h-4 w-4 mr-1" />
+                  Reset
+                </Button>
+              )}
               <ServiceColorPicker
                 value={menuSettings.globalBgColor}
                 onChange={updateGlobalColor}
