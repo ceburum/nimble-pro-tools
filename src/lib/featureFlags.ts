@@ -1,4 +1,6 @@
 // Feature flags stored locally, control pro features and dev mode
+import { BusinessSector, BusinessType } from '@/config/sectorPresets';
+import { CloudStorageTier } from '@/config/pricing';
 
 export interface FeatureFlags {
   // Pro feature flags (local state, synced with user_settings)
@@ -6,12 +8,22 @@ export interface FeatureFlags {
   scheduling_pro_enabled: boolean;
   mileage_pro_enabled: boolean;
   financial_pro_enabled: boolean;
+  financial_tool_enabled: boolean;  // Merged Financial + Tax
   
   // Add-on feature flags
   service_menu_enabled: boolean;
   
+  // Subscription flags
+  scanner_subscription_active: boolean;
+  cloud_storage_tier: CloudStorageTier;
+  
   // Developer mode (admin only - unlocks all features for testing)
   dev_mode_enabled: boolean;
+  
+  // Setup flags
+  setup_completed: boolean;
+  business_type: BusinessType | null;
+  business_sector: BusinessSector | null;
   
   // Migration flags
   migration_completed: boolean;
@@ -27,8 +39,14 @@ export const DEFAULT_FEATURE_FLAGS: FeatureFlags = {
   scheduling_pro_enabled: false,
   mileage_pro_enabled: false,
   financial_pro_enabled: false,
+  financial_tool_enabled: false,
   service_menu_enabled: false,
+  scanner_subscription_active: false,
+  cloud_storage_tier: null,
   dev_mode_enabled: false,
+  setup_completed: false,
+  business_type: null,
+  business_sector: null,
   migration_completed: false,
   migration_started_at: null,
   migration_completed_at: null,
