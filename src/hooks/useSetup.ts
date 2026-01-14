@@ -2,6 +2,11 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { BusinessSector, BusinessType } from '@/config/sectorPresets';
+import { PreviewService } from '@/lib/serviceUtils';
+
+// Storage keys (must match useServices.ts)
+const SERVICES_STORAGE_KEY = 'nimble_services';
+const MENU_SETTINGS_KEY = 'nimble_service_menu_settings';
 
 interface SetupState {
   setupCompleted: boolean;
@@ -62,6 +67,8 @@ export function useSetup() {
     companyName: string;
     businessType: BusinessType;
     businessSector: BusinessSector;
+    services?: PreviewService[];
+    themeColor?: string | null;
   }) => {
     if (!user) return false;
 
@@ -80,6 +87,29 @@ export function useSetup() {
       if (error) {
         console.error('Error completing setup:', error);
         return false;
+      }
+
+      // Save services to localStorage if provided
+      if (data.services && data.services.length > 0) {
+        const now = new Date();
+        const servicesToSave = data.services.map((s, index) => ({
+          id: s.id,
+          name: s.name,
+          price: s.price,
+          duration: s.duration,
+          sortOrder: index,
+          createdAt: now,
+          updatedAt: now,
+        }));
+        
+        localStorage.setItem(SERVICES_STORAGE_KEY, JSON.stringify(servicesToSave));
+        
+        // Also save menu settings with theme color and mark as unlocked
+        const menuSettings = {
+          globalBgColor: data.themeColor || '',
+          isUnlocked: true,
+        };
+        localStorage.setItem(MENU_SETTINGS_KEY, JSON.stringify(menuSettings));
       }
 
       setState({
