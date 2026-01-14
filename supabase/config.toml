@@ -71,3 +71,12 @@ verify_jwt = false
 
 [functions.email-provider-manage]
 verify_jwt = false
+
+[functions.ai-reconcile-statements]
+verify_jwt = false
+
+[functions.send-appointment-notification]
+verify_jwt = false
+
+[functions.appointment-response]
+verify_jwt = false
