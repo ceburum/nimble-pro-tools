@@ -43,7 +43,7 @@ const addOnsNavigation: Array<{
   stationaryOnly?: boolean;
 }> = [
   { name: 'Scheduling Pro', href: '/scheduling', icon: CalendarDays, featureKey: 'scheduling' },
-  { name: 'Financial Tool', href: '/reports', icon: BarChart3, featureKey: 'financial' },
+  { name: 'Financial Pro', href: '/reports', icon: BarChart3, featureKey: 'financial' },
   { name: 'Mileage Pro', href: '/mileage', icon: Car, featureKey: 'mileage' },
   { name: 'Service Menu', href: '/services', icon: Scissors, featureKey: 'serviceMenu', stationaryOnly: true },
 ];

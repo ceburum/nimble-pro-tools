@@ -1,12 +1,17 @@
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { ClientTransactionDialog } from './ClientTransactionDialog';
+import { useClients } from '@/hooks/useClients';
+import { ChevronRight } from 'lucide-react';
 
 interface ClientIncome {
   name: string;
   totalPaid: number;
   totalInvoiced: number;
   outstanding: number;
+  clientId?: string;
 }
 
 interface IncomeByClientReportProps {
@@ -14,13 +19,23 @@ interface IncomeByClientReportProps {
 }
 
 export function IncomeByClientReport({ data }: IncomeByClientReportProps) {
-  const chartData = data.slice(0, 10).map((client) => ({
+  const { clients } = useClients();
+  const [selectedClient, setSelectedClient] = useState<{ id: string; name: string } | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+
+  // Enrich data with client IDs
+  const enrichedData = data.map(item => {
+    const client = clients.find(c => c.name === item.name);
+    return { ...item, clientId: client?.id };
+  });
+
+  const chartData = enrichedData.slice(0, 10).map((client) => ({
     name: client.name.length > 15 ? client.name.substring(0, 15) + '...' : client.name,
     paid: client.totalPaid,
     outstanding: client.outstanding,
   }));
 
-  const totals = data.reduce(
+  const totals = enrichedData.reduce(
     (acc, client) => ({
       totalPaid: acc.totalPaid + client.totalPaid,
       totalInvoiced: acc.totalInvoiced + client.totalInvoiced,
@@ -28,6 +43,13 @@ export function IncomeByClientReport({ data }: IncomeByClientReportProps) {
     }),
     { totalPaid: 0, totalInvoiced: 0, outstanding: 0 }
   );
+
+  const handleClientClick = (clientName: string, clientId?: string) => {
+    if (clientId) {
+      setSelectedClient({ id: clientId, name: clientName });
+      setDialogOpen(true);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -90,10 +112,11 @@ export function IncomeByClientReport({ data }: IncomeByClientReportProps) {
         </Card>
       )}
 
-      {/* Table */}
+      {/* Table - Now with clickable rows */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Client Breakdown</CardTitle>
+          <p className="text-sm text-muted-foreground">Click a client to view their transaction history</p>
         </CardHeader>
         <CardContent>
           <Table>
@@ -103,20 +126,28 @@ export function IncomeByClientReport({ data }: IncomeByClientReportProps) {
                 <TableHead className="text-right">Total Invoiced</TableHead>
                 <TableHead className="text-right">Paid</TableHead>
                 <TableHead className="text-right">Outstanding</TableHead>
+                <TableHead className="w-8"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {data.map((client, index) => (
-                <TableRow key={index}>
-                  <TableCell className="font-medium">{client.name}</TableCell>
+              {enrichedData.map((client, index) => (
+                <TableRow 
+                  key={index}
+                  className={client.clientId ? 'cursor-pointer hover:bg-muted/50 transition-colors' : ''}
+                  onClick={() => handleClientClick(client.name, client.clientId)}
+                >
+                  <TableCell className="font-medium text-primary">{client.name}</TableCell>
                   <TableCell className="text-right">${client.totalInvoiced.toLocaleString()}</TableCell>
                   <TableCell className="text-right text-success">${client.totalPaid.toLocaleString()}</TableCell>
                   <TableCell className="text-right text-warning">${client.outstanding.toLocaleString()}</TableCell>
+                  <TableCell>
+                    {client.clientId && <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+                  </TableCell>
                 </TableRow>
               ))}
-              {data.length === 0 && (
+              {enrichedData.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
                     No invoice data available
                   </TableCell>
                 </TableRow>
@@ -125,6 +156,16 @@ export function IncomeByClientReport({ data }: IncomeByClientReportProps) {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Client Transaction Dialog */}
+      {selectedClient && (
+        <ClientTransactionDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          clientId={selectedClient.id}
+          clientName={selectedClient.name}
+        />
+      )}
     </div>
   );
 }

@@ -67,7 +67,7 @@ export default function Reports() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <PageHeader title="Financial Tool" description="Reports, tax prep & expense tracking" />
+        <PageHeader title="Financial Pro" description="Reports, tax prep & expense tracking" />
         <div className="space-y-4">
           <Skeleton className="h-10 w-full max-w-md" />
           <div className="grid gap-4 md:grid-cols-3">
@@ -84,7 +84,7 @@ export default function Reports() {
   return (
     <div className="space-y-6">
       <PageHeader 
-        title="Financial Tool" 
+        title="Financial Pro" 
         description="Reports, tax prep & expense tracking"
         action={
           isActive ? (
@@ -120,7 +120,7 @@ export default function Reports() {
       {!isActive && (
         <FeatureNotice
           icon={<BarChart3 className="h-8 w-8 text-primary" />}
-          title="Financial Tool"
+          title="Financial Pro"
           description="Complete financial management: P&L reports, bank reconciliation, 1099 tracking, Schedule C categorization, and AI-powered receipt scanning — all in one powerful add-on."
           features={[
             'Invoice aging & client income reports',
@@ -201,7 +201,11 @@ export default function Reports() {
                   </TabsContent>
 
                   <TabsContent value="pnl">
-                    <ProfitLossReport data={profitLoss} expensesByCategory={expensesByCategory} />
+                    <ProfitLossReport 
+                      data={profitLoss} 
+                      expensesByCategory={expensesByCategory}
+                      dateRange={dateRange}
+                    />
                   </TabsContent>
 
                   <TabsContent value="reconcile">

@@ -34,6 +34,7 @@ export function QuickExpenseEntry() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<QuickCategory | null>(null);
   const [amount, setAmount] = useState('');
+  const [payee, setPayee] = useState('');
   const [date, setDate] = useState<Date>(new Date());
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
@@ -44,6 +45,7 @@ export function QuickExpenseEntry() {
   const handleOpenQuickEntry = (category: QuickCategory) => {
     setSelectedCategory(category);
     setAmount('');
+    setPayee(category.name);
     setDate(new Date());
     setNotes('');
     setDialogOpen(true);
@@ -64,11 +66,11 @@ export function QuickExpenseEntry() {
       const matchingCategory = categories.find(c => c.irsCode === selectedCategory.irsCode);
 
       await addExpense({
-        description: `${selectedCategory.name}${notes ? `: ${notes}` : ''}`,
+        description: `${payee || selectedCategory.name}${notes ? `: ${notes}` : ''}`,
         amount: amountNum,
         expenseDate: date,
         categoryId: matchingCategory?.id,
-        vendor: selectedCategory.name,
+        vendor: payee || selectedCategory.name,
       });
 
       toast.success(`${selectedCategory.name} expense recorded`);
@@ -120,6 +122,16 @@ export function QuickExpenseEntry() {
           </DialogHeader>
 
           <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="payee">Payee / Vendor</Label>
+              <Input
+                id="payee"
+                value={payee}
+                onChange={(e) => setPayee(e.target.value)}
+                placeholder={selectedCategory?.name || "Enter payee name"}
+              />
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="amount">Amount</Label>
               <div className="relative">
