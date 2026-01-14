@@ -1,4 +1,4 @@
-import { Receipt, Calendar, MoreVertical, Mail, Copy, CreditCard, Download, ImageDown } from 'lucide-react';
+import { Receipt, Calendar, MoreVertical, Mail, Copy, CreditCard, Download, ImageDown, Link2 } from 'lucide-react';
 import { Invoice, Client } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -12,6 +12,7 @@ import {
 import { cn } from '@/lib/utils';
 import { downloadInvoice } from '@/lib/generateInvoicePdf';
 import { supabase } from '@/integrations/supabase/client';
+import { PaylinkButton } from './PaylinkButton';
 import { toast } from 'sonner';
 
 interface InvoiceCardProps {
@@ -190,6 +191,17 @@ export function InvoiceCard({ invoice, client, onSendEmail, onCopyLink, onMarkPa
               <ImageDown className="h-3.5 w-3.5" />
               <span>Receipts ({invoice.receiptAttachments.length})</span>
             </Button>
+          )}
+          {/* Paylink button for sent/overdue invoices */}
+          {invoice.status !== 'paid' && invoice.status !== 'draft' && (
+            <div onClick={(e) => e.stopPropagation()}>
+              <PaylinkButton 
+                paymentToken={invoice.paymentToken}
+                invoiceNumber={invoice.invoiceNumber}
+                size="sm"
+                className="h-7 px-2 text-xs"
+              />
+            </div>
           )}
         </div>
         <p className="text-xl font-bold text-card-foreground">
