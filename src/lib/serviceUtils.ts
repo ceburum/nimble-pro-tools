@@ -1,28 +1,7 @@
 // Utility functions for loading services based on business sector
 
 import { BusinessSector, SECTOR_PRESETS, PreloadedService } from '@/config/sectorPresets';
-import { SERVICE_PRESETS, PresetService } from '@/config/servicePresets';
-
-/**
- * SERVICE MENU SOURCE OF TRUTH
- * 
- * Maps business sectors to their corresponding service presets.
- * This ensures each profession gets its relevant service list:
- * - Barber → barber_shop preset
- * - Mobile mechanic → contractor_general preset
- * - Salon → salon_beauty preset (when available)
- * 
- * FALLBACK: If the profession's pre-populated menu is not purchased,
- * show the blank editable menu. Never show another profession's menu.
- */
-export const SECTOR_TO_PRESET_MAP: Record<BusinessSector, string | null> = {
-  'salon_beauty': 'barber_shop',           // Full 50-item barber list
-  'contractor_trades': 'contractor_general', // Contractor services list
-  'mobile_services': 'mobile_service',      // Mobile service business list
-  'appointment_services': null,             // Uses sectorPresets.preloadedServices
-  'retail_sales': null,                     // Uses sectorPresets.preloadedServices
-  'blank_minimal': null,                    // No services
-};
+import { SERVICE_LIBRARY, getServiceCategoryById } from '@/config/serviceLibrary';
 
 export interface PreviewService {
   id: string;
@@ -39,25 +18,22 @@ function generatePreviewId(): string {
 
 /**
  * Get the preset ID for a given business sector.
- * Returns null if no preset is available for the sector.
+ * Now maps directly since sectors match library IDs.
  */
 export function getPresetIdForSector(sector: BusinessSector): string | null {
-  return SECTOR_TO_PRESET_MAP[sector] || null;
+  if (sector === 'other') return null;
+  return sector;
 }
 
 /**
- * Get services for a given business sector.
- * Checks for a richer preset first, then falls back to sector's preloaded services.
- * 
- * This is the source of truth for which services a business should see.
+ * Get services for a given business sector from the service library.
  */
 export function getServicesForSector(sector: BusinessSector): PreviewService[] {
-  // Check if there's a full preset (like barber_shop for salon_beauty)
-  const presetId = SECTOR_TO_PRESET_MAP[sector];
+  if (sector === 'other') return [];
   
-  if (presetId && SERVICE_PRESETS[presetId]) {
-    const preset = SERVICE_PRESETS[presetId];
-    return preset.services.map((s: PresetService) => ({
+  const category = getServiceCategoryById(sector);
+  if (category) {
+    return category.services.map(s => ({
       id: generatePreviewId(),
       name: s.name,
       price: s.price,
@@ -65,7 +41,7 @@ export function getServicesForSector(sector: BusinessSector): PreviewService[] {
     }));
   }
   
-  // Fall back to sector's preloaded services
+  // Fallback to sector preloaded services
   const sectorPreset = SECTOR_PRESETS[sector];
   if (sectorPreset?.preloadedServices?.length > 0) {
     return sectorPreset.preloadedServices.map((s: PreloadedService) => ({
@@ -84,13 +60,9 @@ export function getServicesForSector(sector: BusinessSector): PreviewService[] {
  * Get the theme color for a sector's service preset
  */
 export function getThemeForSector(sector: BusinessSector): string | null {
-  const presetId = SECTOR_TO_PRESET_MAP[sector];
-  
-  if (presetId && SERVICE_PRESETS[presetId]) {
-    return SERVICE_PRESETS[presetId].themeColor;
-  }
-  
-  return null;
+  if (sector === 'other') return null;
+  const category = getServiceCategoryById(sector);
+  return category?.themeColor || null;
 }
 
 /**
@@ -104,30 +76,24 @@ export function shouldEnableServiceMenu(businessType: string): boolean {
  * Check if a business type should have appointment calendar enabled
  */
 export function shouldEnableAppointments(businessType: string): boolean {
-  // Both mobile and stationary get appointments
   return businessType === 'stationary_appointment' || businessType === 'mobile_job';
 }
 
 /**
- * Check if a business sector is project-focused (contractors, generic)
+ * Check if a business sector is project-focused (contractors, mobile)
  */
 export function isProjectFocusedSector(sector: string): boolean {
-  return sector === 'contractor_trades' || sector === 'blank_minimal';
+  const mobileCategories = SERVICE_LIBRARY.filter(c => c.businessType === 'mobile').map(c => c.id);
+  return mobileCategories.includes(sector) || sector === 'other';
 }
 
 /**
  * Validate that a preset ID matches the expected sector.
- * Returns true if the preset is valid for the sector, false otherwise.
- * This prevents showing another profession's menu.
  */
 export function isValidPresetForSector(presetId: string, sector: BusinessSector): boolean {
-  const expectedPresetId = SECTOR_TO_PRESET_MAP[sector];
-  
-  // If no preset expected for this sector, only allow null/empty
-  if (!expectedPresetId) {
-    return !presetId;
-  }
-  
-  // Otherwise, must match exactly
-  return presetId === expectedPresetId;
+  if (sector === 'other') return !presetId;
+  return presetId === sector;
 }
+
+// Re-export for backwards compatibility
+export { SECTOR_PRESETS } from '@/config/sectorPresets';
