@@ -13,13 +13,35 @@ import { format } from 'date-fns';
 import { CalendarIcon, Clock, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+interface EditingAppointment {
+  id: string;
+  date: Date;
+  startTime: string;
+  duration: number;
+  status: string;
+  notes?: string;
+  clientId: string;
+  client?: { id: string; name: string };
+  service?: { id: string; name: string; price?: number };
+}
+
 interface AppointmentDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   clients: Client[];
   services?: Service[];
   selectedDate?: Date;
+  editingAppointment?: EditingAppointment | null;
+  preSelectedClientId?: string | null;
   onSave: (appointment: {
+    clientId: string;
+    serviceId?: string;
+    date: Date;
+    startTime: string;
+    duration: number;
+    notes?: string;
+  }) => Promise<void>;
+  onUpdate?: (appointmentId: string, data: {
     clientId: string;
     serviceId?: string;
     date: Date;
@@ -55,7 +77,10 @@ export function AppointmentDialog({
   clients,
   services = [],
   selectedDate,
+  editingAppointment,
+  preSelectedClientId,
   onSave,
+  onUpdate,
 }: AppointmentDialogProps) {
   const [clientId, setClientId] = useState('');
   const [serviceId, setServiceId] = useState('');
@@ -65,40 +90,59 @@ export function AppointmentDialog({
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
 
+  const isEditing = !!editingAppointment;
+
   useEffect(() => {
     if (open) {
-      setDate(selectedDate);
-      setClientId('');
-      setServiceId('');
-      setStartTime('09:00');
-      setDuration('60');
-      setNotes('');
+      if (editingAppointment) {
+        // Populate form with existing appointment data for editing
+        setClientId(editingAppointment.clientId);
+        setServiceId(editingAppointment.service?.id || '');
+        setDate(editingAppointment.date);
+        setStartTime(editingAppointment.startTime);
+        setDuration(editingAppointment.duration.toString());
+        setNotes(editingAppointment.notes || '');
+      } else {
+        // New appointment - reset form
+        setDate(selectedDate);
+        setClientId(preSelectedClientId || '');
+        setServiceId('');
+        setStartTime('09:00');
+        setDuration('60');
+        setNotes('');
+      }
     }
-  }, [open, selectedDate]);
+  }, [open, selectedDate, editingAppointment, preSelectedClientId]);
 
-  // Auto-set duration when service is selected
+  // Auto-set duration when service is selected (only for new appointments)
   useEffect(() => {
-    if (serviceId && services.length > 0) {
+    if (serviceId && services.length > 0 && !editingAppointment) {
       const service = services.find(s => s.id === serviceId);
       if (service?.duration) {
         setDuration(service.duration.toString());
       }
     }
-  }, [serviceId, services]);
+  }, [serviceId, services, editingAppointment]);
 
   const handleSubmit = async () => {
     if (!clientId || !date) return;
 
     setSaving(true);
     try {
-      await onSave({
+      const appointmentData = {
         clientId,
         serviceId: serviceId || undefined,
         date,
         startTime,
         duration: parseInt(duration),
         notes: notes || undefined,
-      });
+      };
+
+      if (isEditing && onUpdate && editingAppointment) {
+        await onUpdate(editingAppointment.id, appointmentData);
+      } else {
+        await onSave(appointmentData);
+      }
       onOpenChange(false);
     } finally {
       setSaving(false);
@@ -109,7 +153,7 @@ export function AppointmentDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Book Appointment</DialogTitle>
+          <DialogTitle>{isEditing ? 'Edit Appointment' : 'Book Appointment'}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
@@ -231,7 +275,7 @@ export function AppointmentDialog({
           </Button>
           <Button onClick={handleSubmit} disabled={!clientId || !date || saving}>
             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Book Appointment
+            {isEditing ? 'Update Appointment' : 'Book Appointment'}
           </Button>
         </DialogFooter>
       </DialogContent>

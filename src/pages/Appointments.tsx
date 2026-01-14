@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useMemo, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Calendar as CalendarIcon, CalendarCheck, CalendarClock, CalendarDays, Plus, Loader2 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { StatCard } from '@/components/dashboard/StatCard';
@@ -19,6 +19,7 @@ import { toast } from 'sonner';
 
 export default function Appointments() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { 
     appointments, 
     loading, 
@@ -42,6 +43,21 @@ export default function Appointments() {
   const [dayDialogOpen, setDayDialogOpen] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState<typeof appointments[0] | null>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const [editingAppointment, setEditingAppointment] = useState<typeof appointments[0] | null>(null);
+  const [preSelectedClientId, setPreSelectedClientId] = useState<string | null>(null);
+
+  // Handle navigation state for opening new appointment with pre-selected client
+  useEffect(() => {
+    const navState = location.state as { openNewAppointment?: boolean; selectedClientId?: string } | null;
+    if (navState?.openNewAppointment) {
+      setAppointmentDialogOpen(true);
+      if (navState.selectedClientId) {
+        setPreSelectedClientId(navState.selectedClientId);
+      }
+      // Clear navigation state after handling
+      navigate(location.pathname, { replace: true, state: null });
+    }
+  }, [location.state, navigate, location.pathname]);
 
   const handleDayClick = (date: Date) => {
     setSelectedDate(date);
@@ -52,14 +68,24 @@ export default function Appointments() {
     if (date) {
       setSelectedDate(date);
     }
+    setEditingAppointment(null);
+    setPreSelectedClientId(null);
     setAppointmentDialogOpen(true);
   };
 
-  // Handle viewing an appointment's details
+  // Handle viewing an appointment's details - open editable form
   const handleViewAppointment = (appointment: typeof appointments[0]) => {
+    // Open the appointment in edit mode instead of read-only detail dialog
+    setEditingAppointment(appointment);
+    setSelectedDate(appointment.date);
+    setAppointmentDialogOpen(true);
+    setDayDialogOpen(false);
+  };
+
+  // Handle opening detail dialog for quick actions (complete/cancel)
+  const handleOpenDetailDialog = (appointment: typeof appointments[0]) => {
     setSelectedAppointment(appointment);
     setDetailDialogOpen(true);
-    setDayDialogOpen(false);
   };
 
   // Handle completing an appointment
@@ -116,6 +142,65 @@ export default function Appointments() {
     } else {
       toast.error('Failed to book appointment');
     }
+  };
+
+  const handleUpdateAppointment = async (
+    appointmentId: string,
+    data: {
+      clientId: string;
+      serviceId?: string;
+      date: Date;
+      startTime: string;
+      duration: number;
+      notes?: string;
+    }
+  ) => {
+    // Check for conflicts (excluding the current appointment)
+    const otherAppointments = appointments.filter(a => a.id !== appointmentId);
+    const hasConflictWithOthers = otherAppointments.some(existing => {
+      const existingDate = new Date(existing.date);
+      if (existingDate.toDateString() !== data.date.toDateString()) return false;
+      if (existing.status === 'cancelled') return false;
+      
+      const existingStart = existing.startTime;
+      const existingEnd = addMinutesToTime(existingStart, existing.duration);
+      const newEnd = addMinutesToTime(data.startTime, data.duration);
+      
+      return !(data.startTime >= existingEnd || newEnd <= existingStart);
+    });
+
+    if (hasConflictWithOthers) {
+      toast.error('Time slot conflict', { 
+        description: 'This time overlaps with another appointment.' 
+      });
+      return;
+    }
+
+    const success = updateAppointment(appointmentId, {
+      clientId: data.clientId,
+      serviceId: data.serviceId,
+      date: data.date,
+      startTime: data.startTime,
+      duration: data.duration,
+      notes: data.notes,
+    });
+
+    if (success) {
+      toast.success('Appointment updated!');
+      setAppointmentDialogOpen(false);
+      setEditingAppointment(null);
+    } else {
+      toast.error('Failed to update appointment');
+    }
+  };
+
+  // Helper function to add minutes to a time string
+  const addMinutesToTime = (time: string, minutes: number): string => {
+    const [h, m] = time.split(':').map(Number);
+    const totalMinutes = h * 60 + m + minutes;
+    const newH = Math.floor(totalMinutes / 60);
+    const newM = totalMinutes % 60;
+    return `${newH.toString().padStart(2, '0')}:${newM.toString().padStart(2, '0')}`;
   };
 
   // Show loading state
@@ -230,14 +315,23 @@ export default function Appointments() {
         onAddAppointment={handleAddAppointment}
       />
 
-      {/* Appointment Dialog */}
+      {/* Appointment Dialog - for both creating and editing */}
       <AppointmentDialog
         open={appointmentDialogOpen}
-        onOpenChange={setAppointmentDialogOpen}
+        onOpenChange={(open) => {
+          setAppointmentDialogOpen(open);
+          if (!open) {
+            setEditingAppointment(null);
+            setPreSelectedClientId(null);
+          }
+        }}
         clients={clients}
         services={services}
         selectedDate={selectedDate ?? undefined}
+        editingAppointment={editingAppointment}
+        preSelectedClientId={preSelectedClientId}
         onSave={handleSaveAppointment}
+        onUpdate={handleUpdateAppointment}
       />
 
       {/* Day Detail Dialog */}
