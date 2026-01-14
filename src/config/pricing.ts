@@ -9,11 +9,15 @@ export const PRICING = {
   FINANCIAL_TOOL_PRICE: 34.99,
   FULL_BUNDLE_PRICE: 99.99,
 
-  // Pre-populated menu presets (one-time)
-  MENU_PRESET_BARBER: 1.99,
-  MENU_PRESET_SALON: 1.99,
-  MENU_PRESET_SPA: 1.99,
-  MENU_PRESET_DEFAULT: 1.99,
+  // Menu options (one-time)
+  BLANK_MENU_PRICE: 3.00,
+  PREPOPULATED_MENU_PRICE: 2.00,
+
+  // Legacy preset prices (keeping for backwards compatibility)
+  MENU_PRESET_BARBER: 2.00,
+  MENU_PRESET_SALON: 2.00,
+  MENU_PRESET_SPA: 2.00,
+  MENU_PRESET_DEFAULT: 2.00,
 
   // Subscriptions (monthly)
   SCANNER_PRICE: 5.99,
@@ -47,32 +51,33 @@ export const FEATURE_NAMES = {
 } as const;
 
 // Menu preset configurations for upsell (all 25 categories)
+// hasPreset indicates if the pre-populated list is available
 export const MENU_PRESETS_CONFIG = {
-  handyman: { name: 'Handyman', price: 1.99, serviceCount: 50 },
-  plumbing: { name: 'Plumbing', price: 1.99, serviceCount: 50 },
-  salon: { name: 'Salon', price: 1.99, serviceCount: 50 },
-  barber: { name: 'Barber', price: 1.99, serviceCount: 50 },
-  cleaning: { name: 'Cleaning', price: 1.99, serviceCount: 50 },
-  pet_grooming: { name: 'Pet Grooming', price: 1.99, serviceCount: 50 },
-  lawn_care: { name: 'Lawn Care', price: 1.99, serviceCount: 50 },
-  electrical: { name: 'Electrical', price: 1.99, serviceCount: 50 },
-  hvac: { name: 'HVAC', price: 1.99, serviceCount: 50 },
-  painting: { name: 'Painting', price: 1.99, serviceCount: 50 },
-  tutoring: { name: 'Tutoring', price: 1.99, serviceCount: 50 },
-  photography: { name: 'Photography', price: 1.99, serviceCount: 50 },
-  fitness: { name: 'Fitness', price: 1.99, serviceCount: 50 },
-  catering: { name: 'Catering', price: 1.99, serviceCount: 50 },
-  car_wash: { name: 'Car Wash', price: 1.99, serviceCount: 50 },
-  mobile_mechanic: { name: 'Mobile Mechanic', price: 1.99, serviceCount: 50 },
-  it_support: { name: 'IT Support', price: 1.99, serviceCount: 50 },
-  landscaping: { name: 'Landscaping', price: 1.99, serviceCount: 50 },
-  moving: { name: 'Moving', price: 1.99, serviceCount: 50 },
-  auto_repair: { name: 'Auto Repair', price: 1.99, serviceCount: 50 },
-  hair_stylist: { name: 'Hair Stylist', price: 1.99, serviceCount: 50 },
-  massage: { name: 'Massage', price: 1.99, serviceCount: 50 },
-  bakery: { name: 'Bakery', price: 1.99, serviceCount: 50 },
-  personal_training: { name: 'Personal Training', price: 1.99, serviceCount: 50 },
-  event_planning: { name: 'Event Planning', price: 1.99, serviceCount: 50 },
+  handyman: { name: 'Handyman', price: 2.00, serviceCount: 50, hasPreset: true },
+  plumbing: { name: 'Plumbing', price: 2.00, serviceCount: 50, hasPreset: true },
+  salon: { name: 'Salon', price: 2.00, serviceCount: 50, hasPreset: true },
+  barber: { name: 'Barber', price: 2.00, serviceCount: 50, hasPreset: true },
+  cleaning: { name: 'Cleaning', price: 2.00, serviceCount: 50, hasPreset: true },
+  pet_grooming: { name: 'Pet Grooming', price: 2.00, serviceCount: 50, hasPreset: true },
+  lawn_care: { name: 'Lawn Care', price: 2.00, serviceCount: 50, hasPreset: true },
+  electrical: { name: 'Electrical', price: 2.00, serviceCount: 50, hasPreset: true },
+  hvac: { name: 'HVAC', price: 2.00, serviceCount: 50, hasPreset: true },
+  painting: { name: 'Painting', price: 2.00, serviceCount: 50, hasPreset: true },
+  tutoring: { name: 'Tutoring', price: 2.00, serviceCount: 50, hasPreset: true },
+  photography: { name: 'Photography', price: 2.00, serviceCount: 50, hasPreset: true },
+  fitness: { name: 'Fitness', price: 2.00, serviceCount: 50, hasPreset: true },
+  catering: { name: 'Catering', price: 2.00, serviceCount: 50, hasPreset: true },
+  car_wash: { name: 'Car Wash', price: 2.00, serviceCount: 50, hasPreset: true },
+  mobile_mechanic: { name: 'Mobile Mechanic', price: 2.00, serviceCount: 50, hasPreset: true },
+  it_support: { name: 'IT Support', price: 2.00, serviceCount: 50, hasPreset: true },
+  landscaping: { name: 'Landscaping', price: 2.00, serviceCount: 50, hasPreset: true },
+  moving: { name: 'Moving', price: 2.00, serviceCount: 50, hasPreset: true },
+  auto_repair: { name: 'Auto Repair', price: 2.00, serviceCount: 50, hasPreset: true },
+  hair_stylist: { name: 'Hair Stylist', price: 2.00, serviceCount: 50, hasPreset: true },
+  massage: { name: 'Massage', price: 2.00, serviceCount: 50, hasPreset: true },
+  bakery: { name: 'Bakery', price: 2.00, serviceCount: 50, hasPreset: true },
+  personal_training: { name: 'Personal Training', price: 2.00, serviceCount: 50, hasPreset: true },
+  event_planning: { name: 'Event Planning', price: 2.00, serviceCount: 50, hasPreset: true },
 } as const;
 
 export type CloudStorageTier = 'standard' | 'premium' | null;

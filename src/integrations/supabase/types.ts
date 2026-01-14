@@ -911,6 +911,42 @@ export type Database = {
           },
         ]
       }
+      service_list_requests: {
+        Row: {
+          fulfilled: boolean | null
+          fulfilled_at: string | null
+          id: string
+          notes: string | null
+          requested_at: string | null
+          sector_id: string
+          sector_name: string
+          user_email: string | null
+          user_id: string
+        }
+        Insert: {
+          fulfilled?: boolean | null
+          fulfilled_at?: string | null
+          id?: string
+          notes?: string | null
+          requested_at?: string | null
+          sector_id: string
+          sector_name: string
+          user_email?: string | null
+          user_id: string
+        }
+        Update: {
+          fulfilled?: boolean | null
+          fulfilled_at?: string | null
+          id?: string
+          notes?: string | null
+          requested_at?: string | null
+          sector_id?: string
+          sector_name?: string
+          user_email?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       subcontractor_payments: {
         Row: {
           amount: number
