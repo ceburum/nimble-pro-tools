@@ -33,6 +33,7 @@ import { PaylinkQRDialog } from '@/components/invoices/PaylinkQRDialog';
 import { useAppointmentInvoice } from '@/hooks/useAppointmentInvoice';
 import { useInvoices } from '@/hooks/useInvoices';
 import { toast } from 'sonner';
+import { AppointmentService } from '@/hooks/useAppointments';
 
 interface QuickAppointmentDialogProps {
   open: boolean;
@@ -43,6 +44,7 @@ interface QuickAppointmentDialogProps {
   onSave: (data: {
     clientId: string;
     serviceId?: string;
+    services?: AppointmentService[];
     date: Date;
     startTime: string;
     duration: number;
@@ -175,9 +177,18 @@ export function QuickAppointmentDialog({
 
     setLoading(true);
     try {
+      // Build services array for appointment
+      const appointmentServices: AppointmentService[] = selectedServices.map(({ service, quantity }) => ({
+        serviceId: service.id,
+        name: service.name,
+        price: service.price,
+        quantity,
+      }));
+
       // First, create the appointment
       const result = await onSave({
         clientId,
+        services: appointmentServices,
         date,
         startTime,
         duration: totalDuration,

@@ -4,20 +4,31 @@ import { useAppState } from './useAppState';
 import { useProjects } from './useProjects';
 import { useClients } from './useClients';
 import { Service } from '@/types/services';
-import { Project, Client } from '@/types';
+import { Project, Client, LineItem } from '@/types';
 import { format, parseISO, isToday, startOfToday, startOfWeek, endOfWeek, isWithinInterval, addMinutes } from 'date-fns';
 import { AppState } from '@/lib/appState';
+
+export interface AppointmentService {
+  serviceId: string;
+  name: string;
+  price: number;
+  quantity: number;
+}
 
 export interface Appointment {
   id: string;
   clientId: string;
-  serviceId?: string;
+  serviceId?: string; // Legacy single service
+  services?: AppointmentService[]; // Multiple services support
+  items?: LineItem[]; // Line items for invoicing
   projectId?: string; // Link to project for invoicing
+  invoiceId?: string; // Direct link to invoice
   date: Date;
   startTime: string; // HH:mm format
   duration: number; // minutes
   notes?: string;
   status: 'scheduled' | 'completed' | 'cancelled' | 'no_show';
+  total?: number; // Calculated total for display
   createdAt: Date;
   updatedAt: Date;
 }
@@ -130,6 +141,8 @@ export function useAppointments() {
   const addAppointment = useCallback(async (data: {
     clientId: string;
     serviceId?: string;
+    services?: AppointmentService[]; // Multiple services
+    items?: LineItem[]; // Line items for invoicing
     date: Date;
     startTime: string;
     duration: number;
@@ -137,26 +150,62 @@ export function useAppointments() {
     createProject?: boolean; // Option to auto-create a linked project
     serviceName?: string;
     servicePrice?: number;
+    sendNotification?: boolean; // Option to send email notification
   }): Promise<Appointment | null> => {
     if (!canAccessAppointments) return null;
 
     const now = new Date();
     let projectId: string | undefined;
+    
+    // Calculate total from items or services
+    let total = 0;
+    if (data.items && data.items.length > 0) {
+      total = data.items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
+    } else if (data.services && data.services.length > 0) {
+      total = data.services.reduce((sum, s) => sum + (s.price * s.quantity), 0);
+    } else if (data.servicePrice) {
+      total = data.servicePrice;
+    }
+
+    // Determine the service name(s) for project/notification
+    let serviceDisplayName = data.serviceName || 'Appointment';
+    if (data.services && data.services.length > 0) {
+      serviceDisplayName = data.services.map(s => s.name).join(', ');
+      if (serviceDisplayName.length > 50) {
+        serviceDisplayName = `${data.services.length} Services`;
+      }
+    }
 
     // Optionally create a linked project for invoicing
-    if (data.createProject && data.serviceName) {
+    if (data.createProject) {
       const client = clients.find(c => c.id === data.clientId);
-      const project = await addProject({
-        title: `${data.serviceName} - ${client?.name || 'Client'}`,
-        description: data.notes || '',
-        clientId: data.clientId,
-        status: 'accepted',
-        items: data.servicePrice ? [{
+      
+      // Build items from services or single service
+      let projectItems: LineItem[] = [];
+      if (data.items && data.items.length > 0) {
+        projectItems = data.items;
+      } else if (data.services && data.services.length > 0) {
+        projectItems = data.services.map(s => ({
+          id: generateId(),
+          description: s.name,
+          quantity: s.quantity,
+          unitPrice: s.price,
+        }));
+      } else if (data.serviceName && data.servicePrice) {
+        projectItems = [{
           id: generateId(),
           description: data.serviceName,
           quantity: 1,
           unitPrice: data.servicePrice,
-        }] : [],
+        }];
+      }
+
+      const project = await addProject({
+        title: `${serviceDisplayName} - ${client?.name || 'Client'}`,
+        description: data.notes || '',
+        clientId: data.clientId,
+        status: 'accepted',
+        items: projectItems,
         scheduledDate: data.date,
         arrivalWindowStart: data.startTime,
       });
@@ -170,11 +219,14 @@ export function useAppointments() {
       id: generateId(),
       clientId: data.clientId,
       serviceId: data.serviceId,
+      services: data.services,
+      items: data.items,
       projectId,
       date: data.date,
       startTime: data.startTime,
       duration: data.duration,
       notes: data.notes,
+      total,
       status: 'scheduled',
       createdAt: now,
       updatedAt: now,
@@ -183,6 +235,30 @@ export function useAppointments() {
     const updated = [...appointments, newAppointment];
     saveStoredAppointments(updated);
     setAppointments(updated);
+
+    // Send notification if requested
+    if (data.sendNotification) {
+      const client = clients.find(c => c.id === data.clientId);
+      if (client?.email) {
+        try {
+          const { supabase } = await import('@/integrations/supabase/client');
+          await supabase.functions.invoke('send-appointment-notification', {
+            body: {
+              appointmentId: newAppointment.id,
+              clientEmail: client.email,
+              clientName: client.name,
+              serviceName: serviceDisplayName,
+              appointmentDate: format(data.date, 'EEEE, MMMM d, yyyy'),
+              appointmentTime: data.startTime,
+              businessName: 'Your Business', // This would come from user settings
+              confirmationToken: newAppointment.id, // Use appointment ID as token for now
+            },
+          });
+        } catch (error) {
+          console.error('Failed to send appointment notification:', error);
+        }
+      }
+    }
 
     return newAppointment;
   }, [canAccessAppointments, appointments, clients, addProject]);
