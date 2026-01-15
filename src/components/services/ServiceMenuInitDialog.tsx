@@ -84,11 +84,11 @@ export function ServiceMenuInitDialog({
             </div>
             <div className="flex-1">
               <div className="flex items-center justify-between">
-                <h3 className="font-medium text-foreground">Continue with Blank Menu</h3>
+                <h3 className="font-medium text-foreground">Continue with a blank service list</h3>
                 <Badge variant="outline" className="text-green-600 border-green-600">Free</Badge>
               </div>
               <p className="text-sm text-muted-foreground mt-1">
-                Start with an empty menu. Add your own services with custom names, prices, and images.
+                Typing everything out works — this just saves time.
               </p>
             </div>
             {loading && selectedOption === 'blank' && (
@@ -96,7 +96,7 @@ export function ServiceMenuInitDialog({
             )}
           </button>
 
-          {/* Pre-populated Menu Upgrade */}
+          {/* Import Ready-Made List ($3 upsell) */}
           {hasPreset && (
             <button
               onClick={handleSelectPreset}
@@ -116,7 +116,7 @@ export function ServiceMenuInitDialog({
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <h3 className="font-medium text-foreground">
-                        Skip the typing — {sectorName} Menu
+                        Import a ready-made service list
                       </h3>
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-medium">
                         <Sparkles className="h-3 w-3" />
@@ -128,7 +128,7 @@ export function ServiceMenuInitDialog({
                     </Badge>
                   </div>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Get a head start with a full {sectorName.toLowerCase()} menu template. All services are fully editable.
+                    $3 = less typing. Same control, just faster.
                   </p>
                 </div>
                 {loading && selectedOption === 'preset' && (
