@@ -1,18 +1,16 @@
 import { useState, useCallback } from 'react';
-import { Plus, Scissors, Loader2, Sparkles } from 'lucide-react';
+import { Plus, Scissors, Loader2, Sparkles, X, FileText, CalendarPlus, Receipt } from 'lucide-react';
 import { useServices } from '@/hooks/useServices';
 import { Service } from '@/types/services';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { PageHeader } from '@/components/layout/PageHeader';
-import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 import { useToast } from '@/hooks/use-toast';
 import { useAppState } from '@/hooks/useAppState';
 import { useInvoices } from '@/hooks/useInvoices';
 import { useClients } from '@/hooks/useClients';
 import { useBusinessProfile } from '@/hooks/useBusinessProfile';
-import { useAppointmentInvoice } from '@/hooks/useAppointmentInvoice';
 import { AppState } from '@/lib/appState';
 import { ServiceCard } from '@/components/services/ServiceCard';
 import { ServiceEditDialog } from '@/components/services/ServiceEditDialog';
@@ -24,7 +22,10 @@ import { PRICING, MENU_PRESETS_CONFIG } from '@/config/pricing';
 import { SERVICE_LIBRARY } from '@/config/serviceLibrary';
 import { useNavigate } from 'react-router-dom';
 import { InvoiceDialog } from '@/components/invoices/InvoiceDialog';
+import { QuoteDialog } from '@/components/quotes/QuoteDialog';
+import { QuickAppointmentDialog } from '@/components/scheduling/QuickAppointmentDialog';
 import { useSetup } from '@/hooks/useSetup';
+import { useAppointments } from '@/hooks/useAppointments';
 
 export default function ServiceMenu() {
   const {
@@ -43,30 +44,33 @@ export default function ServiceMenu() {
     startBlank,
     commitPreview,
     discardPreview,
-    resetMenu,
   } = useServices();
   
-  const { updateFlag } = useFeatureFlags();
-  const { state, capabilities, setupProgress } = useAppState();
+  const { state, setupProgress } = useAppState();
   const { addInvoice, invoices } = useInvoices();
   const { clients } = useClients();
   const { profile } = useBusinessProfile();
-  const { 
-    activeAppointmentId, 
-    activeInvoice, 
-    addServiceToAppointmentInvoice,
-    isStationaryBusiness,
-  } = useAppointmentInvoice();
   const { businessSector } = useSetup();
+  const { addAppointment } = useAppointments();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
+  // State management
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingService, setEditingService] = useState<Service | null>(null);
-  const [enabling, setEnabling] = useState(false);
   const [loadingPreset, setLoadingPreset] = useState(false);
-  const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false);
-  const [pendingService, setPendingService] = useState<Service | null>(null);
   const [importingServices, setImportingServices] = useState(false);
-  const { toast } = useToast();
-  const navigate = useNavigate();
+  
+  // Multi-select state
+  const [selectedServices, setSelectedServices] = useState<Service[]>([]);
+  
+  // Dialog states for destinations
+  const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false);
+  const [quoteDialogOpen, setQuoteDialogOpen] = useState(false);
+  const [appointmentDialogOpen, setAppointmentDialogOpen] = useState(false);
+
+  // Business type check
+  const isStationaryBusiness = setupProgress.businessType === 'stationary_appointment';
 
   // Get preset configuration for the user's sector
   const presetConfig = businessSector ? MENU_PRESETS_CONFIG[businessSector as keyof typeof MENU_PRESETS_CONFIG] : null;
@@ -75,15 +79,21 @@ export default function ServiceMenu() {
     ? SERVICE_LIBRARY.find(cat => cat.id === businessSector)?.services || []
     : [];
 
+  // Check if user can use services based on AppState
+  const canUseServices = [
+    AppState.READY_BASE,
+    AppState.TRIAL_PRO,
+    AppState.PAID_PRO,
+    AppState.ADMIN_PREVIEW
+  ].includes(state);
+
   // Handle importing ready-made list
   const handleImportReadyMadeList = async () => {
     if (!businessSector || !hasPreset) return;
     
     setImportingServices(true);
     try {
-      // Load the preset services and commit them directly
       loadPreset(businessSector);
-      // Since loadPreset puts them in preview mode, we need to commit immediately
       setTimeout(() => {
         commitPreview();
         setImportingServices(false);
@@ -102,25 +112,143 @@ export default function ServiceMenu() {
     }
   };
 
-  // Check if user can add services to invoices based on AppState
-  const canAddToInvoice = [
-    AppState.READY_BASE,
-    AppState.TRIAL_PRO,
-    AppState.PAID_PRO,
-    AppState.ADMIN_PREVIEW
-  ].includes(state);
-
-  const handleEnableServiceMenu = async (): Promise<boolean> => {
-    setEnabling(true);
-    try {
-      updateFlag('service_menu_enabled', true);
-      toast({ title: 'Service Menu activated!' });
-      return true;
-    } finally {
-      setEnabling(false);
-    }
+  // Selection handlers
+  const handleToggleSelect = (service: Service) => {
+    setSelectedServices(prev => {
+      const isAlreadySelected = prev.some(s => s.id === service.id);
+      if (isAlreadySelected) {
+        return prev.filter(s => s.id !== service.id);
+      }
+      return [...prev, service];
+    });
   };
 
+  const clearSelection = () => {
+    setSelectedServices([]);
+  };
+
+  // Calculate selection total
+  const selectionTotal = selectedServices.reduce((sum, s) => sum + s.price, 0);
+
+  // Action handlers for destinations
+  const handleAddToQuote = () => {
+    if (selectedServices.length === 0) return;
+    if (clients.length === 0) {
+      toast({
+        title: 'No clients found',
+        description: 'Please add a client first.',
+        variant: 'destructive',
+      });
+      navigate('/clients');
+      return;
+    }
+    setQuoteDialogOpen(true);
+  };
+
+  const handleAddToInvoice = () => {
+    if (selectedServices.length === 0) return;
+    if (clients.length === 0) {
+      toast({
+        title: 'No clients found',
+        description: 'Please add a client first.',
+        variant: 'destructive',
+      });
+      navigate('/clients');
+      return;
+    }
+    setInvoiceDialogOpen(true);
+  };
+
+  const handleAddToAppointment = () => {
+    if (selectedServices.length === 0) return;
+    if (clients.length === 0) {
+      toast({
+        title: 'No clients found',
+        description: 'Please add a client first.',
+        variant: 'destructive',
+      });
+      navigate('/clients');
+      return;
+    }
+    setAppointmentDialogOpen(true);
+  };
+
+  // Generate line items from selected services
+  const getSelectedLineItems = useCallback(() => {
+    return selectedServices.map(service => ({
+      id: crypto.randomUUID(),
+      description: service.name,
+      quantity: 1,
+      unitPrice: service.price,
+    }));
+  }, [selectedServices]);
+
+  // Generate the next invoice number
+  const getNextInvoiceNumber = useCallback(() => {
+    const prefix = profile.invoicePrefix || 'INV-';
+    const existingNumbers = invoices
+      .map(inv => {
+        const match = inv.invoiceNumber.match(/(\d+)$/);
+        return match ? parseInt(match[1], 10) : 0;
+      })
+      .filter(n => !isNaN(n));
+    
+    const maxNumber = existingNumbers.length > 0 ? Math.max(...existingNumbers) : 0;
+    return `${prefix}${String(maxNumber + 1).padStart(4, '0')}`;
+  }, [invoices, profile.invoicePrefix]);
+
+  // Handle invoice creation
+  const handleCreateInvoice = useCallback(async (invoiceData: {
+    clientId: string;
+    invoiceNumber: string;
+    items: Array<{ id: string; description: string; quantity: number; unitPrice: number }>;
+    status: 'draft' | 'sent' | 'paid' | 'overdue';
+    dueDate: Date;
+    notes?: string;
+  }) => {
+    const newInvoice = await addInvoice(invoiceData);
+    
+    if (newInvoice) {
+      toast({
+        title: 'Invoice created',
+        description: `Invoice ${newInvoice.invoiceNumber} created with ${selectedServices.length} service(s).`,
+      });
+      setInvoiceDialogOpen(false);
+      clearSelection();
+      navigate('/invoices');
+    }
+  }, [addInvoice, selectedServices.length, navigate, toast]);
+
+  // Handle quote save
+  const handleSaveQuote = useCallback(async (quoteData: any) => {
+    // Quote saving handled by QuoteDialog's internal logic
+    toast({
+      title: 'Quote created',
+      description: `Quote created with ${selectedServices.length} service(s).`,
+    });
+    setQuoteDialogOpen(false);
+    clearSelection();
+    navigate('/quotes');
+  }, [selectedServices.length, navigate, toast]);
+
+  // Handle appointment save
+  const handleSaveAppointment = useCallback(async (appointmentData: any) => {
+    const result = await addAppointment(appointmentData);
+    if (result) {
+      toast({
+        title: 'Appointment created',
+        description: 'Appointment created successfully.',
+      });
+      setAppointmentDialogOpen(false);
+      clearSelection();
+      navigate('/appointments');
+      // Return the expected format for QuickAppointmentDialog
+      return { appointmentId: result.id, invoiceId: undefined, paymentToken: undefined };
+    }
+    return null;
+  }, [addAppointment, navigate, toast]);
+
+  // Setup flow handlers
   const handleSelectBlank = () => {
     setLoadingPreset(true);
     setTimeout(() => {
@@ -144,8 +272,6 @@ export default function ServiceMenu() {
   };
 
   const handleUnlock = () => {
-    // In production, this would trigger a payment flow
-    // For now, we'll just commit the preview
     commitPreview();
     toast({ 
       title: 'Service Menu unlocked!',
@@ -160,6 +286,7 @@ export default function ServiceMenu() {
     }
   };
 
+  // Service edit handlers
   const handleOpenDialog = (service?: Service) => {
     if (service) {
       setEditingService(service);
@@ -194,6 +321,8 @@ export default function ServiceMenu() {
   const handleDelete = (service: Service) => {
     if (confirm(`Delete "${service.name}"?`)) {
       deleteService(service.id);
+      // Also remove from selection if selected
+      setSelectedServices(prev => prev.filter(s => s.id !== service.id));
       toast({ title: 'Service deleted' });
     }
   };
@@ -206,93 +335,6 @@ export default function ServiceMenu() {
     reorderService(serviceId, 'down');
   };
 
-  // Handle adding a service to an invoice
-  const handleAddToInvoice = useCallback(async (service: Service) => {
-    if (!canAddToInvoice) {
-      toast({
-        title: 'Feature not available',
-        description: 'Complete setup to add services to invoices.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    // For stationary businesses with an active appointment, add directly to appointment invoice
-    if (isStationaryBusiness && activeAppointmentId && activeInvoice) {
-      const success = await addServiceToAppointmentInvoice(service);
-      if (success) {
-        // Toast already shown by the hook
-        return;
-      }
-    }
-
-    // Otherwise, open the invoice dialog for manual invoice creation
-    // Check if there are any clients
-    if (clients.length === 0) {
-      toast({
-        title: 'No clients found',
-        description: 'Please add a client first before creating an invoice.',
-        variant: 'destructive',
-      });
-      navigate('/clients');
-      return;
-    }
-
-    // Store the pending service and open invoice dialog
-    setPendingService(service);
-    setInvoiceDialogOpen(true);
-  }, [canAddToInvoice, isStationaryBusiness, activeAppointmentId, activeInvoice, addServiceToAppointmentInvoice, clients, navigate, toast]);
-
-  // Handle invoice creation with the pending service
-  const handleCreateInvoice = useCallback(async (invoiceData: {
-    clientId: string;
-    invoiceNumber: string;
-    items: Array<{ id: string; description: string; quantity: number; unitPrice: number }>;
-    status: 'draft' | 'sent' | 'paid' | 'overdue';
-    dueDate: Date;
-    notes?: string;
-  }) => {
-    const newInvoice = await addInvoice(invoiceData);
-    
-    if (newInvoice) {
-      toast({
-        title: 'Invoice created',
-        description: `Invoice ${newInvoice.invoiceNumber} created with ${pendingService?.name || 'service'}.`,
-      });
-      setInvoiceDialogOpen(false);
-      setPendingService(null);
-      
-      // Navigate to invoices page to view the new invoice
-      navigate('/invoices');
-    }
-  }, [addInvoice, pendingService, navigate, toast]);
-
-  // Generate the next invoice number
-  const getNextInvoiceNumber = useCallback(() => {
-    const prefix = profile.invoicePrefix || 'INV-';
-    const existingNumbers = invoices
-      .map(inv => {
-        const match = inv.invoiceNumber.match(/(\d+)$/);
-        return match ? parseInt(match[1], 10) : 0;
-      })
-      .filter(n => !isNaN(n));
-    
-    const maxNumber = existingNumbers.length > 0 ? Math.max(...existingNumbers) : 0;
-    return `${prefix}${String(maxNumber + 1).padStart(4, '0')}`;
-  }, [invoices, profile.invoicePrefix]);
-
-  // Create initial line items from pending service
-  const getInitialLineItems = useCallback(() => {
-    if (!pendingService) return [];
-    
-    return [{
-      id: crypto.randomUUID(),
-      description: pendingService.name,
-      quantity: 1,
-      unitPrice: pendingService.price,
-    }];
-  }, [pendingService]);
-
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -302,10 +344,10 @@ export default function ServiceMenu() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-24">
       <PageHeader
-        title="Service Menu"
-        description="Manage your service offerings"
+        title="Services"
+        description="Select services to add to quotes, invoices, or appointments"
         action={
           isEnabled && !needsInit ? (
             <div className="flex items-center gap-2">
@@ -403,17 +445,58 @@ export default function ServiceMenu() {
                   key={service.id}
                   service={service}
                   globalBgColor={menuSettings.globalBgColor}
+                  isSelected={selectedServices.some(s => s.id === service.id)}
+                  onToggleSelect={canUseServices ? handleToggleSelect : undefined}
                   onEdit={handleOpenDialog}
                   onDelete={handleDelete}
-                  onAddToInvoice={handleAddToInvoice}
                   onMoveUp={() => handleMoveUp(service.id)}
                   onMoveDown={() => handleMoveDown(service.id)}
                   isFirst={index === 0}
                   isLast={index === services.length - 1}
                   isPreviewMode={isPreviewMode}
-                  canAddToInvoice={canAddToInvoice}
                 />
               ))}
+            </div>
+          )}
+
+          {/* Floating Selection Action Bar */}
+          {selectedServices.length > 0 && (
+            <div className="fixed bottom-4 left-1/2 -translate-x-1/2 lg:left-[calc(50%+8rem)] z-50">
+              <Card className="p-4 shadow-lg border-primary/20 bg-background">
+                <div className="flex items-center gap-4">
+                  <div>
+                    <p className="font-medium">{selectedServices.length} service(s) selected</p>
+                    <p className="text-sm text-muted-foreground">
+                      Total: ${selectionTotal.toFixed(2)}
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    {/* Mobile business: Add to Quote */}
+                    {!isStationaryBusiness && (
+                      <Button onClick={handleAddToQuote} variant="outline" className="gap-2">
+                        <FileText className="h-4 w-4" />
+                        Add to Quote
+                      </Button>
+                    )}
+                    {/* Stationary business: Add to Appointment */}
+                    {isStationaryBusiness && (
+                      <Button onClick={handleAddToAppointment} variant="outline" className="gap-2">
+                        <CalendarPlus className="h-4 w-4" />
+                        Add to Appointment
+                      </Button>
+                    )}
+                    {/* Both: Add to Invoice */}
+                    <Button onClick={handleAddToInvoice} className="gap-2">
+                      <Receipt className="h-4 w-4" />
+                      Add to Invoice
+                    </Button>
+                    {/* Clear selection */}
+                    <Button variant="ghost" size="icon" onClick={clearSelection}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </Card>
             </div>
           )}
 
@@ -426,15 +509,36 @@ export default function ServiceMenu() {
             globalBgColor={menuSettings.globalBgColor}
           />
 
-          {/* Invoice Dialog - opened when adding service to invoice */}
+          {/* Invoice Dialog */}
           <InvoiceDialog
             open={invoiceDialogOpen}
             onOpenChange={setInvoiceDialogOpen}
             clients={clients}
             onSave={handleCreateInvoice}
-            defaultItems={getInitialLineItems()}
+            defaultItems={getSelectedLineItems()}
             defaultInvoiceNumber={getNextInvoiceNumber()}
           />
+
+          {/* Quote Dialog - Mobile only */}
+          {!isStationaryBusiness && (
+            <QuoteDialog
+              open={quoteDialogOpen}
+              onOpenChange={setQuoteDialogOpen}
+              clients={clients}
+              onSave={handleSaveQuote}
+            />
+          )}
+
+          {/* Appointment Dialog - Stationary only */}
+          {isStationaryBusiness && (
+            <QuickAppointmentDialog
+              open={appointmentDialogOpen}
+              onOpenChange={setAppointmentDialogOpen}
+              clients={clients}
+              services={services}
+              onSave={handleSaveAppointment}
+            />
+          )}
         </>
       )}
     </div>
