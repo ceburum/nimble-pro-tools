@@ -55,9 +55,9 @@ export function MenuOptionsStep({
                 <FileText className="h-5 w-5" />
               </div>
               <div>
-                <CardTitle className="text-lg">Continue with Blank Menu</CardTitle>
+                <CardTitle className="text-lg">Continue with a blank service list</CardTitle>
                 <CardDescription>
-                  Fully editable, add your own services
+                  Typing everything out works — this just saves time.
                 </CardDescription>
               </div>
             </div>
@@ -95,7 +95,7 @@ export function MenuOptionsStep({
         </CardContent>
       </Card>
 
-      {/* Option 2: Pre-Populated Menu Upgrade ($3) */}
+      {/* Option 2: Import Ready-Made List ($3 upsell) */}
       <Card className={cn(
         "border-2 transition-all",
         !hasPreset && "opacity-80",
@@ -112,7 +112,7 @@ export function MenuOptionsStep({
               </div>
               <div>
                 <CardTitle className="text-lg flex items-center gap-2">
-                  Skip the typing — {sectorName} Menu
+                  Import a ready-made service list
                   {!hasPreset && (
                     <Badge variant="outline" className="text-xs">
                       <Clock className="h-3 w-3 mr-1" />
@@ -122,7 +122,7 @@ export function MenuOptionsStep({
                 </CardTitle>
                 <CardDescription>
                   {hasPreset 
-                    ? `${presetServices.length} pre-configured services ready to customize`
+                    ? `$3 = less typing. Same control, just faster.`
                     : 'Industry-specific preset not yet available'
                   }
                 </CardDescription>
@@ -137,7 +137,7 @@ export function MenuOptionsStep({
           {hasPreset ? (
             <>
               <p className="text-sm text-muted-foreground mb-3">
-                Get a head start with a full menu template. All services are fully editable — rename, reprice, or remove anything.
+                {presetServices.length} {sectorName.toLowerCase()} services imported into your menu. All fully editable — rename, reprice, or remove anything.
               </p>
               <ScrollArea className="h-28 pr-3 mb-4 bg-muted/30 rounded-lg p-2">
                 <div className="grid gap-1.5 text-sm">
@@ -168,12 +168,12 @@ export function MenuOptionsStep({
                 {loading && selectedOption === 'prepopulated' ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    Setting up your menu...
+                    Importing services...
                   </>
                 ) : (
                   <>
                     <ListChecks className="h-4 w-4" />
-                    Get Full {sectorName} Menu (${prePopulatedPrice.toFixed(2)})
+                    Import {sectorName} List (${prePopulatedPrice.toFixed(2)})
                   </>
                 )}
               </Button>

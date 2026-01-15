@@ -1,10 +1,11 @@
 import { useState, useCallback } from 'react';
-import { Plus, Scissors, Loader2 } from 'lucide-react';
+import { Plus, Scissors, Loader2, Sparkles } from 'lucide-react';
 import { useServices } from '@/hooks/useServices';
 import { Service } from '@/types/services';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { PageHeader } from '@/components/layout/PageHeader';
-import { FeatureNotice } from '@/components/ui/feature-notice';
 import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 import { useToast } from '@/hooks/use-toast';
 import { useAppState } from '@/hooks/useAppState';
@@ -19,8 +20,11 @@ import { ServiceMenuInitDialog } from '@/components/services/ServiceMenuInitDial
 import { ServiceMenuPreviewBanner } from '@/components/services/ServiceMenuPreviewBanner';
 import { ServiceColorPicker } from '@/components/services/ServiceColorPicker';
 import { SERVICE_PRESETS } from '@/config/servicePresets';
+import { PRICING, MENU_PRESETS_CONFIG } from '@/config/pricing';
+import { SERVICE_LIBRARY } from '@/config/serviceLibrary';
 import { useNavigate } from 'react-router-dom';
 import { InvoiceDialog } from '@/components/invoices/InvoiceDialog';
+import { useSetup } from '@/hooks/useSetup';
 
 export default function ServiceMenu() {
   const {
@@ -53,14 +57,50 @@ export default function ServiceMenu() {
     addServiceToAppointmentInvoice,
     isStationaryBusiness,
   } = useAppointmentInvoice();
+  const { businessSector } = useSetup();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingService, setEditingService] = useState<Service | null>(null);
   const [enabling, setEnabling] = useState(false);
   const [loadingPreset, setLoadingPreset] = useState(false);
   const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false);
   const [pendingService, setPendingService] = useState<Service | null>(null);
+  const [importingServices, setImportingServices] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  // Get preset configuration for the user's sector
+  const presetConfig = businessSector ? MENU_PRESETS_CONFIG[businessSector as keyof typeof MENU_PRESETS_CONFIG] : null;
+  const hasPreset = presetConfig?.hasPreset ?? false;
+  const presetServices = businessSector 
+    ? SERVICE_LIBRARY.find(cat => cat.id === businessSector)?.services || []
+    : [];
+
+  // Handle importing ready-made list
+  const handleImportReadyMadeList = async () => {
+    if (!businessSector || !hasPreset) return;
+    
+    setImportingServices(true);
+    try {
+      // Load the preset services and commit them directly
+      loadPreset(businessSector);
+      // Since loadPreset puts them in preview mode, we need to commit immediately
+      setTimeout(() => {
+        commitPreview();
+        setImportingServices(false);
+        toast({
+          title: 'Services imported!',
+          description: `${presetServices.length} services added to your menu.`,
+        });
+      }, 500);
+    } catch (error) {
+      setImportingServices(false);
+      toast({
+        title: 'Import failed',
+        description: 'Could not import services. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  };
 
   // Check if user can add services to invoices based on AppState
   const canAddToInvoice = [
@@ -282,25 +322,7 @@ export default function ServiceMenu() {
         }
       />
 
-      {/* Show inline notice if feature is not enabled */}
-      {!isEnabled && (
-        <FeatureNotice
-          icon={<Scissors className="h-8 w-8 text-primary" />}
-          title="Service Menu"
-          description="Perfect for salons, barbershops, massage therapists, and other service-based businesses."
-          features={[
-            'Create and manage your service offerings',
-            'Set prices and optional durations',
-            'Add images and custom colors to tiles',
-            'Quick appointment creation from services',
-          ]}
-          onEnable={handleEnableServiceMenu}
-          loading={enabling}
-          className="max-w-2xl mx-auto"
-        />
-      )}
-
-      {/* Init dialog - choose blank or preset */}
+      {/* Init dialog only if menu is not unlocked (new users who haven't been through setup yet) */}
       <ServiceMenuInitDialog
         open={isEnabled && needsInit}
         onSelectBlank={handleSelectBlank}
@@ -321,12 +343,58 @@ export default function ServiceMenu() {
           )}
 
           {services.length === 0 ? (
-            <div className="text-center py-12">
-              <Scissors className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <p className="text-muted-foreground">No services yet</p>
-              <Button variant="link" className="mt-2" onClick={() => handleOpenDialog()}>
-                Add your first service
-              </Button>
+            <div className="space-y-6">
+              {/* Empty state with add button */}
+              <div className="text-center py-8">
+                <Scissors className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <p className="text-muted-foreground mb-4">No services yet</p>
+                <Button className="gap-2" onClick={() => handleOpenDialog()}>
+                  <Plus className="h-4 w-4" />
+                  Add your first service
+                </Button>
+              </div>
+              
+              {/* Inline upsell for importing ready-made list */}
+              {hasPreset && presetServices.length > 0 && (
+                <Card className="p-4 border-dashed bg-muted/30">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-full bg-primary/10">
+                        <Sparkles className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-sm">
+                          Skip the typing — import a ready-made list
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          ${PRICING.PREPOPULATED_MENU_PRICE.toFixed(2)} • {presetServices.length} {presetConfig?.name || 'professional'} services
+                        </p>
+                      </div>
+                    </div>
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={handleImportReadyMadeList}
+                      disabled={importingServices}
+                      className="gap-2 shrink-0"
+                    >
+                      {importingServices ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Importing...
+                        </>
+                      ) : (
+                        <>
+                          Import List
+                          <Badge variant="secondary" className="ml-1 text-xs">
+                            ${PRICING.PREPOPULATED_MENU_PRICE.toFixed(2)}
+                          </Badge>
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </Card>
+              )}
             </div>
           ) : (
             <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
