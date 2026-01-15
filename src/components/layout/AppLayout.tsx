@@ -30,7 +30,7 @@ const baseNavigation = [
   { name: 'Projects', href: '/projects', icon: FolderKanban, mobileOnly: true },
   { name: 'Appointments', href: '/appointments', icon: CalendarDays, stationaryOnly: true },
   { name: 'Invoices', href: '/invoices', icon: Receipt },
-  { name: 'Services', href: '/services', icon: Scissors, stationaryOnly: true, featureKey: 'serviceMenu' as const },
+  { name: 'Services', href: '/services', icon: Scissors }, // FREE for all users
   { name: 'Notepad', href: '/notepad', icon: StickyNote },
 ];
 
@@ -48,7 +48,8 @@ const addOnsNavigation: Array<{
   { name: 'Scheduling Pro', href: '/scheduling', icon: CalendarDays, featureKey: 'scheduling' },
   { name: 'Financial Pro', href: '/reports', icon: BarChart3, featureKey: 'financial' },
   { name: 'Mileage Pro', href: '/mileage', icon: Car, featureKey: 'mileage' },
-  { name: 'Service Menu', href: '/services', icon: Scissors, featureKey: 'serviceMenu', mobileOnly: true },
+  // Service Menu Library is an upgrade add-on that imports services into the free Services menu
+  { name: 'Service Menu Library', href: '/services', icon: Scissors, featureKey: 'serviceMenu', mobileOnly: true },
 ];
 
 // Affiliate links
