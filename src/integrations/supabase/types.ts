@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_app_settings: {
+        Row: {
+          force_update_version: string | null
+          id: string
+          maintenance_message: string | null
+          maintenance_mode: boolean
+          signups_enabled: boolean
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          force_update_version?: string | null
+          id?: string
+          maintenance_message?: string | null
+          maintenance_mode?: boolean
+          signups_enabled?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          force_update_version?: string | null
+          id?: string
+          maintenance_message?: string | null
+          maintenance_mode?: boolean
+          signups_enabled?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       affiliate_payouts: {
         Row: {
           affiliate_id: string
@@ -394,6 +424,36 @@ export type Database = {
           is_default?: boolean
           name?: string
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      global_feature_flags: {
+        Row: {
+          created_at: string
+          description: string | null
+          flag_name: string
+          id: string
+          is_enabled: boolean
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          flag_name: string
+          id?: string
+          is_enabled?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          flag_name?: string
+          id?: string
+          is_enabled?: boolean
+          updated_at?: string
+          updated_by?: string | null
         }
         Relationships: []
       }
@@ -998,6 +1058,45 @@ export type Database = {
           },
         ]
       }
+      subscription_overrides: {
+        Row: {
+          billing_status: string | null
+          expires_at: string | null
+          feature_name: string | null
+          granted_at: string
+          granted_by: string | null
+          id: string
+          is_active: boolean
+          override_type: string
+          reason: string | null
+          user_id: string
+        }
+        Insert: {
+          billing_status?: string | null
+          expires_at?: string | null
+          feature_name?: string | null
+          granted_at?: string
+          granted_by?: string | null
+          id?: string
+          is_active?: boolean
+          override_type: string
+          reason?: string | null
+          user_id: string
+        }
+        Update: {
+          billing_status?: string | null
+          expires_at?: string | null
+          feature_name?: string | null
+          granted_at?: string
+          granted_by?: string | null
+          id?: string
+          is_active?: boolean
+          override_type?: string
+          reason?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       transactions: {
         Row: {
           amount: number
@@ -1073,6 +1172,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_feature_flags: {
+        Row: {
+          expires_at: string | null
+          flag_name: string
+          granted_at: string
+          granted_by: string | null
+          id: string
+          is_enabled: boolean
+          reason: string | null
+          user_id: string
+        }
+        Insert: {
+          expires_at?: string | null
+          flag_name: string
+          granted_at?: string
+          granted_by?: string | null
+          id?: string
+          is_enabled?: boolean
+          reason?: string | null
+          user_id: string
+        }
+        Update: {
+          expires_at?: string | null
+          flag_name?: string
+          granted_at?: string
+          granted_by?: string | null
+          id?: string
+          is_enabled?: boolean
+          reason?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
       user_referral_rewards: {
         Row: {

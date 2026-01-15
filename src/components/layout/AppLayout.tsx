@@ -383,6 +383,29 @@ export function AppLayout({ children }: AppLayoutProps) {
               Manage Affiliates
             </NavLink>
           )}
+
+          {/* Admin Dashboard - only visible to admins */}
+          {isAdmin && (
+            <>
+              <div className="my-4 border-t border-sidebar-border" />
+              <p className="px-4 py-2 text-xs font-semibold text-sidebar-foreground/50 uppercase tracking-wider">
+                Admin
+              </p>
+              <NavLink 
+                to="/admin"
+                onClick={() => setSidebarOpen(false)} 
+                className={cn(
+                  "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200", 
+                  location.pathname === '/admin' 
+                    ? "bg-sidebar-accent text-sidebar-primary" 
+                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                )}
+              >
+                <ShieldCheck className="h-5 w-5" />
+                Admin Dashboard
+              </NavLink>
+            </>
+          )}
         </nav>
 
         {/* Footer with Settings + Admin Tools + Sign Out */}
