@@ -393,7 +393,10 @@ export function AppLayout({ children }: AppLayoutProps) {
               </p>
               <NavLink 
                 to="/admin"
-                onClick={() => setSidebarOpen(false)} 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSidebarOpen(false);
+                }} 
                 className={cn(
                   "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200", 
                   location.pathname === '/admin' 
@@ -426,18 +429,23 @@ export function AppLayout({ children }: AppLayoutProps) {
           </NavLink>
 
           {/* Admin Maintenance Section - ONLY in ADMIN_PREVIEW state */}
+          {/* This section is SEPARATE from Admin Dashboard navigation */}
           {state === AppState.ADMIN_PREVIEW && capabilities.canResetSetup && (
             <div className="px-3 py-2 rounded-lg bg-sidebar-accent/50 space-y-2">
               <div className="flex items-center gap-2">
-                <ShieldCheck className="h-3 w-3 text-sidebar-foreground/50" />
+                <RotateCcw className="h-3 w-3 text-sidebar-foreground/50" />
                 <span className="text-xs font-semibold text-sidebar-foreground/50 uppercase">
-                  Admin Preview
+                  Dev Tools
                 </span>
               </div>
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={handleResetSetup}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleResetSetup();
+                }}
                 className="w-full justify-start text-sidebar-foreground/70 hover:text-sidebar-foreground h-8"
               >
                 <RotateCcw className="h-4 w-4 mr-2" />
