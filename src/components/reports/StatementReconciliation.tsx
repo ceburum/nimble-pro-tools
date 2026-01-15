@@ -7,7 +7,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { Upload, FileText, CheckCircle, AlertCircle, Link2, X, Save, Tag } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Upload, FileText, CheckCircle, AlertCircle, Link2, X, Save, Tag, Sparkles, Camera } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useInvoices } from '@/hooks/useInvoices';
 import { useProjects } from '@/hooks/useProjects';
@@ -48,6 +49,10 @@ export function StatementReconciliation() {
   const [selectedTransaction, setSelectedTransaction] = useState<MatchedTransaction | null>(null);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
   const [expenseVendor, setExpenseVendor] = useState('');
+  const [showScannerPromo, setShowScannerPromo] = useState(true);
+
+  // Check if scanner feature is available (using a simple localStorage check for now)
+  const hasScannerAccess = localStorage.getItem('nimble_scanner_purchased') === 'true';
 
   // Collect all receipts from projects
   const allReceipts = projects.flatMap((p) =>
@@ -301,6 +306,35 @@ export function StatementReconciliation() {
 
   return (
     <div className="space-y-6">
+      {/* Scanner Upgrade Promo - shown when scanner not purchased */}
+      {!hasScannerAccess && showScannerPromo && (
+        <Alert className="border-primary/20 bg-primary/5">
+          <Sparkles className="h-4 w-4 text-primary" />
+          <AlertDescription className="flex items-center justify-between gap-4">
+            <div className="flex-1">
+              <p className="font-medium text-foreground mb-1">
+                📸 Scan & Match Receipts Automatically
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Upgrade to Scanner Vision to photograph receipts and auto-match them to bank transactions. 
+                No more manual entry!
+              </p>
+            </div>
+            <div className="flex gap-2 flex-shrink-0">
+              <Button variant="ghost" size="sm" onClick={() => setShowScannerPromo(false)}>
+                <X className="h-4 w-4" />
+              </Button>
+              <Button size="sm" asChild>
+                <a href="/upgrade">
+                  <Camera className="h-4 w-4 mr-1" />
+                  Upgrade
+                </a>
+              </Button>
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Upload Section */}
       <Card>
         <CardHeader>
