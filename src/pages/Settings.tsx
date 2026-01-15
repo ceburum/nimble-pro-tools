@@ -20,6 +20,7 @@ import { AppState } from '@/lib/appState';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { AdminStateSimulator } from '@/components/settings/AdminStateSimulator';
+import { AdminUserManagement } from '@/components/settings/AdminUserManagement';
 
 export default function Settings() {
   const { theme, setTheme } = useTheme();
@@ -238,6 +239,9 @@ export default function Settings() {
 
           {/* Admin State Simulator - only for admins */}
           {isAdmin && <AdminStateSimulator />}
+          
+          {/* Admin User Management - only for admins */}
+          {isAdmin && <AdminUserManagement />}
         </TabsContent>
 
         {/* Notifications Tab */}
