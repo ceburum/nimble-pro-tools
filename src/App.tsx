@@ -30,6 +30,7 @@ import TermsOfService from "./pages/TermsOfService";
 import Affiliates from "./pages/Affiliates";
 import AffiliateAdmin from "./pages/AffiliateAdmin";
 import Upgrade from "./pages/Upgrade";
+import AdminDashboard from "./pages/AdminDashboard";
 import { useReferralTracking } from "@/hooks/useReferralTracking";
 
 // Component to track referral codes from URL
@@ -184,6 +185,14 @@ const App = () => {
                 element={
                   <ProtectedRoute>
                     <AppLayout><Settings /></AppLayout>
+                  </ProtectedRoute>
+                } 
+              />
+              <Route
+                path="/admin" 
+                element={
+                  <ProtectedRoute>
+                    <AppLayout><AdminDashboard /></AppLayout>
                   </ProtectedRoute>
                 } 
               />
