@@ -198,6 +198,129 @@ export type Database = {
           },
         ]
       }
+      app_analytics: {
+        Row: {
+          created_at: string
+          device_info: Json | null
+          event_data: Json | null
+          event_name: string
+          event_type: string
+          id: string
+          metadata: Json | null
+          session_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          device_info?: Json | null
+          event_data?: Json | null
+          event_name: string
+          event_type: string
+          id?: string
+          metadata?: Json | null
+          session_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          device_info?: Json | null
+          event_data?: Json | null
+          event_name?: string
+          event_type?: string
+          id?: string
+          metadata?: Json | null
+          session_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      audit_logs: {
+        Row: {
+          action: string
+          created_at: string
+          id: string
+          ip_address: string | null
+          metadata: Json | null
+          new_values: Json | null
+          old_values: Json | null
+          resource_id: string | null
+          resource_type: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          new_values?: Json | null
+          old_values?: Json | null
+          resource_id?: string | null
+          resource_type?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          new_values?: Json | null
+          old_values?: Json | null
+          resource_id?: string | null
+          resource_type?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      backup_logs: {
+        Row: {
+          backup_type: string
+          completed_at: string | null
+          created_at: string
+          error_message: string | null
+          id: string
+          record_counts: Json | null
+          size_bytes: number | null
+          started_at: string | null
+          status: string
+          storage_path: string | null
+          tables_included: string[] | null
+          user_id: string | null
+        }
+        Insert: {
+          backup_type: string
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          record_counts?: Json | null
+          size_bytes?: number | null
+          started_at?: string | null
+          status?: string
+          storage_path?: string | null
+          tables_included?: string[] | null
+          user_id?: string | null
+        }
+        Update: {
+          backup_type?: string
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          record_counts?: Json | null
+          size_bytes?: number | null
+          started_at?: string | null
+          status?: string
+          storage_path?: string | null
+          tables_included?: string[] | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       bank_expenses: {
         Row: {
           amount: number
@@ -340,6 +463,74 @@ export type Database = {
         }
         Relationships: []
       }
+      commission_events: {
+        Row: {
+          affiliate_id: string | null
+          commission_amount: number
+          commission_rate: number
+          commission_type: string
+          created_at: string
+          event_type: string
+          id: string
+          metadata: Json | null
+          paid_at: string | null
+          product_name: string | null
+          product_type: string | null
+          sale_amount: number
+          salesperson_id: string | null
+          status: string
+          stripe_transfer_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          affiliate_id?: string | null
+          commission_amount?: number
+          commission_rate?: number
+          commission_type?: string
+          created_at?: string
+          event_type: string
+          id?: string
+          metadata?: Json | null
+          paid_at?: string | null
+          product_name?: string | null
+          product_type?: string | null
+          sale_amount?: number
+          salesperson_id?: string | null
+          status?: string
+          stripe_transfer_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          affiliate_id?: string | null
+          commission_amount?: number
+          commission_rate?: number
+          commission_type?: string
+          created_at?: string
+          event_type?: string
+          id?: string
+          metadata?: Json | null
+          paid_at?: string | null
+          product_name?: string | null
+          product_type?: string | null
+          sale_amount?: number
+          salesperson_id?: string | null
+          status?: string
+          stripe_transfer_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commission_events_affiliate_id_fkey"
+            columns: ["affiliate_id"]
+            isOneToOne: false
+            referencedRelation: "affiliates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_provider_settings: {
         Row: {
           api_key_encrypted: string | null
@@ -397,6 +588,87 @@ export type Database = {
           smtp_username?: string | null
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      encryption_key_refs: {
+        Row: {
+          algorithm: string
+          created_at: string
+          id: string
+          is_active: boolean
+          key_name: string
+          key_version: number
+          purpose: string
+          rotated_at: string | null
+        }
+        Insert: {
+          algorithm?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          key_name: string
+          key_version?: number
+          purpose: string
+          rotated_at?: string | null
+        }
+        Update: {
+          algorithm?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          key_name?: string
+          key_version?: number
+          purpose?: string
+          rotated_at?: string | null
+        }
+        Relationships: []
+      }
+      error_logs: {
+        Row: {
+          context: Json | null
+          created_at: string
+          error_code: string | null
+          error_message: string
+          error_type: string
+          id: string
+          resolved: boolean
+          resolved_at: string | null
+          resolved_by: string | null
+          stack_trace: string | null
+          url: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          context?: Json | null
+          created_at?: string
+          error_code?: string | null
+          error_message: string
+          error_type: string
+          id?: string
+          resolved?: boolean
+          resolved_at?: string | null
+          resolved_by?: string | null
+          stack_trace?: string | null
+          url?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          context?: Json | null
+          created_at?: string
+          error_code?: string | null
+          error_message?: string
+          error_type?: string
+          id?: string
+          resolved?: boolean
+          resolved_at?: string | null
+          resolved_by?: string | null
+          stack_trace?: string | null
+          url?: string | null
+          user_agent?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -614,6 +886,30 @@ export type Database = {
         }
         Relationships: []
       }
+      metrics_snapshots: {
+        Row: {
+          created_at: string
+          id: string
+          metric_type: string
+          metrics: Json
+          snapshot_date: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          metric_type: string
+          metrics?: Json
+          snapshot_date: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          metric_type?: string
+          metrics?: Json
+          snapshot_date?: string
+        }
+        Relationships: []
+      }
       mileage_entries: {
         Row: {
           client_id: string | null
@@ -679,6 +975,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      notification_preferences: {
+        Row: {
+          appointment_reminders: boolean
+          created_at: string
+          email_enabled: boolean
+          id: string
+          invoice_reminders: boolean
+          marketing: boolean
+          payment_received: boolean
+          push_enabled: boolean
+          quote_accepted: boolean
+          sms_enabled: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          appointment_reminders?: boolean
+          created_at?: string
+          email_enabled?: boolean
+          id?: string
+          invoice_reminders?: boolean
+          marketing?: boolean
+          payment_received?: boolean
+          push_enabled?: boolean
+          quote_accepted?: boolean
+          sms_enabled?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          appointment_reminders?: boolean
+          created_at?: string
+          email_enabled?: boolean
+          id?: string
+          invoice_reminders?: boolean
+          marketing?: boolean
+          payment_received?: boolean
+          push_enabled?: boolean
+          quote_accepted?: boolean
+          sms_enabled?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       project_mileage: {
         Row: {
@@ -918,6 +1259,42 @@ export type Database = {
           },
         ]
       }
+      push_notification_tokens: {
+        Row: {
+          created_at: string
+          device_name: string | null
+          device_type: string
+          id: string
+          is_active: boolean
+          last_used_at: string | null
+          token: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          device_name?: string | null
+          device_type?: string
+          id?: string
+          is_active?: boolean
+          last_used_at?: string | null
+          token: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          device_name?: string | null
+          device_type?: string
+          id?: string
+          is_active?: boolean
+          last_used_at?: string | null
+          token?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       referrals: {
         Row: {
           affiliate_id: string
@@ -970,6 +1347,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      revenue_events: {
+        Row: {
+          amount: number
+          created_at: string
+          currency: string
+          event_type: string
+          id: string
+          metadata: Json | null
+          related_invoice_id: string | null
+          related_subscription_id: string | null
+          stripe_payment_intent_id: string | null
+          user_id: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          currency?: string
+          event_type: string
+          id?: string
+          metadata?: Json | null
+          related_invoice_id?: string | null
+          related_subscription_id?: string | null
+          stripe_payment_intent_id?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          currency?: string
+          event_type?: string
+          id?: string
+          metadata?: Json | null
+          related_invoice_id?: string | null
+          related_subscription_id?: string | null
+          stripe_payment_intent_id?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
       service_list_requests: {
         Row: {
