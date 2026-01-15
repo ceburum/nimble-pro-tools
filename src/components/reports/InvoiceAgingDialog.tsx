@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button';
 import { useClients } from '@/hooks/useClients';
 import { useInvoices, Invoice } from '@/hooks/useInvoices';
 import { InvoiceEditDialog } from '@/components/invoices/InvoiceEditDialog';
-import { Eye, Edit } from 'lucide-react';
+import { Eye, Edit, CreditCard } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface InvoiceAgingDialogProps {
   open: boolean;
@@ -42,6 +43,12 @@ export function InvoiceAgingDialog({ open, onOpenChange, title, invoices }: Invo
     setEditDialogOpen(false);
   };
 
+  const handleMarkPaid = async (e: React.MouseEvent, invoice: Invoice) => {
+    e.stopPropagation();
+    await updateInvoice(invoice.id, { status: 'paid', paidAt: new Date() });
+    toast.success(`${invoice.invoiceNumber} marked as paid`);
+  };
+
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -61,7 +68,7 @@ export function InvoiceAgingDialog({ open, onOpenChange, title, invoices }: Invo
                   <TableHead>Due Date</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Amount</TableHead>
-                  <TableHead className="text-right">Action</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -81,13 +88,25 @@ export function InvoiceAgingDialog({ open, onOpenChange, title, invoices }: Invo
                     </TableCell>
                     <TableCell className="text-right">${getInvoiceTotal(invoice).toLocaleString()}</TableCell>
                     <TableCell className="text-right">
-                      <Button variant="ghost" size="sm">
-                        {invoice.status === 'paid' ? (
-                          <Eye className="h-4 w-4" />
-                        ) : (
-                          <Edit className="h-4 w-4" />
+                      <div className="flex items-center justify-end gap-1">
+                        {invoice.status !== 'paid' && (
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={(e) => handleMarkPaid(e, invoice)}
+                            title="Mark as Paid"
+                          >
+                            <CreditCard className="h-4 w-4" />
+                          </Button>
                         )}
-                      </Button>
+                        <Button variant="ghost" size="sm">
+                          {invoice.status === 'paid' ? (
+                            <Eye className="h-4 w-4" />
+                          ) : (
+                            <Edit className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
