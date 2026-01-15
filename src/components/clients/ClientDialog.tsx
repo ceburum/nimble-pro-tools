@@ -39,9 +39,9 @@ const clientSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
   email: z.string().email('Invalid email address'),
   phone: z.string().min(10, 'Phone number must be at least 10 characters'),
-  street: z.string().min(5, 'Street address is required'),
-  state: z.string().min(2, 'State is required'),
-  zip: z.string().min(5, 'ZIP code must be at least 5 characters'),
+  street: z.string().optional().or(z.literal('')),
+  state: z.string().optional().or(z.literal('')),
+  zip: z.string().optional().or(z.literal('')),
 });
 
 type ClientFormData = z.infer<typeof clientSchema>;
@@ -117,8 +117,11 @@ export function ClientDialog({ open, onOpenChange, client, onSave }: ClientDialo
   }, [client, form]);
 
   const onSubmit = (data: ClientFormData) => {
-    // Combine address parts into single string
-    const address = `${data.street}, ${data.state} ${data.zip}`;
+    // Combine address parts into single string, handle optional fields
+    const hasAddress = data.street || data.state || data.zip;
+    const address = hasAddress 
+      ? `${data.street || ''}${data.state || data.zip ? ', ' : ''}${data.state || ''} ${data.zip || ''}`.trim()
+      : '';
     onSave({
       name: data.name,
       email: data.email,
@@ -184,7 +187,7 @@ export function ClientDialog({ open, onOpenChange, client, onSave }: ClientDialo
               name="street"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Street Address</FormLabel>
+                  <FormLabel>Street Address (optional)</FormLabel>
                   <FormControl>
                     <Input placeholder="123 Main St" {...field} />
                   </FormControl>
@@ -199,7 +202,7 @@ export function ClientDialog({ open, onOpenChange, client, onSave }: ClientDialo
                 name="state"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>State</FormLabel>
+                    <FormLabel>State (optional)</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
@@ -207,6 +210,7 @@ export function ClientDialog({ open, onOpenChange, client, onSave }: ClientDialo
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent className="bg-background">
+                        <SelectItem value="">None</SelectItem>
                         {US_STATES.map((state) => (
                           <SelectItem key={state} value={state}>
                             {state}
@@ -224,7 +228,7 @@ export function ClientDialog({ open, onOpenChange, client, onSave }: ClientDialo
                 name="zip"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>ZIP Code</FormLabel>
+                    <FormLabel>ZIP Code (optional)</FormLabel>
                     <FormControl>
                       <Input placeholder="12345" {...field} />
                     </FormControl>

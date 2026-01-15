@@ -8,7 +8,8 @@ import { Button } from '@/components/ui/button';
 import { useInvoices, Invoice } from '@/hooks/useInvoices';
 import { useClients } from '@/hooks/useClients';
 import { InvoiceEditDialog } from '@/components/invoices/InvoiceEditDialog';
-import { Mail, Phone, MapPin, Eye, Edit, DollarSign, Clock, CheckCircle } from 'lucide-react';
+import { Mail, Phone, MapPin, Eye, Edit, DollarSign, Clock, CheckCircle, CreditCard } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface ClientTransactionDialogProps {
   open: boolean;
@@ -49,6 +50,12 @@ export function ClientTransactionDialog({ open, onOpenChange, clientId, clientNa
   const handleSaveInvoice = async (updatedInvoice: Invoice) => {
     await updateInvoice(updatedInvoice.id, updatedInvoice);
     setEditDialogOpen(false);
+  };
+
+  const handleMarkPaid = async (e: React.MouseEvent, invoice: Invoice) => {
+    e.stopPropagation();
+    await updateInvoice(invoice.id, { status: 'paid', paidAt: new Date() });
+    toast.success(`${invoice.invoiceNumber} marked as paid`);
   };
 
   const getInvoiceTotal = (invoice: Invoice) => {
@@ -179,13 +186,25 @@ export function ClientTransactionDialog({ open, onOpenChange, clientId, clientNa
                         ${getInvoiceTotal(invoice).toLocaleString()}
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button variant="ghost" size="sm">
-                          {invoice.status === 'paid' ? (
-                            <Eye className="h-4 w-4" />
-                          ) : (
-                            <Edit className="h-4 w-4" />
+                        <div className="flex items-center justify-end gap-1">
+                          {invoice.status !== 'paid' && (
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={(e) => handleMarkPaid(e, invoice)}
+                              title="Mark as Paid"
+                            >
+                              <CreditCard className="h-4 w-4" />
+                            </Button>
                           )}
-                        </Button>
+                          <Button variant="ghost" size="sm">
+                            {invoice.status === 'paid' ? (
+                              <Eye className="h-4 w-4" />
+                            ) : (
+                              <Edit className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}

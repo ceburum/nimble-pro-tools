@@ -30,6 +30,7 @@ const baseNavigation = [
   { name: 'Projects', href: '/projects', icon: FolderKanban, mobileOnly: true },
   { name: 'Appointments', href: '/appointments', icon: CalendarDays, stationaryOnly: true },
   { name: 'Invoices', href: '/invoices', icon: Receipt },
+  { name: 'Services', href: '/services', icon: Scissors, stationaryOnly: true, featureKey: 'serviceMenu' as const },
   { name: 'Notepad', href: '/notepad', icon: StickyNote },
 ];
 
@@ -42,11 +43,12 @@ const addOnsNavigation: Array<{
   icon: typeof CalendarDays; 
   featureKey: FeatureKeyType;
   stationaryOnly?: boolean;
+  mobileOnly?: boolean;
 }> = [
   { name: 'Scheduling Pro', href: '/scheduling', icon: CalendarDays, featureKey: 'scheduling' },
   { name: 'Financial Pro', href: '/reports', icon: BarChart3, featureKey: 'financial' },
   { name: 'Mileage Pro', href: '/mileage', icon: Car, featureKey: 'mileage' },
-  { name: 'Service Menu', href: '/services', icon: Scissors, featureKey: 'serviceMenu', stationaryOnly: true },
+  { name: 'Service Menu', href: '/services', icon: Scissors, featureKey: 'serviceMenu', mobileOnly: true },
 ];
 
 // Affiliate links
@@ -223,6 +225,7 @@ export function AppLayout({ children }: AppLayoutProps) {
               
               // Filter by business type
               if (item.stationaryOnly && !isStationary) return false;
+              if (item.mobileOnly && isStationary) return false;
               
               return true;
             })
@@ -252,6 +255,7 @@ export function AppLayout({ children }: AppLayoutProps) {
             const isStationary = setupProgress.businessType === 'stationary_appointment';
             const isUnlocked = hasAccess(item.featureKey);
             if (item.stationaryOnly && !isStationary) return false;
+            if (item.mobileOnly && isStationary) return false;
             return !isUnlocked;
           }) && (
             <>
@@ -273,6 +277,7 @@ export function AppLayout({ children }: AppLayoutProps) {
                   
                   // Filter by business type
                   if (item.stationaryOnly && !isStationary) return false;
+                  if (item.mobileOnly && isStationary) return false;
                   
                   return true;
                 })
@@ -361,8 +366,8 @@ export function AppLayout({ children }: AppLayoutProps) {
             Become a Salesperson
           </NavLink>
 
-          {/* Admin Link - only visible in ADMIN_PREVIEW state */}
-          {state === AppState.ADMIN_PREVIEW && (
+          {/* Admin Link - only visible to actual admins (from user_roles table) */}
+          {isAdmin && (
             <NavLink 
               to="/affiliate-admin"
               onClick={() => setSidebarOpen(false)} 
