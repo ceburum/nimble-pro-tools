@@ -5,6 +5,22 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Role hierarchy: user → staff (moderator) → admin
+const ROLE_HIERARCHY = ["user", "moderator", "admin"] as const;
+type AppRole = typeof ROLE_HIERARCHY[number];
+
+function getNextRole(currentRole: AppRole, direction: "promote" | "demote"): AppRole | null {
+  const currentIndex = ROLE_HIERARCHY.indexOf(currentRole);
+  
+  if (direction === "promote") {
+    if (currentIndex >= ROLE_HIERARCHY.length - 1) return null; // Already at max
+    return ROLE_HIERARCHY[currentIndex + 1];
+  } else {
+    if (currentIndex <= 0) return null; // Already at min
+    return ROLE_HIERARCHY[currentIndex - 1];
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -54,7 +70,10 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { action, targetUserId } = await req.json();
+    const body = await req.json();
+    const { action, targetUserId, direction } = body;
+    
+    console.log("Admin action received:", { action, targetUserId, direction });
 
     switch (action) {
       case "list_users": {
@@ -80,6 +99,7 @@ Deno.serve(async (req) => {
         const enrichedUsers = users.map(user => {
           const settings = userSettings?.find(s => s.user_id === user.id);
           const roles = userRoles?.filter(r => r.user_id === user.id).map(r => r.role) || [];
+          const isBanned = user.banned_until !== null;
           
           return {
             id: user.id,
@@ -89,12 +109,172 @@ Deno.serve(async (req) => {
             company_name: settings?.company_name || null,
             business_type: settings?.business_type || null,
             setup_completed: settings?.setup_completed || false,
-            roles: roles,
-            is_admin: roles.includes("admin")
+            roles: roles.length > 0 ? roles : ["user"],
+            is_admin: roles.includes("admin"),
+            is_suspended: isBanned
           };
         });
 
         return new Response(JSON.stringify({ users: enrichedUsers }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      case "change_user_role": {
+        if (!targetUserId) {
+          return new Response(JSON.stringify({ error: "Target user ID required" }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        if (!direction || !["promote", "demote"].includes(direction)) {
+          return new Response(JSON.stringify({ error: "Direction must be 'promote' or 'demote'" }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        // Prevent changing own role
+        if (targetUserId === requestingUser.id) {
+          return new Response(JSON.stringify({ error: "Cannot change your own role" }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        // Get current role for target user
+        const { data: existingRoles } = await supabaseAdmin
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", targetUserId);
+
+        // Determine current highest role
+        let currentRole: AppRole = "user";
+        if (existingRoles && existingRoles.length > 0) {
+          const roles = existingRoles.map(r => r.role as AppRole);
+          if (roles.includes("admin")) currentRole = "admin";
+          else if (roles.includes("moderator")) currentRole = "moderator";
+        }
+
+        // Calculate next role
+        const newRole = getNextRole(currentRole, direction);
+        
+        if (!newRole) {
+          const message = direction === "promote" 
+            ? "User is already at maximum role (admin)"
+            : "User is already at minimum role (user)";
+          return new Response(JSON.stringify({ error: message }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        // Delete existing roles
+        await supabaseAdmin
+          .from("user_roles")
+          .delete()
+          .eq("user_id", targetUserId);
+
+        // Insert new role (unless demoting to 'user' which means no role entry)
+        if (newRole !== "user") {
+          const { error: insertError } = await supabaseAdmin
+            .from("user_roles")
+            .insert({ user_id: targetUserId, role: newRole });
+
+          if (insertError) {
+            console.error("Insert role error:", insertError);
+            throw insertError;
+          }
+        }
+
+        const roleLabel = newRole === "moderator" ? "Staff" : newRole.charAt(0).toUpperCase() + newRole.slice(1);
+        return new Response(JSON.stringify({ 
+          success: true,
+          message: `User ${direction}d to ${roleLabel}`,
+          newRole
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      case "suspend_user": {
+        if (!targetUserId) {
+          return new Response(JSON.stringify({ error: "Target user ID required" }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        // Prevent self-suspension
+        if (targetUserId === requestingUser.id) {
+          return new Response(JSON.stringify({ error: "Cannot suspend your own account" }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        // Check target user's role - only allow suspending 'user' role
+        const { data: targetRoles } = await supabaseAdmin
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", targetUserId);
+
+        const hasElevatedRole = targetRoles?.some(r => 
+          r.role === "admin" || r.role === "moderator"
+        );
+
+        if (hasElevatedRole) {
+          return new Response(JSON.stringify({ 
+            error: "Cannot suspend staff or admin users. Demote first." 
+          }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        // Ban the user (far future date = indefinite)
+        const { error: banError } = await supabaseAdmin.auth.admin.updateUserById(
+          targetUserId,
+          { ban_duration: "876000h" } // 100 years
+        );
+
+        if (banError) {
+          console.error("Ban user error:", banError);
+          throw banError;
+        }
+
+        return new Response(JSON.stringify({ 
+          success: true,
+          message: "User suspended successfully"
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      case "unsuspend_user": {
+        if (!targetUserId) {
+          return new Response(JSON.stringify({ error: "Target user ID required" }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        // Unban the user
+        const { error: unbanError } = await supabaseAdmin.auth.admin.updateUserById(
+          targetUserId,
+          { ban_duration: "none" }
+        );
+
+        if (unbanError) {
+          console.error("Unban user error:", unbanError);
+          throw unbanError;
+        }
+
+        return new Response(JSON.stringify({ 
+          success: true,
+          message: "User unsuspended successfully"
+        }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
@@ -245,7 +425,8 @@ Deno.serve(async (req) => {
       }
 
       default:
-        return new Response(JSON.stringify({ error: "Invalid action" }), {
+        console.error("Invalid action received:", action);
+        return new Response(JSON.stringify({ error: `Invalid action: ${action}` }), {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });

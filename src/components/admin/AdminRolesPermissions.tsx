@@ -3,14 +3,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -35,7 +27,38 @@ interface UserWithRole {
   is_suspended?: boolean;
 }
 
-type RoleAction = 'promote' | 'demote' | 'suspend' | 'unsuspend';
+type RoleAction = 'change_user_role' | 'suspend_user' | 'unsuspend_user';
+type Direction = 'promote' | 'demote';
+
+// Role hierarchy: user → staff (moderator) → admin
+const ROLE_HIERARCHY = ['user', 'moderator', 'admin'] as const;
+
+function getHighestRole(roles: string[]): string {
+  if (roles.includes('admin')) return 'admin';
+  if (roles.includes('moderator')) return 'moderator';
+  return 'user';
+}
+
+function canPromote(role: string): boolean {
+  return role !== 'admin';
+}
+
+function canDemote(role: string): boolean {
+  return role !== 'user';
+}
+
+function getNextRole(currentRole: string, direction: Direction): string {
+  const currentIndex = ROLE_HIERARCHY.indexOf(currentRole as typeof ROLE_HIERARCHY[number]);
+  if (direction === 'promote') {
+    return ROLE_HIERARCHY[Math.min(currentIndex + 1, ROLE_HIERARCHY.length - 1)];
+  }
+  return ROLE_HIERARCHY[Math.max(currentIndex - 1, 0)];
+}
+
+function getRoleLabel(role: string): string {
+  if (role === 'moderator') return 'Staff';
+  return role.charAt(0).toUpperCase() + role.slice(1);
+}
 
 export function AdminRolesPermissions() {
   const [users, setUsers] = useState<UserWithRole[]>([]);
@@ -48,8 +71,8 @@ export function AdminRolesPermissions() {
     open: boolean;
     user: UserWithRole | null;
     action: RoleAction;
-    newRole?: string;
-  }>({ open: false, user: null, action: 'promote' });
+    direction?: Direction;
+  }>({ open: false, user: null, action: 'change_user_role' });
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -85,31 +108,43 @@ export function AdminRolesPermissions() {
     }
   }, [searchQuery, users]);
 
-  const handleRoleChange = async () => {
-    const { user, action, newRole } = confirmDialog;
+  const handleConfirmAction = async () => {
+    const { user, action, direction } = confirmDialog;
     if (!user) return;
 
     setActionLoading(user.id);
     try {
-      const response = await supabase.functions.invoke('admin-user-management', {
-        body: { 
-          action: 'update_role', 
-          targetUserId: user.id,
-          roleAction: action,
-          newRole: newRole
-        }
-      });
+      let body: Record<string, unknown>;
+      
+      switch (action) {
+        case 'change_user_role':
+          body = { 
+            action: 'change_user_role', 
+            targetUserId: user.id,
+            direction
+          };
+          break;
+        case 'suspend_user':
+          body = { action: 'suspend_user', targetUserId: user.id };
+          break;
+        case 'unsuspend_user':
+          body = { action: 'unsuspend_user', targetUserId: user.id };
+          break;
+      }
+
+      const response = await supabase.functions.invoke('admin-user-management', { body });
 
       if (response.error) throw response.error;
       if (response.data?.error) throw new Error(response.data.error);
 
-      toast.success(`User role updated successfully`);
+      toast.success(response.data.message || 'Action completed successfully');
       fetchUsers();
     } catch (error: any) {
-      toast.error(error.message || 'Failed to update role');
+      console.error('Role action error:', error);
+      toast.error(error.message || 'Failed to perform action');
     } finally {
       setActionLoading(null);
-      setConfirmDialog({ open: false, user: null, action: 'promote' });
+      setConfirmDialog({ open: false, user: null, action: 'change_user_role' });
     }
   };
 
@@ -121,11 +156,35 @@ export function AdminRolesPermissions() {
     }
   };
 
-  const getHighestRole = (roles: string[]): string => {
-    if (roles.includes('admin')) return 'admin';
-    if (roles.includes('moderator')) return 'moderator';
-    return 'user';
+  const getDialogContent = () => {
+    const { user, action, direction } = confirmDialog;
+    if (!user) return { title: '', description: '' };
+
+    const highestRole = getHighestRole(user.roles);
+    
+    switch (action) {
+      case 'change_user_role': {
+        const nextRole = direction ? getNextRole(highestRole, direction) : highestRole;
+        const verb = direction === 'promote' ? 'Promote' : 'Demote';
+        return {
+          title: `${verb} User?`,
+          description: `${verb} ${user.email} from ${getRoleLabel(highestRole)} to ${getRoleLabel(nextRole)}?`
+        };
+      }
+      case 'suspend_user':
+        return {
+          title: 'Suspend User?',
+          description: `Suspend ${user.email}? They will not be able to access the app until unsuspended.`
+        };
+      case 'unsuspend_user':
+        return {
+          title: 'Unsuspend User?',
+          description: `Restore access for ${user.email}?`
+        };
+    }
   };
+
+  const dialogContent = getDialogContent();
 
   return (
     <>
@@ -136,7 +195,7 @@ export function AdminRolesPermissions() {
             Roles & Permissions
           </CardTitle>
           <CardDescription>
-            Manage user roles: Admin, Staff (Moderator), and User
+            Manage user roles: Admin → Staff → User (progressive hierarchy)
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -188,7 +247,10 @@ export function AdminRolesPermissions() {
             <div className="space-y-2 max-h-[400px] overflow-y-auto">
               {filteredUsers.map((user) => {
                 const highestRole = getHighestRole(user.roles);
-                const isAdmin = user.roles.includes('admin');
+                const isAdmin = highestRole === 'admin';
+                const isUser = highestRole === 'user';
+                const showPromote = canPromote(highestRole);
+                const showDemote = canDemote(highestRole);
                 
                 return (
                   <div 
@@ -198,7 +260,7 @@ export function AdminRolesPermissions() {
                     <div className="flex items-center gap-3 min-w-0">
                       <span className="font-medium truncate">{user.email}</span>
                       <Badge variant={getRoleBadgeVariant(highestRole)} className="capitalize">
-                        {highestRole === 'moderator' ? 'Staff' : highestRole}
+                        {getRoleLabel(highestRole)}
                       </Badge>
                       {user.is_suspended && (
                         <Badge variant="destructive" className="gap-1">
@@ -209,71 +271,90 @@ export function AdminRolesPermissions() {
                     </div>
 
                     <div className="flex items-center gap-2">
-                      {!isAdmin && (
-                        <>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setConfirmDialog({
-                              open: true,
-                              user,
-                              action: 'promote',
-                              newRole: highestRole === 'user' ? 'moderator' : 'admin'
-                            })}
-                            disabled={actionLoading === user.id}
-                            className="gap-1"
-                          >
+                      {/* Promote button - show if not admin */}
+                      {showPromote && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setConfirmDialog({
+                            open: true,
+                            user,
+                            action: 'change_user_role',
+                            direction: 'promote'
+                          })}
+                          disabled={actionLoading === user.id}
+                          className="gap-1"
+                        >
+                          {actionLoading === user.id ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
                             <ArrowUpCircle className="h-3 w-3" />
-                            Promote
-                          </Button>
-                          
-                          {highestRole !== 'user' && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setConfirmDialog({
-                                open: true,
-                                user,
-                                action: 'demote',
-                                newRole: highestRole === 'admin' ? 'moderator' : 'user'
-                              })}
-                              disabled={actionLoading === user.id}
-                              className="gap-1"
-                            >
-                              <ArrowDownCircle className="h-3 w-3" />
-                              Demote
-                            </Button>
                           )}
+                          Promote
+                        </Button>
+                      )}
+                      
+                      {/* Demote button - show if not user */}
+                      {showDemote && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setConfirmDialog({
+                            open: true,
+                            user,
+                            action: 'change_user_role',
+                            direction: 'demote'
+                          })}
+                          disabled={actionLoading === user.id}
+                          className="gap-1"
+                        >
+                          {actionLoading === user.id ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <ArrowDownCircle className="h-3 w-3" />
+                          )}
+                          Demote
+                        </Button>
+                      )}
 
-                          <Button
-                            variant={user.is_suspended ? "default" : "destructive"}
-                            size="sm"
-                            onClick={() => setConfirmDialog({
-                              open: true,
-                              user,
-                              action: user.is_suspended ? 'unsuspend' : 'suspend'
-                            })}
-                            disabled={actionLoading === user.id}
-                            className="gap-1"
-                          >
-                            {user.is_suspended ? (
-                              <>
-                                <CheckCircle className="h-3 w-3" />
-                                Unsuspend
-                              </>
-                            ) : (
-                              <>
-                                <Ban className="h-3 w-3" />
-                                Suspend
-                              </>
-                            )}
-                          </Button>
-                        </>
+                      {/* Suspend/Unsuspend - only for users with role === 'user' */}
+                      {isUser && !isAdmin && (
+                        <Button
+                          variant={user.is_suspended ? "default" : "destructive"}
+                          size="sm"
+                          onClick={() => setConfirmDialog({
+                            open: true,
+                            user,
+                            action: user.is_suspended ? 'unsuspend_user' : 'suspend_user'
+                          })}
+                          disabled={actionLoading === user.id}
+                          className="gap-1"
+                        >
+                          {actionLoading === user.id ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : user.is_suspended ? (
+                            <>
+                              <CheckCircle className="h-3 w-3" />
+                              Unsuspend
+                            </>
+                          ) : (
+                            <>
+                              <Ban className="h-3 w-3" />
+                              Suspend
+                            </>
+                          )}
+                        </Button>
                       )}
                     </div>
                   </div>
                 );
               })}
+
+              {filteredUsers.length === 0 && !loading && (
+                <div className="text-center py-8 text-muted-foreground">
+                  {searchQuery ? 'No users match your search' : 'No users found'}
+                </div>
+              )}
             </div>
           )}
         </CardContent>
@@ -284,30 +365,12 @@ export function AdminRolesPermissions() {
       }>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>
-              {confirmDialog.action === 'promote' && 'Promote User?'}
-              {confirmDialog.action === 'demote' && 'Demote User?'}
-              {confirmDialog.action === 'suspend' && 'Suspend User?'}
-              {confirmDialog.action === 'unsuspend' && 'Unsuspend User?'}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {confirmDialog.action === 'promote' && (
-                <p>Promote <strong>{confirmDialog.user?.email}</strong> to {confirmDialog.newRole === 'moderator' ? 'Staff' : 'Admin'}?</p>
-              )}
-              {confirmDialog.action === 'demote' && (
-                <p>Demote <strong>{confirmDialog.user?.email}</strong> to {confirmDialog.newRole === 'moderator' ? 'Staff' : 'User'}?</p>
-              )}
-              {confirmDialog.action === 'suspend' && (
-                <p>Suspend <strong>{confirmDialog.user?.email}</strong>? They will not be able to access the app.</p>
-              )}
-              {confirmDialog.action === 'unsuspend' && (
-                <p>Restore access for <strong>{confirmDialog.user?.email}</strong>?</p>
-              )}
-            </AlertDialogDescription>
+            <AlertDialogTitle>{dialogContent.title}</AlertDialogTitle>
+            <AlertDialogDescription>{dialogContent.description}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleRoleChange}>
+            <AlertDialogAction onClick={handleConfirmAction}>
               Confirm
             </AlertDialogAction>
           </AlertDialogFooter>
