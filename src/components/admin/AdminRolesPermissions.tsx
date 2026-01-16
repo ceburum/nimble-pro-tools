@@ -244,7 +244,7 @@ export function AdminRolesPermissions() {
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
           ) : (
-            <div className="space-y-2 max-h-[400px] overflow-y-auto">
+            <div className="space-y-3 max-h-[400px] overflow-y-auto">
               {filteredUsers.map((user) => {
                 const highestRole = getHighestRole(user.roles);
                 const isAdmin = highestRole === 'admin';
@@ -255,23 +255,25 @@ export function AdminRolesPermissions() {
                 return (
                   <div 
                     key={user.id} 
-                    className="flex items-center justify-between p-3 rounded-lg border bg-card"
+                    className="p-4 rounded-lg border bg-card"
                   >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <span className="font-medium truncate">{user.email}</span>
-                      <Badge variant={getRoleBadgeVariant(highestRole)} className="capitalize">
+                    {/* User info row */}
+                    <div className="flex items-center gap-3 mb-3">
+                      <span className="font-medium truncate flex-1 min-w-0">{user.email}</span>
+                      <Badge variant={getRoleBadgeVariant(highestRole)} className="capitalize shrink-0">
                         {getRoleLabel(highestRole)}
                       </Badge>
                       {user.is_suspended && (
-                        <Badge variant="destructive" className="gap-1">
+                        <Badge variant="destructive" className="gap-1 shrink-0">
                           <Ban className="h-3 w-3" />
                           Suspended
                         </Badge>
                       )}
                     </div>
 
-                    <div className="flex items-center gap-2">
-                      {/* Promote button - show if not admin */}
+                    {/* Action buttons - responsive grid */}
+                    <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
+                      {/* Promote button */}
                       {showPromote && (
                         <Button
                           variant="outline"
@@ -283,18 +285,18 @@ export function AdminRolesPermissions() {
                             direction: 'promote'
                           })}
                           disabled={actionLoading === user.id}
-                          className="gap-1"
+                          className="gap-1.5 h-9"
                         >
                           {actionLoading === user.id ? (
-                            <Loader2 className="h-3 w-3 animate-spin" />
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
                           ) : (
-                            <ArrowUpCircle className="h-3 w-3" />
+                            <ArrowUpCircle className="h-3.5 w-3.5" />
                           )}
-                          Promote
+                          <span>Promote</span>
                         </Button>
                       )}
                       
-                      {/* Demote button - show if not user */}
+                      {/* Demote button */}
                       {showDemote && (
                         <Button
                           variant="outline"
@@ -306,14 +308,14 @@ export function AdminRolesPermissions() {
                             direction: 'demote'
                           })}
                           disabled={actionLoading === user.id}
-                          className="gap-1"
+                          className="gap-1.5 h-9"
                         >
                           {actionLoading === user.id ? (
-                            <Loader2 className="h-3 w-3 animate-spin" />
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
                           ) : (
-                            <ArrowDownCircle className="h-3 w-3" />
+                            <ArrowDownCircle className="h-3.5 w-3.5" />
                           )}
-                          Demote
+                          <span>Demote</span>
                         </Button>
                       )}
 
@@ -328,19 +330,19 @@ export function AdminRolesPermissions() {
                             action: user.is_suspended ? 'unsuspend_user' : 'suspend_user'
                           })}
                           disabled={actionLoading === user.id}
-                          className="gap-1"
+                          className="gap-1.5 h-9 col-span-2 sm:col-span-1"
                         >
                           {actionLoading === user.id ? (
-                            <Loader2 className="h-3 w-3 animate-spin" />
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
                           ) : user.is_suspended ? (
                             <>
-                              <CheckCircle className="h-3 w-3" />
-                              Unsuspend
+                              <CheckCircle className="h-3.5 w-3.5" />
+                              <span>Unsuspend</span>
                             </>
                           ) : (
                             <>
-                              <Ban className="h-3 w-3" />
-                              Suspend
+                              <Ban className="h-3.5 w-3.5" />
+                              <span>Suspend</span>
                             </>
                           )}
                         </Button>
