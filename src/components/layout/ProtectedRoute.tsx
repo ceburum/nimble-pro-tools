@@ -15,6 +15,7 @@ interface ProtectedRouteProps {
  * Rules:
  * - INSTALL: Redirect to /auth (no user session)
  * - SETUP_INCOMPLETE: Only allow access to dashboard (which shows SetupWizard)
+ *   EXCEPTION: Admins bypass this and can access all routes
  * - READY_BASE, TRIAL_PRO, PAID_PRO: Allow full app access
  * - ADMIN_PREVIEW: Allow full access including setup replay
  * 
@@ -23,7 +24,7 @@ interface ProtectedRouteProps {
  */
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { user, loading: authLoading } = useAuth();
-  const { state, loading: stateLoading, isSetupComplete } = useAppState();
+  const { state, loading: stateLoading, isSetupComplete, isAdmin } = useAppState();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -38,7 +39,13 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
       return;
     }
 
-    // Enforce navigation based on AppState
+    // ADMIN BYPASS: Admins skip all onboarding/setup redirects
+    if (isAdmin) {
+      // Admins can access any route regardless of setup state
+      return;
+    }
+
+    // Enforce navigation based on AppState for non-admin users
     switch (state) {
       case AppState.INSTALL:
         // No user session detected - redirect to auth
@@ -67,7 +74,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
         // Feature gating is handled by individual pages (disabled UI, not redirects)
         break;
     }
-  }, [user, loading, state, location.pathname, navigate, isSetupComplete]);
+  }, [user, loading, state, location.pathname, navigate, isSetupComplete, isAdmin]);
 
   if (loading) {
     return (
