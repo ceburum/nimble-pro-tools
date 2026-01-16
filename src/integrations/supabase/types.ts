@@ -234,6 +234,48 @@ export type Database = {
         }
         Relationships: []
       }
+      app_flow_steps: {
+        Row: {
+          conditions: Json | null
+          created_at: string
+          description: string | null
+          flow_name: string
+          id: string
+          is_active: boolean
+          next_step_key: string | null
+          step_key: string
+          step_name: string
+          step_order: number
+          updated_at: string
+        }
+        Insert: {
+          conditions?: Json | null
+          created_at?: string
+          description?: string | null
+          flow_name: string
+          id?: string
+          is_active?: boolean
+          next_step_key?: string | null
+          step_key: string
+          step_name: string
+          step_order?: number
+          updated_at?: string
+        }
+        Update: {
+          conditions?: Json | null
+          created_at?: string
+          description?: string | null
+          flow_name?: string
+          id?: string
+          is_active?: boolean
+          next_step_key?: string | null
+          step_key?: string
+          step_name?: string
+          step_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       audit_logs: {
         Row: {
           action: string
@@ -1020,6 +1062,104 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      onboarding_steps: {
+        Row: {
+          applies_to_professions: string[] | null
+          applies_to_roles: string[] | null
+          conditions: Json | null
+          content_body: string | null
+          content_description: string | null
+          content_title: string | null
+          created_at: string
+          id: string
+          is_active: boolean
+          step_key: string
+          step_name: string
+          step_order: number
+          updated_at: string
+        }
+        Insert: {
+          applies_to_professions?: string[] | null
+          applies_to_roles?: string[] | null
+          conditions?: Json | null
+          content_body?: string | null
+          content_description?: string | null
+          content_title?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          step_key: string
+          step_name: string
+          step_order?: number
+          updated_at?: string
+        }
+        Update: {
+          applies_to_professions?: string[] | null
+          applies_to_roles?: string[] | null
+          conditions?: Json | null
+          content_body?: string | null
+          content_description?: string | null
+          content_title?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          step_key?: string
+          step_name?: string
+          step_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      profession_menu_config: {
+        Row: {
+          created_at: string
+          default_label: string
+          display_order: number
+          icon_name: string | null
+          id: string
+          is_enabled: boolean
+          menu_item_key: string
+          menu_label: string
+          profession_id: string | null
+          route_path: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          default_label: string
+          display_order?: number
+          icon_name?: string | null
+          id?: string
+          is_enabled?: boolean
+          menu_item_key: string
+          menu_label: string
+          profession_id?: string | null
+          route_path?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          default_label?: string
+          display_order?: number
+          icon_name?: string | null
+          id?: string
+          is_enabled?: boolean
+          menu_item_key?: string
+          menu_label?: string
+          profession_id?: string | null
+          route_path?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profession_menu_config_profession_id_fkey"
+            columns: ["profession_id"]
+            isOneToOne: false
+            referencedRelation: "professions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       professions: {
         Row: {

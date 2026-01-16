@@ -6,8 +6,11 @@ import { AdminRolesPermissions } from '@/components/admin/AdminRolesPermissions'
 import { AdminSubscriptionOverrides } from '@/components/admin/AdminSubscriptionOverrides';
 import { AdminFeatureFlags } from '@/components/admin/AdminFeatureFlags';
 import { AdminGlobalSettings } from '@/components/admin/AdminGlobalSettings';
-import { Shield, Users, CreditCard, Flag, Settings, Loader2, ShieldX } from 'lucide-react';
+import { AdminOnboardingFlows } from '@/components/admin/AdminOnboardingFlows';
+import { AdminMenuProfessionConfig } from '@/components/admin/AdminMenuProfessionConfig';
+import { Shield, Users, CreditCard, Flag, Settings, Loader2, ShieldX, Workflow, Menu } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 
 export default function AdminDashboard() {
   const { isAdmin, loading } = useAppState();
@@ -51,28 +54,39 @@ export default function AdminDashboard() {
       />
 
       <Tabs defaultValue="users" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid">
-          <TabsTrigger value="users" className="gap-2">
-            <Users className="h-4 w-4" />
-            <span className="hidden sm:inline">Users</span>
-          </TabsTrigger>
-          <TabsTrigger value="roles" className="gap-2">
-            <Shield className="h-4 w-4" />
-            <span className="hidden sm:inline">Roles</span>
-          </TabsTrigger>
-          <TabsTrigger value="subscriptions" className="gap-2">
-            <CreditCard className="h-4 w-4" />
-            <span className="hidden sm:inline">Billing</span>
-          </TabsTrigger>
-          <TabsTrigger value="flags" className="gap-2">
-            <Flag className="h-4 w-4" />
-            <span className="hidden sm:inline">Flags</span>
-          </TabsTrigger>
-          <TabsTrigger value="settings" className="gap-2">
-            <Settings className="h-4 w-4" />
-            <span className="hidden sm:inline">Settings</span>
-          </TabsTrigger>
-        </TabsList>
+        <ScrollArea className="w-full">
+          <TabsList className="inline-flex w-max min-w-full lg:w-auto">
+            <TabsTrigger value="users" className="gap-2">
+              <Users className="h-4 w-4" />
+              <span className="hidden sm:inline">Users</span>
+            </TabsTrigger>
+            <TabsTrigger value="roles" className="gap-2">
+              <Shield className="h-4 w-4" />
+              <span className="hidden sm:inline">Roles</span>
+            </TabsTrigger>
+            <TabsTrigger value="onboarding" className="gap-2">
+              <Workflow className="h-4 w-4" />
+              <span className="hidden sm:inline">Onboarding</span>
+            </TabsTrigger>
+            <TabsTrigger value="menus" className="gap-2">
+              <Menu className="h-4 w-4" />
+              <span className="hidden sm:inline">Menus</span>
+            </TabsTrigger>
+            <TabsTrigger value="subscriptions" className="gap-2">
+              <CreditCard className="h-4 w-4" />
+              <span className="hidden sm:inline">Billing</span>
+            </TabsTrigger>
+            <TabsTrigger value="flags" className="gap-2">
+              <Flag className="h-4 w-4" />
+              <span className="hidden sm:inline">Flags</span>
+            </TabsTrigger>
+            <TabsTrigger value="settings" className="gap-2">
+              <Settings className="h-4 w-4" />
+              <span className="hidden sm:inline">Settings</span>
+            </TabsTrigger>
+          </TabsList>
+          <ScrollBar orientation="horizontal" />
+        </ScrollArea>
 
         <TabsContent value="users">
           <AdminUserManagementPanel />
@@ -80,6 +94,14 @@ export default function AdminDashboard() {
 
         <TabsContent value="roles">
           <AdminRolesPermissions />
+        </TabsContent>
+
+        <TabsContent value="onboarding">
+          <AdminOnboardingFlows />
+        </TabsContent>
+
+        <TabsContent value="menus">
+          <AdminMenuProfessionConfig />
         </TabsContent>
 
         <TabsContent value="subscriptions">
