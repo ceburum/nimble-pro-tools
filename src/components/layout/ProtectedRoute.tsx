@@ -39,9 +39,10 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
       return;
     }
 
-    // ADMIN BYPASS: State is ADMIN_PREVIEW for admins - they can access everything
-    // This check uses state rather than isAdmin to ensure proper loading sequence
-    if (state === AppState.ADMIN_PREVIEW) {
+    // ADMIN BYPASS: Check both state AND isAdmin flag
+    // This handles the race condition where state might still be computing
+    // but we already know the user is an admin from the database
+    if (state === AppState.ADMIN_PREVIEW || isAdmin) {
       // Admins can access any route regardless of setup status
       return;
     }
@@ -69,7 +70,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
         // Feature gating is handled by individual pages (disabled UI, not redirects)
         break;
     }
-  }, [user, loading, state, location.pathname, navigate, isSetupComplete]);
+  }, [user, loading, state, location.pathname, navigate, isSetupComplete, isAdmin]);
 
   if (loading) {
     return (
