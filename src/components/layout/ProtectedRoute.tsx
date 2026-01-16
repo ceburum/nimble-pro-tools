@@ -50,9 +50,10 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     // Enforce navigation based on AppState for non-admin users
     switch (state) {
       case AppState.INSTALL:
-        // No user session detected - redirect to auth
-        // This should rarely happen as !user check above handles it
-        navigate('/auth', { replace: true });
+        // DEFENSIVE: If user exists but state is INSTALL, this is a race condition
+        // The database query hasn't completed yet - wait for next render
+        // Only redirect if there's genuinely no user (already handled above)
+        // Do nothing here - state will resolve on next render
         break;
 
       case AppState.SETUP_INCOMPLETE:
