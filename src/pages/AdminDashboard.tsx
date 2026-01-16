@@ -27,6 +27,11 @@ export default function AdminDashboard() {
 
   return (
     <div className="space-y-6">
+      {/* B2S Test Banner - Remove after testing */}
+      <div className="bg-amber-500 text-amber-950 px-4 py-2 rounded-lg text-center font-bold text-sm">
+        🧪 B2S Admin Test Build - {new Date().toISOString().split('T')[0]}
+      </div>
+      
       <PageHeader 
         title="Admin Dashboard" 
         description="Administrative tools for managing users, permissions, and app settings"
