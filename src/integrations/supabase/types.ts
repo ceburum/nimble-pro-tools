@@ -1021,6 +1021,45 @@ export type Database = {
         }
         Relationships: []
       }
+      professions: {
+        Row: {
+          business_type: string
+          created_at: string
+          description: string | null
+          display_name: string
+          icon: string
+          id: string
+          is_active: boolean
+          setup_order: number
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          business_type?: string
+          created_at?: string
+          description?: string | null
+          display_name: string
+          icon?: string
+          id?: string
+          is_active?: boolean
+          setup_order?: number
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          business_type?: string
+          created_at?: string
+          description?: string | null
+          display_name?: string
+          icon?: string
+          id?: string
+          is_active?: boolean
+          setup_order?: number
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       project_mileage: {
         Row: {
           coordinates: Json | null
@@ -1423,6 +1462,62 @@ export type Database = {
         }
         Relationships: []
       }
+      service_menu_library: {
+        Row: {
+          available_in_setup: boolean
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+          is_active: boolean
+          is_featured: boolean
+          preview_items: Json
+          price_cents: number
+          profession_id: string
+          services: Json
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          available_in_setup?: boolean
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          is_featured?: boolean
+          preview_items?: Json
+          price_cents?: number
+          profession_id: string
+          services?: Json
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          available_in_setup?: boolean
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          is_featured?: boolean
+          preview_items?: Json
+          price_cents?: number
+          profession_id?: string
+          services?: Json
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_menu_library_profession_id_fkey"
+            columns: ["profession_id"]
+            isOneToOne: false
+            referencedRelation: "professions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       subcontractor_payments: {
         Row: {
           amount: number
@@ -1699,6 +1794,59 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      user_services: {
+        Row: {
+          bg_color: string | null
+          created_at: string
+          duration: number | null
+          id: string
+          is_active: boolean
+          name: string
+          price: number
+          sort_order: number
+          source_library_id: string | null
+          thumbnail_url: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          bg_color?: string | null
+          created_at?: string
+          duration?: number | null
+          id?: string
+          is_active?: boolean
+          name: string
+          price?: number
+          sort_order?: number
+          source_library_id?: string | null
+          thumbnail_url?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          bg_color?: string | null
+          created_at?: string
+          duration?: number | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          price?: number
+          sort_order?: number
+          source_library_id?: string | null
+          thumbnail_url?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_services_source_library_id_fkey"
+            columns: ["source_library_id"]
+            isOneToOne: false
+            referencedRelation: "service_menu_library"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_settings: {
         Row: {
