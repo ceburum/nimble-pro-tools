@@ -188,8 +188,12 @@ export function useAppState(): AppStateData {
   // Determine the authoritative AppState
   // CRITICAL: This is the ONLY source of truth for app state
   const state = useMemo((): AppState => {
-    // Still loading - default to INSTALL to prevent UI flash
+    // Still loading - but if we already know user is admin, return ADMIN_PREVIEW early
+    // This prevents race condition where ProtectedRoute redirects before state resolves
     if (authLoading || dataLoading) {
+      if (user && isAdmin) {
+        return AppState.ADMIN_PREVIEW;
+      }
       return AppState.INSTALL;
     }
 
