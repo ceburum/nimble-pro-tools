@@ -39,9 +39,10 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
       return;
     }
 
-    // ADMIN BYPASS: Admins skip all onboarding/setup redirects
-    if (isAdmin) {
-      // Admins can access any route regardless of setup state
+    // ADMIN BYPASS: State is ADMIN_PREVIEW for admins - they can access everything
+    // This check uses state rather than isAdmin to ensure proper loading sequence
+    if (state === AppState.ADMIN_PREVIEW) {
+      // Admins can access any route regardless of setup status
       return;
     }
 
@@ -61,12 +62,6 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
         }
         break;
 
-      case AppState.ADMIN_PREVIEW:
-        // Admins can access everything including replaying setup at root
-        // If setup is incomplete, they'll see the wizard at root
-        // Otherwise, full app access - no restrictions
-        break;
-
       case AppState.READY_BASE:
       case AppState.TRIAL_PRO:
       case AppState.PAID_PRO:
@@ -74,7 +69,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
         // Feature gating is handled by individual pages (disabled UI, not redirects)
         break;
     }
-  }, [user, loading, state, location.pathname, navigate, isSetupComplete, isAdmin]);
+  }, [user, loading, state, location.pathname, navigate, isSetupComplete]);
 
   if (loading) {
     return (
