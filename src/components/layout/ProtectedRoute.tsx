@@ -9,6 +9,9 @@ interface ProtectedRouteProps {
   children: React.ReactNode;
 }
 
+// Admin routes that should always be accessible to admins
+const ADMIN_ROUTES = ['/admin', '/admin/settings'];
+
 /**
  * ProtectedRoute - Navigation enforcement based on AppState
  * 
@@ -28,9 +31,16 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // Both auth and state must be fully loaded before any redirect decisions
   const loading = authLoading || stateLoading;
 
+  // Check if current route is an admin route
+  const isAdminRoute = ADMIN_ROUTES.some(route => 
+    location.pathname === route || location.pathname.startsWith(route + '/')
+  );
+
   useEffect(() => {
+    // CRITICAL: Wait for ALL loading to complete before any navigation
     if (loading) return;
 
     // No user - redirect to auth
@@ -39,23 +49,22 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
       return;
     }
 
-    // ADMIN BYPASS: Check both state AND isAdmin flag
-    // This handles the race condition where state might still be computing
-    // but we already know the user is an admin from the database
+    // ADMIN BYPASS: Admins can access any route regardless of setup status
+    // Check both the AppState AND the isAdmin flag for redundancy
     if (state === AppState.ADMIN_PREVIEW || isAdmin) {
-      // Admins can access any route regardless of setup status
+      // Admins have full access - no redirects ever
+      return;
+    }
+
+    // DEFENSIVE: If user exists but state is INSTALL, this is a race condition
+    // The database query hasn't finished resolving the true state yet
+    // Wait for the next render cycle - do NOT redirect authenticated users
+    if (state === AppState.INSTALL) {
       return;
     }
 
     // Enforce navigation based on AppState for non-admin users
     switch (state) {
-      case AppState.INSTALL:
-        // DEFENSIVE: If user exists but state is INSTALL, this is a race condition
-        // The database query hasn't completed yet - wait for next render
-        // Only redirect if there's genuinely no user (already handled above)
-        // Do nothing here - state will resolve on next render
-        break;
-
       case AppState.SETUP_INCOMPLETE:
         // Only allow access to root (dashboard) which shows SetupWizard
         // Redirect any other routes back to root for setup completion
@@ -73,6 +82,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     }
   }, [user, loading, state, location.pathname, navigate, isSetupComplete, isAdmin]);
 
+  // Show loading spinner while auth or state is loading
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -81,6 +91,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     );
   }
 
+  // No user after loading complete - render nothing (redirect will happen)
   if (!user) {
     return null;
   }
