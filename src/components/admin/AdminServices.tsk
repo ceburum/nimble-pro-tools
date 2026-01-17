@@ -1,1 +1,73 @@
+import { useEffect, useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
+interface Service {
+  id: string;
+  name: string;
+  price: number;
+  is_active: boolean;
+}
+
+export function AdminServices() {
+  const [services, setServices] = useState<Service[]>([]);
+  const [selected, setSelected] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  const fetchServices = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("services")
+      .select("*")
+      .eq("is_active", true)
+      .order("name");
+
+    if (error) {
+      console.error(error);
+      toast.error("Failed to load services");
+    } else {
+      setServices(data ?? []);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchServices();
+  }, []);
+
+  const toggleSelect = (id: string) => {
+    setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  };
+
+  const addSelectedToMenu = async () => {
+    if (selected.length === 0) return;
+    setSaving(true);
+
+    const { error } = await supabase.rpc("add_services_to_menu", { service_ids: selected });
+
+    if (error) {
+      console.error(error);
+      toast.error("Failed to add services");
+    } else {
+      toast.success("Services added to menu");
+      setSelected([]);
+    }
+
+    setSaving(false);
+  };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-12">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space
