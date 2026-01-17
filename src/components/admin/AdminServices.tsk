@@ -1,5 +1,5 @@
 import React from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { AdminUserManagementPanel } from "@/components/admin/AdminUserManagementPanel";
-import { AdminServices } from "@/components/admin/AdminServices";
-import { AdminMenuProfessionConfig } from "@/components/admin/AdminMenuProfessionConfig";
+
+export const AdminServices = () => {
+  return <div>Placeholder for Admin Services</div>;
+};
