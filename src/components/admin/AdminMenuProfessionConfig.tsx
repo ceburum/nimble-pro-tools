@@ -1,11 +1,23 @@
-// src/components/admin/AdminServices.tsx
+// src/pages/AdminDashboard.tsx
 import React from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { AdminUserManagementPanel } from "@/components/admin/AdminUserManagementPanel";
+import { AdminServices } from "@/components/admin/AdminServices";
+import { AdminMenuProfessionConfig } from "@/components/admin/AdminMenuProfessionConfig";
 
-export const AdminServices = () => {
+export const AdminDashboard = () => {
   return (
-    <div>
-      <h2>Admin Services</h2>
-      <p>This is a placeholder for Admin Services component.</p>
+    <div className="space-y-6 p-4">
+      <Card>
+        <CardHeader>
+          <CardTitle>Admin Dashboard</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <AdminUserManagementPanel />
+          <AdminServices />
+          <AdminMenuProfessionConfig />
+        </CardContent>
+      </Card>
     </div>
   );
 };
