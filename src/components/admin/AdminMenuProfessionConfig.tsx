@@ -21,10 +21,8 @@ export function AdminMenuProfessionConfig() {
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
 
-  // Load service menu packs
   const fetchPacks = async () => {
     setLoading(true);
-
     const { data, error } = await supabase
       .from<ServiceMenuPack>("service_menu_packs")
       .select("*")
@@ -37,7 +35,6 @@ export function AdminMenuProfessionConfig() {
     } else {
       setPacks(data ?? []);
     }
-
     setLoading(false);
   };
 
@@ -46,9 +43,7 @@ export function AdminMenuProfessionConfig() {
   }, []);
 
   const toggleSelect = (id: string) => {
-    setSelected((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-    );
+    setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
 
   const addSelectedToMenu = async () => {
@@ -64,39 +59,9 @@ export function AdminMenuProfessionConfig() {
       toast.success("Service menus added");
       setSelected([]);
     }
-
     setAdding(false);
   };
 
   if (loading) {
     return (
-      <div className="flex justify-center py-12">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Service Menu Library</CardTitle>
-          <CardDescription>
-            Select and add pre-built service menus to a business
-          </CardDescription>
-        </CardHeader>
-
-        <CardContent className="space-y-4">
-          {packs.map((pack) => (
-            <div
-              key={pack.id}
-              className="flex items-start justify-between gap-4 p-4 border rounded-lg"
-            >
-              <div className="flex gap-3">
-                <Checkbox
-                  checked={selected.includes(pack.id)}
-                  onCheckedChange={() => toggleSelect(pack.id)}
-                />
-                <div>
-                  <div className="font-medium">{pack.name}</div>
-                  <p className="text-sm text-muted-foreground
+      <div className="flex justify
