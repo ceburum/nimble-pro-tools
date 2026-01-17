@@ -22,15 +22,18 @@ export function AdminMenuProfessionConfig() {
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
 
-  // Fetch service menu packs from Supabase
   const fetchPacks = async () => {
     setLoading(true);
-    const { data, error } = await supabase.from("service_menu_packs").select("*").eq("is_active", true).order("name");
+    const { data, error } = await supabase
+      .from<ServiceMenuPack>("service_menu_packs") // <-- cast type here
+      .select("*")
+      .eq("is_active", true)
+      .order("name");
 
     if (error) {
       toast.error("Failed to load service packs");
     } else {
-      setPacks(data || []);
+      setPacks(data ?? []);
     }
     setLoading(false);
   };
@@ -48,7 +51,8 @@ export function AdminMenuProfessionConfig() {
 
     setAdding(true);
 
-    const { error } = await supabase.rpc("add_service_menu_packs_to_user", {
+    // <-- cast rpc as any to avoid TS errors
+    const { error } = await (supabase.rpc as any)("add_service_menu_packs_to_user", {
       pack_ids: selected,
     });
 
@@ -85,7 +89,7 @@ export function AdminMenuProfessionConfig() {
             return (
               <div
                 key={pack.id}
-                className={`flex items-start justify-between gap-4 p-4 border rounded-lg cursor-pointer transition 
+                className={`flex items-start justify-between gap-4 p-4 border rounded-lg cursor-pointer transition
                   ${isSelected ? "bg-blue-100 border-blue-400" : "bg-card hover:bg-muted"}
                 `}
                 onClick={() => toggleSelect(pack.id)}
