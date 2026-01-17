@@ -1,7 +1,9 @@
-import { AdminUserManagement } from "@/components/admin/AdminUserManagement";
+// src/pages/AdminDashboard.tsx
+import React from "react";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { AdminUserManagementPanel } from "@/components/admin/AdminUserManagementPanel";
 import { AdminServices } from "@/components/admin/AdminServices";
 import { AdminMenuProfessionConfig } from "@/components/admin/AdminMenuProfessionConfig";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export function AdminDashboard() {
   return (
@@ -10,8 +12,8 @@ export function AdminDashboard() {
         <CardHeader>
           <CardTitle>Admin Dashboard</CardTitle>
         </CardHeader>
-        <CardContent>
-          <AdminUserManagement />
+        <CardContent className="space-y-4">
+          <AdminUserManagementPanel />
           <AdminServices />
           <AdminMenuProfessionConfig />
         </CardContent>
