@@ -5,18 +5,10 @@ import { AdminUserManagementPanel } from "@/components/admin/AdminUserManagement
 import { AdminServices } from "@/components/admin/AdminServices";
 import { AdminMenuProfessionConfig } from "@/components/admin/AdminMenuProfessionConfig";
 
-export const AdminDashboard: React.FC = () => {
+export const AdminDashboard = () => {
   return (
     <div className="space-y-6 p-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Admin Dashboard</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p>Welcome to the admin dashboard. Manage users, services, and configurations below.</p>
-        </CardContent>
-      </Card>
-
+      {/* Admin User Management */}
       <Card>
         <CardHeader>
           <CardTitle>User Management</CardTitle>
@@ -26,6 +18,7 @@ export const AdminDashboard: React.FC = () => {
         </CardContent>
       </Card>
 
+      {/* Services */}
       <Card>
         <CardHeader>
           <CardTitle>Services</CardTitle>
@@ -35,9 +28,10 @@ export const AdminDashboard: React.FC = () => {
         </CardContent>
       </Card>
 
+      {/* Menu Profession Configuration */}
       <Card>
         <CardHeader>
-          <CardTitle>Profession Menu Config</CardTitle>
+          <CardTitle>Menu Profession Config</CardTitle>
         </CardHeader>
         <CardContent>
           <AdminMenuProfessionConfig />
@@ -46,5 +40,3 @@ export const AdminDashboard: React.FC = () => {
     </div>
   );
 };
-
-export default AdminDashboard;
