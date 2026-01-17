@@ -22,11 +22,11 @@ export function AdminMenuProfessionConfig() {
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
 
-  // Load service menu packs
+  // Fetch all active service menu packs
   const fetchPacks = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from<ServiceMenuPack>("service_menu_packs") // <- tell TS the row type
+
+    const { data, error } = await (supabase.from as any)("service_menu_packs")
       .select("*")
       .eq("is_active", true)
       .order("name");
@@ -35,8 +35,9 @@ export function AdminMenuProfessionConfig() {
       console.error(error);
       toast.error("Failed to load service menu packs");
     } else {
-      setPacks(data ?? []);
+      setPacks((data ?? []) as ServiceMenuPack[]);
     }
+
     setLoading(false);
   };
 
@@ -44,15 +45,17 @@ export function AdminMenuProfessionConfig() {
     fetchPacks();
   }, []);
 
+  // Toggle selection of a pack
   const toggleSelect = (id: string) => {
     setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
 
+  // Add selected packs to the user's menu
   const addSelectedToMenu = async () => {
     if (selected.length === 0) return;
+
     setAdding(true);
 
-    // Cast RPC to any to avoid TS errors
     const { error } = await (supabase.rpc as any)("add_service_menu_packs_to_user", { pack_ids: selected });
 
     if (error) {
@@ -95,6 +98,7 @@ export function AdminMenuProfessionConfig() {
                   </Badge>
                 </div>
               </div>
+
               <div className="font-semibold">${pack.price.toFixed(2)}</div>
             </div>
           ))}
