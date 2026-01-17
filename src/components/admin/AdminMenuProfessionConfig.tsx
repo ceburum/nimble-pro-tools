@@ -18,12 +18,14 @@ interface ServiceMenuPack {
 
 export function AdminMenuProfessionConfig() {
   const [packs, setPacks] = useState<ServiceMenuPack[]>([]);
+  const [installedPackIds, setInstalledPackIds] = useState<string[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
 
   useEffect(() => {
     fetchPacks();
+    fetchInstalledPacks();
   }, []);
 
   const fetchPacks = async () => {
@@ -36,6 +38,18 @@ export function AdminMenuProfessionConfig() {
       setPacks(data || []);
     }
     setLoading(false);
+  };
+
+  const fetchInstalledPacks = async () => {
+    const user = supabase.auth.getUser(); // Adjust if you have currentUser elsewhere
+    const { data, error } = await supabase
+      .from("user_service_menu_packs")
+      .select("pack_id")
+      .eq("user_id", (await user).data.user?.id);
+
+    if (!error && data) {
+      setInstalledPackIds(data.map((row: any) => row.pack_id));
+    }
   };
 
   const toggleSelect = (id: string) => {
@@ -55,6 +69,8 @@ export function AdminMenuProfessionConfig() {
       toast.error("Failed to add service menus");
     } else {
       toast.success("Service menus added to your account");
+      // Mark newly added packs as installed
+      setInstalledPackIds((prev) => [...prev, ...selected]);
       setSelected([]);
     }
 
@@ -77,21 +93,38 @@ export function AdminMenuProfessionConfig() {
           <CardDescription>Purchase and add pre-built service menus to your business</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {packs.map((pack) => (
-            <div key={pack.id} className="flex items-start justify-between gap-4 p-4 border rounded-lg">
-              <div className="flex gap-3">
-                <Checkbox checked={selected.includes(pack.id)} onCheckedChange={() => toggleSelect(pack.id)} />
-                <div>
-                  <div className="font-medium">{pack.name}</div>
-                  <p className="text-sm text-muted-foreground">{pack.description}</p>
-                  <Badge variant="secondary" className="mt-1">
-                    {pack.profession_tag}
-                  </Badge>
+          {packs.map((pack) => {
+            const isInstalled = installedPackIds.includes(pack.id);
+            return (
+              <div
+                key={pack.id}
+                className={`flex items-start justify-between gap-4 p-4 border rounded-lg ${
+                  isInstalled ? "bg-green-50 border-green-300" : ""
+                }`}
+              >
+                <div className="flex gap-3">
+                  <Checkbox
+                    checked={selected.includes(pack.id)}
+                    disabled={isInstalled}
+                    onCheckedChange={() => toggleSelect(pack.id)}
+                  />
+                  <div>
+                    <div className="font-medium">{pack.name}</div>
+                    <p className="text-sm text-muted-foreground">{pack.description}</p>
+                    <Badge variant="secondary" className="mt-1">
+                      {pack.profession_tag}
+                    </Badge>
+                    {isInstalled && (
+                      <Badge variant="success" className="ml-2">
+                        Installed
+                      </Badge>
+                    )}
+                  </div>
                 </div>
+                <div className="font-semibold">${pack.price}</div>
               </div>
-              <div className="font-semibold">${pack.price}</div>
-            </div>
-          ))}
+            );
+          })}
 
           <Button disabled={selected.length === 0 || adding} onClick={addSelectedToMenu} className="w-full">
             {adding ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ShoppingCart className="h-4 w-4 mr-2" />}
