@@ -40,4 +40,97 @@ export default function AdminDashboard() {
       <div className="flex items-center justify-center min-h-[400px]">
         <Card className="max-w-md">
           <CardHeader className="text-center">
-            <ShieldX className="h-12 w
+            <ShieldX className="h-12 w-12 mx-auto text-destructive mb-2" />
+            <CardTitle>Access Denied</CardTitle>
+            <CardDescription>You do not have permission to access the Admin Dashboard.</CardDescription>
+          </CardHeader>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-amber-500 text-amber-950 px-4 py-2 rounded-lg text-center font-bold text-sm">
+        🧪 B2S Admin Test Build - {new Date().toISOString().split("T")[0]}
+      </div>
+
+      <PageHeader
+        title="Admin Dashboard"
+        description="Administrative tools for managing users, permissions, and app settings"
+      />
+
+      <Tabs defaultValue="users" className="space-y-6">
+        <ScrollArea className="w-full">
+          <TabsList className="inline-flex w-max min-w-full lg:w-auto">
+            <TabsTrigger value="users">
+              <Users className="h-4 w-4" />
+              <span className="hidden sm:inline">Users</span>
+            </TabsTrigger>
+            <TabsTrigger value="roles">
+              <Shield className="h-4 w-4" />
+              <span className="hidden sm:inline">Roles</span>
+            </TabsTrigger>
+            <TabsTrigger value="onboarding">
+              <Workflow className="h-4 w-4" />
+              <span className="hidden sm:inline">Onboarding</span>
+            </TabsTrigger>
+            <TabsTrigger value="menus">
+              <Menu className="h-4 w-4" />
+              <span className="hidden sm:inline">Menus</span>
+            </TabsTrigger>
+            <TabsTrigger value="services">
+              <ShoppingCart className="h-4 w-4" />
+              <span className="hidden sm:inline">Services</span>
+            </TabsTrigger>
+            <TabsTrigger value="subscriptions">
+              <CreditCard className="h-4 w-4" />
+              <span className="hidden sm:inline">Billing</span>
+            </TabsTrigger>
+            <TabsTrigger value="flags">
+              <Flag className="h-4 w-4" />
+              <span className="hidden sm:inline">Flags</span>
+            </TabsTrigger>
+            <TabsTrigger value="settings">
+              <Settings className="h-4 w-4" />
+              <span className="hidden sm:inline">Settings</span>
+            </TabsTrigger>
+          </TabsList>
+          <ScrollBar orientation="horizontal" />
+        </ScrollArea>
+
+        <TabsContent value="users">
+          <AdminUserManagementPanel />
+        </TabsContent>
+
+        <TabsContent value="roles">
+          <AdminRolesPermissions />
+        </TabsContent>
+
+        <TabsContent value="onboarding">
+          <AdminOnboardingFlows />
+        </TabsContent>
+
+        <TabsContent value="menus">
+          <AdminMenuProfessionConfig />
+        </TabsContent>
+
+        <TabsContent value="services">
+          <AdminServices />
+        </TabsContent>
+
+        <TabsContent value="subscriptions">
+          <AdminSubscriptionOverrides />
+        </TabsContent>
+
+        <TabsContent value="flags">
+          <AdminFeatureFlags />
+        </TabsContent>
+
+        <TabsContent value="settings">
+          <AdminGlobalSettings />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
