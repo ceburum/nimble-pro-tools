@@ -75,15 +75,4 @@ export function AdminMenuProfessionConfig() {
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader>
-          <CardTitle>Service Menu Library</CardTitle>
-          <CardDescription>Select and add pre-built service menus to a business</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {packs.map((pack) => (
-            <div key={pack.id} className="flex items-start justify-between gap-4 p-4 border rounded-lg">
-              <div className="flex gap-3">
-                <Checkbox checked={selected.includes(pack.id)} onCheckedChange={() => toggleSelect(pack.id)} />
-                <div>
-                  <div className="font-medium">{pack.name}</div>
-                  <p className="text-sm text-muted-foreground">{pack.description}</p
+        <
