@@ -22,12 +22,11 @@ export function AdminMenuProfessionConfig() {
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
 
-  // Fetch service menu packs from Supabase
   const fetchPacks = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      // Use `any` to bypass strict type checking
-      .from<any>("service_menu_packs")
+
+    // Use 'any' so TypeScript doesn't complain about unknown table
+    const { data, error } = await (supabase.from as any)("service_menu_packs")
       .select("*")
       .eq("is_active", true)
       .order("name");
@@ -35,8 +34,10 @@ export function AdminMenuProfessionConfig() {
     if (error) {
       toast.error("Failed to load service packs");
     } else {
+      // cast to ServiceMenuPack[] so TS accepts it
       setPacks((data || []) as ServiceMenuPack[]);
     }
+
     setLoading(false);
   };
 
@@ -53,7 +54,7 @@ export function AdminMenuProfessionConfig() {
 
     setAdding(true);
 
-    // Use `any` to bypass RPC typing
+    // Use 'any' to bypass RPC typing
     const { error } = await (supabase.rpc as any)("add_service_menu_packs_to_user", {
       pack_ids: selected,
     });
