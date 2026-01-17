@@ -24,19 +24,17 @@ export function AdminMenuProfessionConfig() {
 
   const fetchPacks = async () => {
     setLoading(true);
-
-    const { data, error } = await (supabase.from as any)("service_menu_packs")
+    const { data, error } = await supabase
+      .from<ServiceMenuPack>("service_menu_packs")
       .select("*")
-      .eq("is_active", true as any)
+      .eq("is_active", true)
       .order("name");
 
     if (error) {
-      console.error(error);
-      toast.error("Failed to load service packs");
+      toast.error("Failed to load service menu packs");
     } else {
-      setPacks((data || []) as ServiceMenuPack[]);
+      setPacks(data || []);
     }
-
     setLoading(false);
   };
 
@@ -49,20 +47,17 @@ export function AdminMenuProfessionConfig() {
   };
 
   const addSelectedToMenu = async () => {
-    if (selected.length === 0) return;
-
+    if (!selected.length) return;
     setAdding(true);
 
-    const { error } = await (supabase.rpc as any)("add_service_menu_packs_to_user", {
-      pack_ids: selected,
-    });
+    const { error } = await supabase.rpc("add_service_menu_packs_to_user", { pack_ids: selected });
 
     if (error) {
-      console.error(error);
       toast.error("Failed to add service menus");
     } else {
-      toast.success("Service menus added successfully");
+      toast.success("Service menus added");
       setSelected([]);
+      fetchPacks(); // refetch so UI updates if needed
     }
 
     setAdding(false);
@@ -101,7 +96,7 @@ export function AdminMenuProfessionConfig() {
             </div>
           ))}
 
-          <Button className="w-full" disabled={selected.length === 0 || adding} onClick={addSelectedToMenu}>
+          <Button className="w-full" disabled={adding || !selected.length} onClick={addSelectedToMenu}>
             {adding ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <ShoppingCart className="h-4 w-4 mr-2" />}
             Add Selected Menus
           </Button>
