@@ -22,19 +22,19 @@ export function AdminMenuProfessionConfig() {
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
 
-  // Fetch active service packs
+  // Load service menu packs
   const fetchPacks = async () => {
     setLoading(true);
-    const { data, error } = await (supabase.from as any)("service_menu_packs")
-      .select("*")
-      .eq("is_active", true)
-      .order("name");
+
+    const { data, error } = await supabase.from("service_menu_packs").select("*").eq("is_active", true).order("name");
 
     if (error) {
-      toast.error("Failed to load service packs");
+      console.error(error);
+      toast.error("Failed to load service menu packs");
     } else {
-      setPacks((data || []) as ServiceMenuPack[]);
+      setPacks(data ?? []);
     }
+
     setLoading(false);
   };
 
@@ -42,26 +42,25 @@ export function AdminMenuProfessionConfig() {
     fetchPacks();
   }, []);
 
-  // Toggle selection of a pack
   const toggleSelect = (id: string) => {
     setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
 
-  // Add selected packs to user menu
   const addSelectedToMenu = async () => {
     if (selected.length === 0) return;
 
     setAdding(true);
-    const { error } = await (supabase.rpc as any)("add_service_menu_packs_to_user", {
-      pack_ids: selected,
-    });
+
+    const { error } = await supabase.rpc("add_service_menu_packs_to_user", { pack_ids: selected });
 
     if (error) {
+      console.error(error);
       toast.error("Failed to add service menus");
     } else {
-      toast.success("Service menus added to your account");
+      toast.success("Service menus added");
       setSelected([]);
     }
+
     setAdding(false);
   };
 
@@ -78,12 +77,13 @@ export function AdminMenuProfessionConfig() {
       <Card>
         <CardHeader>
           <CardTitle>Service Menu Library</CardTitle>
-          <CardDescription>Purchase and add pre-built service menus to your business</CardDescription>
+          <CardDescription>Select and add pre-built service menus to a business</CardDescription>
         </CardHeader>
+
         <CardContent className="space-y-4">
           {packs.map((pack) => (
             <div key={pack.id} className="flex items-start justify-between gap-4 p-4 border rounded-lg">
-              <div className="flex gap-3 items-center">
+              <div className="flex gap-3">
                 <Checkbox checked={selected.includes(pack.id)} onCheckedChange={() => toggleSelect(pack.id)} />
                 <div>
                   <div className="font-medium">{pack.name}</div>
@@ -93,12 +93,13 @@ export function AdminMenuProfessionConfig() {
                   </Badge>
                 </div>
               </div>
+
               <div className="font-semibold">${pack.price.toFixed(2)}</div>
             </div>
           ))}
 
-          <Button disabled={selected.length === 0 || adding} onClick={addSelectedToMenu} className="w-full mt-2">
-            {adding ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ShoppingCart className="h-4 w-4 mr-2" />}
+          <Button className="w-full" disabled={selected.length === 0 || adding} onClick={addSelectedToMenu}>
+            {adding ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <ShoppingCart className="h-4 w-4 mr-2" />}
             Add Selected Menus
           </Button>
         </CardContent>
