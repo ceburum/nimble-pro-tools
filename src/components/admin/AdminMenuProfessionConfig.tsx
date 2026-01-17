@@ -23,74 +23,68 @@ export function AdminMenuProfessionConfig() {
   const [adding, setAdding] = useState(false);
 
   useEffect(() => {
-    const fetchPacks = async () => {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from<ServiceMenuPack>("service_menu_packs")
-        .select("*")
-        .eq("is_active", true)
-        .order("name");
-      if (error) {
-        toast.error("Failed to load service menu packs");
-      } else {
-        setPacks(data || []);
-      }
-      setLoading(false);
-    };
-
     fetchPacks();
   }, []);
+
+  const fetchPacks = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from<ServiceMenuPack>("service_menu_packs")
+      .select("*")
+      .eq("is_active", true)
+      .order("name");
+
+    if (error) {
+      console.error(error);
+      toast.error("Failed to load service menu packs");
+    } else {
+      setPacks(data ?? []);
+    }
+    setLoading(false);
+  };
 
   const toggleSelect = (id: string) => {
     setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
 
   const addSelectedToMenu = async () => {
-    if (!selected.length) return;
+    if (selected.length === 0) return;
     setAdding(true);
     const { error } = await supabase.rpc("add_service_menu_packs_to_user", { pack_ids: selected });
-    if (error) toast.error("Failed to add service menus");
-    else {
+    if (error) {
+      console.error(error);
+      toast.error("Failed to add service menus");
+    } else {
       toast.success("Service menus added");
       setSelected([]);
     }
     setAdding(false);
   };
 
-  if (loading)
+  if (loading) {
     return (
       <div className="flex justify-center py-12">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     );
+  }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Service Menu Library</CardTitle>
-        <CardDescription>Select and add pre-built service menus to a business</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {packs.map((pack) => (
-          <div key={pack.id} className="flex items-start justify-between gap-4 p-4 border rounded-lg">
-            <div className="flex gap-3">
-              <Checkbox checked={selected.includes(pack.id)} onCheckedChange={() => toggleSelect(pack.id)} />
-              <div>
-                <div className="font-medium">{pack.name}</div>
-                <p className="text-sm text-muted-foreground">{pack.description}</p>
-                <Badge variant="secondary" className="mt-1">
-                  {pack.profession_tag}
-                </Badge>
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Service Menu Library</CardTitle>
+          <CardDescription>Select and add pre-built service menus to a business</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {packs.map((pack) => (
+            <div key={pack.id} className="flex items-start justify-between gap-4 p-4 border rounded-lg">
+              <div className="flex gap-3">
+                <Checkbox checked={selected.includes(pack.id)} onCheckedChange={() => toggleSelect(pack.id)} />
+                <div>
+                  <div className="font-medium">{pack.name}</div>
+                  <p className="text-sm text-muted-foreground">{pack.description}</p>
+                  <Badge variant="secondary" className="mt-1">{pack.profession_tag}</Badge>
+                </div>
               </div>
-            </div>
-            <div className="font-semibold">${pack.price.toFixed(2)}</div>
-          </div>
-        ))}
-        <Button className="w-full" disabled={!selected.length || adding} onClick={addSelectedToMenu}>
-          {adding ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <ShoppingCart className="h-4 w-4 mr-2" />}
-          Add Selected Menus
-        </Button>
-      </CardContent>
-    </Card>
-  );
-}
+              <div className="font-semibold">${
