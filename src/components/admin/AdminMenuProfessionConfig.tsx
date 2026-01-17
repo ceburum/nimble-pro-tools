@@ -16,7 +16,7 @@ interface ServiceMenuPack {
   is_active: boolean;
 }
 
-export function ServiceMenuLibrary() {
+export function AdminMenuProfessionConfig() {
   const [packs, setPacks] = useState<ServiceMenuPack[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
