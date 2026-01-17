@@ -1,3 +1,17 @@
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
 export function AdminServices() {
-  return <div className="p-6">Service menu coming soon</div>;
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Services</CardTitle>
+      </CardHeader>
+
+      <CardContent>
+        <div className="text-sm text-muted-foreground">
+          Service configuration will appear here.
+        </div>
+      </CardContent>
+    </Card>
+  );
 }
