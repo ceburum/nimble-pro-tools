@@ -22,51 +22,56 @@ export function AdminMenuProfessionConfig() {
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
 
-  useEffect(() => {
-    fetchPacks();
-  }, []);
-
+  // Fetch active service packs
   const fetchPacks = async () => {
     setLoading(true);
-
     const { data, error } = await (supabase.from as any)("service_menu_packs")
       .select("*")
       .eq("is_active", true)
       .order("name");
 
-    if (error) toast.error("Failed to load service packs");
-    else setPacks((data || []) as ServiceMenuPack[]);
-
+    if (error) {
+      toast.error("Failed to load service packs");
+    } else {
+      setPacks((data || []) as ServiceMenuPack[]);
+    }
     setLoading(false);
   };
 
+  useEffect(() => {
+    fetchPacks();
+  }, []);
+
+  // Toggle selection of a pack
   const toggleSelect = (id: string) => {
     setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
 
+  // Add selected packs to user menu
   const addSelectedToMenu = async () => {
     if (selected.length === 0) return;
-    setAdding(true);
 
+    setAdding(true);
     const { error } = await (supabase.rpc as any)("add_service_menu_packs_to_user", {
       pack_ids: selected,
     });
 
-    if (error) toast.error("Failed to add service menus");
-    else {
+    if (error) {
+      toast.error("Failed to add service menus");
+    } else {
       toast.success("Service menus added to your account");
       setSelected([]);
     }
-
     setAdding(false);
   };
 
-  if (loading)
+  if (loading) {
     return (
       <div className="flex justify-center py-12">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     );
+  }
 
   return (
     <div className="space-y-6">
@@ -78,7 +83,7 @@ export function AdminMenuProfessionConfig() {
         <CardContent className="space-y-4">
           {packs.map((pack) => (
             <div key={pack.id} className="flex items-start justify-between gap-4 p-4 border rounded-lg">
-              <div className="flex gap-3">
+              <div className="flex gap-3 items-center">
                 <Checkbox checked={selected.includes(pack.id)} onCheckedChange={() => toggleSelect(pack.id)} />
                 <div>
                   <div className="font-medium">{pack.name}</div>
@@ -92,7 +97,7 @@ export function AdminMenuProfessionConfig() {
             </div>
           ))}
 
-          <Button disabled={selected.length === 0 || adding} onClick={addSelectedToMenu} className="w-full">
+          <Button disabled={selected.length === 0 || adding} onClick={addSelectedToMenu} className="w-full mt-2">
             {adding ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ShoppingCart className="h-4 w-4 mr-2" />}
             Add Selected Menus
           </Button>
