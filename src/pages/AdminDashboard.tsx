@@ -15,6 +15,7 @@ import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 export default function AdminDashboard() {
   const { isAdmin, loading } = useAppState();
 
+  // Show loading spinner while checking admin status
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -23,9 +24,11 @@ export default function AdminDashboard() {
     );
   }
 
+  // Show access denied for non-admins
   if (!isAdmin) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <Card className="max-w-md">
           <CardHeader className="text-center">
-            <ShieldX className
+            <ShieldX className="h-12 w-12 mx-auto text-destructive mb-2" />
+            <CardTitle>Access Denied
