@@ -1,20 +1,18 @@
-// src/pages/AdminDashboard.tsx
+// src/components/admin/AdminMenuProfessionConfig.tsx
+import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { AdminUserManagementPanel } from "@/components/admin/AdminUserManagementPanel";
-import { AdminServices } from "@/components/admin/AdminServices";
-import { AdminMenuProfessionConfig } from "@/components/admin/AdminMenuProfessionConfig";
+// Remove any self-import of AdminMenuProfessionConfig
+// import { AdminMenuProfessionConfig } from "@/components/admin/AdminMenuProfessionConfig"; <-- DO NOT DO THIS
 
-export const AdminDashboard = () => {
+export const AdminMenuProfessionConfig = () => {
   return (
-    <div className="space-y-6 p-4">
+    <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Admin Dashboard</CardTitle>
+          <CardTitle>Profession Menu Config</CardTitle>
         </CardHeader>
         <CardContent>
-          <AdminUserManagementPanel />
-          <AdminServices />
-          <AdminMenuProfessionConfig />
+          <p>Placeholder content for Admin Menu Profession Config</p>
         </CardContent>
       </Card>
     </div>
