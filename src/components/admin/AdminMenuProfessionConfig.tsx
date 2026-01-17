@@ -22,10 +22,9 @@ export function AdminMenuProfessionConfig() {
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
 
-  // Load service menu packs
+  // Fetch active service menu packs from Supabase
   const fetchPacks = async () => {
     setLoading(true);
-
     const { data, error } = await supabase.from("service_menu_packs").select("*").eq("is_active", true).order("name");
 
     if (error) {
@@ -34,7 +33,6 @@ export function AdminMenuProfessionConfig() {
     } else {
       setPacks(data ?? []);
     }
-
     setLoading(false);
   };
 
@@ -42,22 +40,26 @@ export function AdminMenuProfessionConfig() {
     fetchPacks();
   }, []);
 
+  // Toggle selection of a single pack
   const toggleSelect = (id: string) => {
     setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
 
+  // Add selected packs to user menu via Supabase RPC
   const addSelectedToMenu = async () => {
     if (selected.length === 0) return;
 
     setAdding(true);
 
-    const { error } = await supabase.rpc("add_service_menu_packs_to_user", { pack_ids: selected });
+    const { error } = await supabase.rpc("add_service_menu_packs_to_user", {
+      pack_ids: selected,
+    });
 
     if (error) {
       console.error(error);
       toast.error("Failed to add service menus");
     } else {
-      toast.success("Service menus added");
+      toast.success("Service menus added successfully");
       setSelected([]);
     }
 
@@ -77,7 +79,7 @@ export function AdminMenuProfessionConfig() {
       <Card>
         <CardHeader>
           <CardTitle>Service Menu Library</CardTitle>
-          <CardDescription>Select and add pre-built service menus to a business</CardDescription>
+          <CardDescription>Select and add pre-built service menus to your business</CardDescription>
         </CardHeader>
 
         <CardContent className="space-y-4">
@@ -93,7 +95,6 @@ export function AdminMenuProfessionConfig() {
                   </Badge>
                 </div>
               </div>
-
               <div className="font-semibold">${pack.price.toFixed(2)}</div>
             </div>
           ))}
