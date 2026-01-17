@@ -29,16 +29,3 @@ export function AdminMenuProfessionConfig() {
       .from("service_menu_packs")
       .select("*")
       .eq("is_active", true)
-      .order("name");
-
-    if (error) {
-      toast.error("Failed to load service packs");
-    } else {
-      setPacks(data || []);
-    }
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    fetchPacks();
-  },
