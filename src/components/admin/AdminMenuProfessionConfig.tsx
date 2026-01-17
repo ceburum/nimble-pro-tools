@@ -1,13 +1,10 @@
-import { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2, ShoppingCart } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
+// src/components/admin/AdminMenuProfessionConfig.tsx
+import React, { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabaseClient";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import toast from "react-hot-toast";
 
-interface ServiceMenuPack {
+export interface ServiceMenuPack {
   id: string;
   name: string;
   profession_tag: string;
@@ -16,15 +13,15 @@ interface ServiceMenuPack {
   is_active: boolean;
 }
 
-export function AdminMenuProfessionConfig() {
+export const AdminMenuProfessionConfig: React.FC = () => {
   const [packs, setPacks] = useState<ServiceMenuPack[]>([]);
+  const [loading, setLoading] = useState(false);
   const [selected, setSelected] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [adding, setAdding] = useState(false);
 
   // Load service menu packs
   const fetchPacks = async () => {
     setLoading(true);
+
     const { data, error } = await supabase
       .from<ServiceMenuPack>("service_menu_packs")
       .select("*")
@@ -35,7 +32,7 @@ export function AdminMenuProfessionConfig() {
       console.error(error);
       toast.error("Failed to load service menu packs");
     } else {
-      setPacks(data || []);
+      setPacks(data ?? []);
     }
 
     setLoading(false);
@@ -45,66 +42,61 @@ export function AdminMenuProfessionConfig() {
     fetchPacks();
   }, []);
 
-  const toggleSelect = (id: string) => {
-    setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
-  };
+  // Assign selected packs to a user
+  const addPacksToUser = async () => {
+    try {
+      const { error } = await supabase.rpc("add_service_menu_packs_to_user", { pack_ids: selected } as any); // temporary typing fix
 
-  const addSelectedToMenu = async () => {
-    if (selected.length === 0) return;
-
-    setAdding(true);
-    const { error } = await supabase.rpc("add_service_menu_packs_to_user", {
-      pack_ids: selected,
-    });
-
-    if (error) {
-      console.error(error);
-      toast.error("Failed to add service menus");
-    } else {
-      toast.success("Service menus added");
-      setSelected([]);
+      if (error) {
+        console.error(error);
+        toast.error("Failed to add packs to user");
+      } else {
+        toast.success("Service menu packs added to user successfully");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Unexpected error occurred");
     }
-
-    setAdding(false);
   };
-
-  if (loading) {
-    return (
-      <div className="flex justify-center py-12">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Service Menu Library</CardTitle>
-          <CardDescription>Select and add pre-built service menus to a business</CardDescription>
+          <CardTitle>Service Menu Packs</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          {packs.map((pack) => (
-            <div key={pack.id} className="flex items-start justify-between gap-4 p-4 border rounded-lg">
-              <div className="flex gap-3">
-                <Checkbox checked={selected.includes(pack.id)} onCheckedChange={() => toggleSelect(pack.id)} />
-                <div>
-                  <div className="font-medium">{pack.name}</div>
-                  <p className="text-sm text-muted-foreground">{pack.description}</p>
-                  <Badge variant="secondary" className="mt-1">
-                    {pack.profession_tag}
-                  </Badge>
-                </div>
-              </div>
-              <div className="font-semibold">${pack.price.toFixed(2)}</div>
-            </div>
-          ))}
-          <Button className="w-full" disabled={selected.length === 0 || adding} onClick={addSelectedToMenu}>
-            {adding ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <ShoppingCart className="h-4 w-4 mr-2" />}
-            Add Selected Menus
-          </Button>
+        <CardContent>
+          {loading ? (
+            <p>Loading...</p>
+          ) : (
+            <ul className="space-y-2">
+              {packs.map((pack) => (
+                <li key={pack.id}>
+                  <label className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      value={pack.id}
+                      checked={selected.includes(pack.id)}
+                      onChange={(e) => {
+                        const id = e.target.value;
+                        setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+                      }}
+                    />
+                    <span>{pack.name}</span>
+                  </label>
+                </li>
+              ))}
+            </ul>
+          )}
+          <button
+            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded"
+            onClick={addPacksToUser}
+            disabled={selected.length === 0 || loading}
+          >
+            Assign Packs to User
+          </button>
         </CardContent>
       </Card>
     </div>
   );
-}
+};
