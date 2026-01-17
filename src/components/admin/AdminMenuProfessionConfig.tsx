@@ -25,11 +25,7 @@ export function AdminMenuProfessionConfig() {
   // Fetch service menu packs from Supabase
   const fetchPacks = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from("service_menu_packs")
-      .select("*")
-      .eq("is_active", true)
-      .order("name");
+    const { data, error } = await supabase.from("service_menu_packs").select("*").eq("is_active", true).order("name");
 
     if (error) {
       toast.error("Failed to load service packs");
@@ -39,19 +35,14 @@ export function AdminMenuProfessionConfig() {
     setLoading(false);
   };
 
-  // Corrected useEffect
   useEffect(() => {
     fetchPacks();
   }, []);
 
-  // Toggle individual selection
   const toggleSelect = (id: string) => {
-    setSelected((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-    );
+    setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
 
-  // Add selected packs to user menu via RPC
   const addSelectedToMenu = async () => {
     if (selected.length === 0) return;
 
@@ -84,7 +75,42 @@ export function AdminMenuProfessionConfig() {
       <Card>
         <CardHeader>
           <CardTitle>Service Menu Library</CardTitle>
-          <CardDescription>
-            Purchase and add pre-built service menus to your business
-          </CardDescription>
-        </Card
+          <CardDescription>Purchase and add pre-built service menus to your business</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {packs.length === 0 && <p className="text-center text-muted-foreground">No service menu packs available.</p>}
+
+          {packs.map((pack) => {
+            const isSelected = selected.includes(pack.id);
+            return (
+              <div
+                key={pack.id}
+                className={`flex items-start justify-between gap-4 p-4 border rounded-lg cursor-pointer transition 
+                  ${isSelected ? "bg-blue-100 border-blue-400" : "bg-card hover:bg-muted"}
+                `}
+                onClick={() => toggleSelect(pack.id)}
+              >
+                <div className="flex gap-3 items-start">
+                  <Checkbox checked={isSelected} onCheckedChange={() => toggleSelect(pack.id)} />
+                  <div>
+                    <div className="font-medium">{pack.name}</div>
+                    <p className="text-sm text-muted-foreground">{pack.description}</p>
+                    <Badge variant="secondary" className="mt-1">
+                      {pack.profession_tag}
+                    </Badge>
+                  </div>
+                </div>
+                <div className="font-semibold">${pack.price.toFixed(2)}</div>
+              </div>
+            );
+          })}
+
+          <Button disabled={selected.length === 0 || adding} onClick={addSelectedToMenu} className="w-full">
+            {adding ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ShoppingCart className="h-4 w-4 mr-2" />}
+            Add Selected Menus
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
