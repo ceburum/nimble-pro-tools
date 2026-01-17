@@ -35,8 +35,9 @@ export function AdminMenuProfessionConfig() {
       console.error(error);
       toast.error("Failed to load service menu packs");
     } else {
-      setPacks(data ?? []);
+      setPacks(data || []);
     }
+
     setLoading(false);
   };
 
@@ -52,7 +53,9 @@ export function AdminMenuProfessionConfig() {
     if (selected.length === 0) return;
 
     setAdding(true);
-    const { error } = await supabase.rpc("add_service_menu_packs_to_user", { pack_ids: selected });
+    const { error } = await supabase.rpc("add_service_menu_packs_to_user", {
+      pack_ids: selected,
+    });
 
     if (error) {
       console.error(error);
@@ -61,6 +64,7 @@ export function AdminMenuProfessionConfig() {
       toast.success("Service menus added");
       setSelected([]);
     }
+
     setAdding(false);
   };
 
@@ -79,7 +83,6 @@ export function AdminMenuProfessionConfig() {
           <CardTitle>Service Menu Library</CardTitle>
           <CardDescription>Select and add pre-built service menus to a business</CardDescription>
         </CardHeader>
-
         <CardContent className="space-y-4">
           {packs.map((pack) => (
             <div key={pack.id} className="flex items-start justify-between gap-4 p-4 border rounded-lg">
@@ -96,7 +99,6 @@ export function AdminMenuProfessionConfig() {
               <div className="font-semibold">${pack.price.toFixed(2)}</div>
             </div>
           ))}
-
           <Button className="w-full" disabled={selected.length === 0 || adding} onClick={addSelectedToMenu}>
             {adding ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <ShoppingCart className="h-4 w-4 mr-2" />}
             Add Selected Menus
