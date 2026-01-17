@@ -25,7 +25,11 @@ export function AdminMenuProfessionConfig() {
   // Load service menu packs
   const fetchPacks = async () => {
     setLoading(true);
-    const { data, error } = await supabase.from("service_menu_packs").select("*").eq("is_active", true).order("name");
+    const { data, error } = await supabase
+      .from<ServiceMenuPack>("service_menu_packs") // <- tell TS the row type
+      .select("*")
+      .eq("is_active", true)
+      .order("name");
 
     if (error) {
       console.error(error);
@@ -48,7 +52,8 @@ export function AdminMenuProfessionConfig() {
     if (selected.length === 0) return;
     setAdding(true);
 
-    const { error } = await supabase.rpc("add_service_menu_packs_to_user", { pack_ids: selected });
+    // Cast RPC to any to avoid TS errors
+    const { error } = await (supabase.rpc as any)("add_service_menu_packs_to_user", { pack_ids: selected });
 
     if (error) {
       console.error(error);
