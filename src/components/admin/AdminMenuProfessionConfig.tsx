@@ -22,21 +22,21 @@ export function AdminMenuProfessionConfig() {
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
 
-  // Load service menu packs from Supabase
   const fetchPacks = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from<ServiceMenuPack>("service_menu_packs")
+
+    const { data, error } = await (supabase.from as any)("service_menu_packs")
       .select("*")
-      .eq("is_active", true)
+      .eq("is_active", true as any)
       .order("name");
 
     if (error) {
       console.error(error);
-      toast.error("Failed to load service menu packs");
+      toast.error("Failed to load service packs");
     } else {
-      setPacks(data ?? []);
+      setPacks((data || []) as ServiceMenuPack[]);
     }
+
     setLoading(false);
   };
 
@@ -44,19 +44,18 @@ export function AdminMenuProfessionConfig() {
     fetchPacks();
   }, []);
 
-  // Toggle checkbox selection for a pack
   const toggleSelect = (id: string) => {
     setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
 
-  // Add selected packs to user menu via RPC
   const addSelectedToMenu = async () => {
     if (selected.length === 0) return;
 
     setAdding(true);
-    const { error } = await supabase.rpc("add_service_menu_packs_to_user", {
+
+    const { error } = await (supabase.rpc as any)("add_service_menu_packs_to_user", {
       pack_ids: selected,
-    } as any); // 'any' bypasses typing issues with RPC
+    });
 
     if (error) {
       console.error(error);
@@ -65,6 +64,7 @@ export function AdminMenuProfessionConfig() {
       toast.success("Service menus added successfully");
       setSelected([]);
     }
+
     setAdding(false);
   };
 
