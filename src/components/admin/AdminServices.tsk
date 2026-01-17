@@ -1,17 +1,11 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+// src/components/admin/AdminServices.tsx
+import React from "react";
 
-export function AdminServices() {
+export const AdminServices = () => {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Services</CardTitle>
-      </CardHeader>
-
-      <CardContent>
-        <div className="text-sm text-muted-foreground">
-          Service configuration will appear here.
-        </div>
-      </CardContent>
-    </Card>
+    <div>
+      <h2>Admin Services</h2>
+      <p>This is a placeholder for Admin Services component.</p>
+    </div>
   );
-}
+};
