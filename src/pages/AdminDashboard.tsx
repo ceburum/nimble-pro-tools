@@ -4,39 +4,32 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AdminUserManagementPanel } from "@/components/admin/AdminUserManagementPanel";
 import { AdminServices } from "@/components/admin/AdminServices";
 import { AdminMenuProfessionConfig } from "@/components/admin/AdminMenuProfessionConfig";
+import toast, { Toaster } from "react-hot-toast";
 
-export const AdminDashboard = () => {
+const AdminDashboard: React.FC = () => {
+  const handleNotify = () => {
+    toast.success("Welcome to the Admin Dashboard!");
+  };
+
   return (
-    <div className="space-y-6 p-6">
-      {/* Admin User Management */}
+    <div className="p-6 space-y-6">
+      <Toaster position="top-right" />
       <Card>
         <CardHeader>
-          <CardTitle>User Management</CardTitle>
+          <CardTitle>Admin Dashboard</CardTitle>
         </CardHeader>
         <CardContent>
-          <AdminUserManagementPanel />
+          <button className="px-4 py-2 bg-blue-500 text-white rounded" onClick={handleNotify}>
+            Show Toast
+          </button>
         </CardContent>
       </Card>
 
-      {/* Services */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Services</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <AdminServices />
-        </CardContent>
-      </Card>
-
-      {/* Menu Profession Configuration */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Menu Profession Config</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <AdminMenuProfessionConfig />
-        </CardContent>
-      </Card>
+      <AdminServices />
+      <AdminUserManagementPanel />
+      <AdminMenuProfessionConfig />
     </div>
   );
 };
+
+export default AdminDashboard;
