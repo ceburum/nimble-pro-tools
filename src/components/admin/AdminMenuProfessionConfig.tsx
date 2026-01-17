@@ -25,7 +25,6 @@ export function AdminMenuProfessionConfig() {
   // Load service menu packs
   const fetchPacks = async () => {
     setLoading(true);
-
     const { data, error } = await supabase
       .from<ServiceMenuPack>("service_menu_packs")
       .select("*")
@@ -38,7 +37,6 @@ export function AdminMenuProfessionConfig() {
     } else {
       setPacks(data ?? []);
     }
-
     setLoading(false);
   };
 
@@ -54,7 +52,6 @@ export function AdminMenuProfessionConfig() {
     if (selected.length === 0) return;
 
     setAdding(true);
-
     const { error } = await supabase.rpc("add_service_menu_packs_to_user", { pack_ids: selected });
 
     if (error) {
@@ -64,7 +61,6 @@ export function AdminMenuProfessionConfig() {
       toast.success("Service menus added");
       setSelected([]);
     }
-
     setAdding(false);
   };
 
