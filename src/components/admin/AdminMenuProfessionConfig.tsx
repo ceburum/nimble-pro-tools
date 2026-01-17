@@ -29,3 +29,62 @@ export function AdminMenuProfessionConfig() {
       .from("service_menu_packs")
       .select("*")
       .eq("is_active", true)
+      .order("name");
+
+    if (error) {
+      toast.error("Failed to load service packs");
+    } else {
+      setPacks(data || []);
+    }
+    setLoading(false);
+  };
+
+  // Corrected useEffect
+  useEffect(() => {
+    fetchPacks();
+  }, []);
+
+  // Toggle individual selection
+  const toggleSelect = (id: string) => {
+    setSelected((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  };
+
+  // Add selected packs to user menu via RPC
+  const addSelectedToMenu = async () => {
+    if (selected.length === 0) return;
+
+    setAdding(true);
+
+    const { error } = await supabase.rpc("add_service_menu_packs_to_user", {
+      pack_ids: selected,
+    });
+
+    if (error) {
+      toast.error("Failed to add service menus");
+    } else {
+      toast.success("Service menus added to your account");
+      setSelected([]);
+    }
+
+    setAdding(false);
+  };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-12">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Service Menu Library</CardTitle>
+          <CardDescription>
+            Purchase and add pre-built service menus to your business
+          </CardDescription>
+        </Card
