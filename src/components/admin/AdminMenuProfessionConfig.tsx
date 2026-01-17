@@ -22,28 +22,23 @@ export function AdminMenuProfessionConfig() {
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
 
+  useEffect(() => {
+    fetchPacks();
+  }, []);
+
   const fetchPacks = async () => {
     setLoading(true);
 
-    // Use 'any' so TypeScript doesn't complain about unknown table
     const { data, error } = await (supabase.from as any)("service_menu_packs")
       .select("*")
       .eq("is_active", true)
       .order("name");
 
-    if (error) {
-      toast.error("Failed to load service packs");
-    } else {
-      // cast to ServiceMenuPack[] so TS accepts it
-      setPacks((data || []) as ServiceMenuPack[]);
-    }
+    if (error) toast.error("Failed to load service packs");
+    else setPacks((data || []) as ServiceMenuPack[]);
 
     setLoading(false);
   };
-
-  useEffect(() => {
-    fetchPacks();
-  }, []);
 
   const toggleSelect = (id: string) => {
     setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
@@ -51,17 +46,14 @@ export function AdminMenuProfessionConfig() {
 
   const addSelectedToMenu = async () => {
     if (selected.length === 0) return;
-
     setAdding(true);
 
-    // Use 'any' to bypass RPC typing
     const { error } = await (supabase.rpc as any)("add_service_menu_packs_to_user", {
       pack_ids: selected,
     });
 
-    if (error) {
-      toast.error("Failed to add service menus");
-    } else {
+    if (error) toast.error("Failed to add service menus");
+    else {
       toast.success("Service menus added to your account");
       setSelected([]);
     }
@@ -69,13 +61,12 @@ export function AdminMenuProfessionConfig() {
     setAdding(false);
   };
 
-  if (loading) {
+  if (loading)
     return (
       <div className="flex justify-center py-12">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     );
-  }
 
   return (
     <div className="space-y-6">
