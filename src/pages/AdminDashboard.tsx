@@ -8,6 +8,7 @@ import { AdminFeatureFlags } from "@/components/admin/AdminFeatureFlags";
 import { AdminGlobalSettings } from "@/components/admin/AdminGlobalSettings";
 import { AdminOnboardingFlows } from "@/components/admin/AdminOnboardingFlows";
 import { AdminMenuProfessionConfig } from "@/components/admin/AdminMenuProfessionConfig";
+import { AdminServices } from "@/components/admin/AdminServices"; // Your services component
 import { Shield, Users, CreditCard, Flag, Settings, Loader2, ShieldX, Workflow, Menu } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
@@ -39,43 +40,45 @@ export default function AdminDashboard() {
 
   return (
     <div className="space-y-6">
-      <div className="bg-amber-500 text-amber-950 px-4 py-2 rounded-lg text-center font-bold text-sm">
-        🧪 B2S Admin Test Build - {new Date().toISOString().split("T")[0]}
-      </div>
       <PageHeader
         title="Admin Dashboard"
         description="Administrative tools for managing users, permissions, and app settings"
       />
+
       <Tabs defaultValue="users" className="space-y-6">
         <ScrollArea className="w-full">
           <TabsList className="inline-flex w-max min-w-full lg:w-auto">
-            <TabsTrigger value="users" className="gap-2">
+            <TabsTrigger value="users">
               <Users className="h-4 w-4" />
-              <span className="hidden sm:inline">Users</span>
+              Users
             </TabsTrigger>
-            <TabsTrigger value="roles" className="gap-2">
+            <TabsTrigger value="roles">
               <Shield className="h-4 w-4" />
-              <span className="hidden sm:inline">Roles</span>
+              Roles
             </TabsTrigger>
-            <TabsTrigger value="onboarding" className="gap-2">
+            <TabsTrigger value="onboarding">
               <Workflow className="h-4 w-4" />
-              <span className="hidden sm:inline">Onboarding</span>
+              Onboarding
             </TabsTrigger>
-            <TabsTrigger value="menus" className="gap-2">
+            <TabsTrigger value="services">
               <Menu className="h-4 w-4" />
-              <span className="hidden sm:inline">Menus</span>
+              Services
             </TabsTrigger>
-            <TabsTrigger value="subscriptions" className="gap-2">
+            <TabsTrigger value="menus">
+              <Menu className="h-4 w-4" />
+              Service Menu Library
+            </TabsTrigger>
+            <TabsTrigger value="subscriptions">
               <CreditCard className="h-4 w-4" />
-              <span className="hidden sm:inline">Billing</span>
+              Billing
             </TabsTrigger>
-            <TabsTrigger value="flags" className="gap-2">
+            <TabsTrigger value="flags">
               <Flag className="h-4 w-4" />
-              <span className="hidden sm:inline">Flags</span>
+              Flags
             </TabsTrigger>
-            <TabsTrigger value="settings" className="gap-2">
+            <TabsTrigger value="settings">
               <Settings className="h-4 w-4" />
-              <span className="hidden sm:inline">Settings</span>
+              Settings
             </TabsTrigger>
           </TabsList>
           <ScrollBar orientation="horizontal" />
@@ -90,9 +93,19 @@ export default function AdminDashboard() {
         <TabsContent value="onboarding">
           <AdminOnboardingFlows />
         </TabsContent>
-        <TabsContent value="menus">
-          <AdminMenuProfessionConfig />
+
+        <TabsContent value="services">
+          <div className="services-tab-content">
+            <AdminServices />
+          </div>
         </TabsContent>
+
+        <TabsContent value="menus">
+          <div className="menus-tab-content">
+            <AdminMenuProfessionConfig />
+          </div>
+        </TabsContent>
+
         <TabsContent value="subscriptions">
           <AdminSubscriptionOverrides />
         </TabsContent>
