@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2, ShoppingCart } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -21,8 +22,10 @@ export function AdminMenuProfessionConfig() {
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
 
+  // Load service menu packs
   const fetchPacks = async () => {
     setLoading(true);
+
     const { data, error } = await supabase
       .from<ServiceMenuPack>("service_menu_packs")
       .select("*")
@@ -35,6 +38,7 @@ export function AdminMenuProfessionConfig() {
     } else {
       setPacks(data ?? []);
     }
+
     setLoading(false);
   };
 
@@ -48,6 +52,7 @@ export function AdminMenuProfessionConfig() {
 
   const addSelectedToMenu = async () => {
     if (selected.length === 0) return;
+
     setAdding(true);
 
     const { error } = await supabase.rpc("add_service_menu_packs_to_user", { pack_ids: selected });
@@ -59,9 +64,49 @@ export function AdminMenuProfessionConfig() {
       toast.success("Service menus added");
       setSelected([]);
     }
+
     setAdding(false);
   };
 
   if (loading) {
     return (
-      <div className="flex justify
+      <div className="flex justify-center py-12">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Service Menu Library</CardTitle>
+          <CardDescription>Select and add pre-built service menus to a business</CardDescription>
+        </CardHeader>
+
+        <CardContent className="space-y-4">
+          {packs.map((pack) => (
+            <div key={pack.id} className="flex items-start justify-between gap-4 p-4 border rounded-lg">
+              <div className="flex gap-3">
+                <Checkbox checked={selected.includes(pack.id)} onCheckedChange={() => toggleSelect(pack.id)} />
+                <div>
+                  <div className="font-medium">{pack.name}</div>
+                  <p className="text-sm text-muted-foreground">{pack.description}</p>
+                  <Badge variant="secondary" className="mt-1">
+                    {pack.profession_tag}
+                  </Badge>
+                </div>
+              </div>
+              <div className="font-semibold">${pack.price.toFixed(2)}</div>
+            </div>
+          ))}
+
+          <Button className="w-full" disabled={selected.length === 0 || adding} onClick={addSelectedToMenu}>
+            {adding ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <ShoppingCart className="h-4 w-4 mr-2" />}
+            Add Selected Menus
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
